@@ -4,9 +4,11 @@ Give the physical AI button on a Xiaomi 18 Pro a camera shortcut, an app launche
 
 The target is the **Linux** key `KEY_MACRO_RECORD_STOP` (689, hex `0x2B1`) on a physical `gpio-keys` device. The owner observed DOWN/UP on a Xiaomi 18 Pro and suppression using Key Mapper Expert Mode. This project's own HyperOS suppression, camera launch, and power/volume behavior still require a handset test. Support for other models depends on their input device, kernel, key layout, and shell permissions.
 
+<img src="docs/screenshots/button-light.png" alt="The button overview with single press assigned to Open camera" width="230"> <img src="docs/screenshots/picker-dark.png" alt="The action picker in dark mode" width="230">
+
 ## Install and try the camera mapping
 
-1. Download **Xiaomi-AI-Button-Remapper-debug** from a successful [GitHub Actions build](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/actions/workflows/android.yml). Sign in to GitHub to download the artifact. Extract the ZIP, then sideload `app-debug.apk` on an ARM64 Android 11+ device. Android 17 is the build target. An x86-64 build is included for development.
+1. Download the [preview APK](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/download/v0.1.0-preview.1/Xiaomi-AI-Button-Remapper-0.1.0-debug.apk), or get **Xiaomi-AI-Button-Remapper-debug** from a successful [GitHub Actions build](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/actions/workflows/android.yml). The preview is a direct APK download. The Actions artifact requires GitHub sign-in and contains the APK in a ZIP. Sideload the APK on an ARM64 Android 11+ device. Android 17 is the build target. An x86-64 build is included for development.
 2. Install Shizuku and start its service using wireless debugging or USB debugging. Use Shizuku's ADB mode on a stock, unrooted phone. [Shizuku setup guide](https://shizuku.rikka.app/guide/setup/)
 3. In the remapper's **Diagnostics**, grant Shizuku access. Allow notifications so the ongoing session and its Stop action are accessible. Start the live listener with remapping off. Press and release the AI button. Xiaomi's action can open during this passive check. The notification stays visible and the listener records for up to 60 seconds, so you can return to Diagnostics and inspect the release.
 4. Stop the listener, leave **Single press** set to **Open camera**, release all side buttons, then switch on **Remap button**. In Diagnostics, check the helper is active. If setup is refused, read the reason before retrying.
@@ -62,4 +64,4 @@ cmake --build build/native-tests
 ctest --test-dir build/native-tests --output-on-failure
 ```
 
-Use the [Android emulator probe](docs/emulator-testing.md) to exercise actual kernel grab, filtering and release with a disposable virtual keyboard. Follow the [real-device test procedure](docs/device-testing.md) to verify suppression, lock-screen actions, helper failures and the shared power and volume keys. The [license and attributions](THIRD_PARTY.md) identify upstream tools and remapper references.
+Use the [Android emulator probe](docs/emulator-testing.md) to exercise actual kernel grab, filtering and release with a disposable virtual keyboard. Follow the [real-device test procedure](docs/device-testing.md) to verify suppression, lock-screen actions, helper failures and the shared power and volume keys. The [verification record](docs/verification.md) covers the stock Android 17 camera, PIN-locked secure camera, fail-safe and reboot tests. The [license and attributions](THIRD_PARTY.md) identify upstream tools and remapper references.
