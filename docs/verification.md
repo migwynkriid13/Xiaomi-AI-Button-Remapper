@@ -6,7 +6,7 @@ The app was installed from Downloads using Android 17's Files app. App info init
 
 The Button page initially displayed setup instructions and dimmed controls. Setup disappeared and the controls became active after consent. The Diagnostics tab was initially absent and appeared after enabling it in Settings.
 
-A separate emulator-only internal `gpio-keys` fixture supplied EV_KEY 689. With **Button actions → Take screenshot** mapped to a single press and Android Display settings in front, the button saved a new PNG in `Pictures/Screenshots`. With an app profile active for Files, the same press opened Camera. Back in Display settings, it again took the default screenshot. The remapper's own notification permission was off during both tests.
+A separate emulator-only internal `gpio-keys` fixture supplied EV_KEY 689. With **Button actions → Take screenshot** mapped to a single press and Android Display settings in front, the button saved a new PNG in `Pictures/Screenshots`. With an app profile active for Files, the same press opened Camera. Back in Display settings, it again took the default screenshot. Changing the single-press condition to **Device locked** made the same press skip the action while unlocked. Diagnostics showed the reason and the screenshot count stayed unchanged. The remapper's own notification permission was off during these tests.
 
 Linux scan 689 reached Accessibility on this emulator. The original Xiaomi 18 Pro preview could read the physical event directly. The handset owner reported no events in the later Accessibility release. These are separate paths, and stock Android testing cannot confirm that HyperOS forwards the key. Use the [handset test procedure](device-testing.md) to verify delivery and Xiaomi action suppression.
 
