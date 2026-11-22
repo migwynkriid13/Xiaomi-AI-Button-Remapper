@@ -3,6 +3,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val licenseAssetsDir = layout.buildDirectory.dir("generated/license-assets")
+val collectLicenseAssets by tasks.registering(Sync::class) {
+    into(licenseAssetsDir)
+    from(rootProject.file("LICENSE"))
+    from(rootProject.file("THIRD_PARTY.md"))
+    from(rootProject.file("third-party")) { into("third-party") }
+}
 android {
     namespace = "io.github.xiaomibutton.remapper"
     compileSdk = 37
@@ -25,7 +32,7 @@ android {
             version = "3.22.1"
         }
     }
-    sourceSets["main"].assets.directories.add(rootProject.file("third-party").path)
+    sourceSets["main"].assets.directories.add(licenseAssetsDir.get().asFile.path)
     buildFeatures {
         aidl = true
         compose = true
@@ -37,6 +44,8 @@ android {
     // Shizuku's app_process UserService loads our JNI library from nativeLibraryDir.
     packaging { jniLibs.useLegacyPackaging = true }
 }
+tasks.named("preBuild") { dependsOn(collectLicenseAssets) }
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
     implementation("androidx.compose.material3:material3")
