@@ -1,0 +1,34 @@
+name: Build and verify APK
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install Android toolchain
+        run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "cmake;3.22.1" "ndk;28.2.13676358"
+      - name: Verify native forwarding
+        run: |
+          cmake -S app/src/main/cpp -B build/native-tests
+          cmake --build build/native-tests
+          ctest --test-dir build/native-tests --output-on-failure --no-tests=error
+      - name: Build APK and run unit tests and lint
+        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Xiaomi-AI-Button-Remapper-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

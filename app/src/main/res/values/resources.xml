@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Xiaomi AI Button Remapper</string>
+    <color name="icon_background">#242C40</color>
+    <style name="Theme.Remapper" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/icon_background</item>
+        <item name="android:colorAccent">#BDCCFF</item>
+    </style>
+</resources>
