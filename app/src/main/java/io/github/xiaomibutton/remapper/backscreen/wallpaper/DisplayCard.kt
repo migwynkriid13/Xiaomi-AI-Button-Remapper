@@ -1,0 +1,100 @@
+package io.github.xiaomibutton.remapper.backscreen.wallpaper
+
+import android.view.View
+import io.github.xiaomibutton.remapper.R
+import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
+import io.github.xiaomibutton.remapper.backscreen.core.DisplaySettings
+import io.github.xiaomibutton.remapper.backscreen.core.KeeperService
+import io.github.xiaomibutton.remapper.backscreen.core.LitTime
+import io.github.xiaomibutton.remapper.backscreen.core.RearCommands
+import io.github.xiaomibutton.remapper.backscreen.core.XiaomiLitTime
+import io.github.xiaomibutton.remapper.backscreen.ui.SwitchRow
+import io.github.xiaomibutton.remapper.backscreen.ui.addChoiceChips
+import io.github.xiaomibutton.remapper.backscreen.ui.setChipsEnabled
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import com.google.android.material.materialswitch.MaterialSwitch
+import kotlin.concurrent.thread
+
+/**
+ * The Wallpaper tab's Back screen display card ([DisplaySettings]): Stays lit for, whose As set
+ * chip shows Xiaomi's own time; Stay fully lit while unlocked; and Light up when you pick it up.
+ * Stays lit for is Xiaomi's setting, so it works with the wallpaper off but needs Shizuku; the two
+ * switches work while the wallpaper is up, and the card says so while it isn't.
+ */
+class DisplayCard(card: View) {
+    private val context = card.context
+    private val chips: ChipGroup = card.findViewById(R.id.rear_litChips)
+    private val shizukuNote: View = card.findViewById(R.id.rear_litShizukuNote)
+    private val wallpaperNote: View = card.findViewById(R.id.rear_displayWallpaperNote)
+    private val asSet: Chip
+
+    // Xiaomi's own time has been read for As set's chip, through Shizuku, since the tab showed.
+    private var read = false
+    private var reading = false
+
+    init {
+        val litChips = chips.addChoiceChips(LitTime.entries, DisplaySettings.litTime(context), { context.getString(it.label) }) { option ->
+            DisplaySettings.setLitTime(context, option)
+            BackScreen.log("Stays lit for: ${option.name.lowercase()}")
+            XiaomiLitTime.changed(context)
+        }
+        asSet = litChips[LitTime.entries.indexOf(LitTime.AS_SET)]
+
+        val stayLit = card.findViewById<MaterialSwitch>(R.id.rear_stayLitSwitch)
+        SwitchRow.bind(card.findViewById(R.id.rear_stayLitRow), stayLit)
+        stayLit.isChecked = DisplaySettings.stayLitUnlocked(context)
+        stayLit.setOnCheckedChangeListener { _, checked ->
+            DisplaySettings.setStayLitUnlocked(context, checked)
+            BackScreen.log(if (checked) "Stay fully lit while unlocked on" else "Stay fully lit while unlocked off")
+            KeeperService.instance?.displaySettingsChanged()
+        }
+        val pickUp = card.findViewById<MaterialSwitch>(R.id.rear_pickUpSwitch)
+        SwitchRow.bind(card.findViewById(R.id.rear_pickUpRow), pickUp)
+        pickUp.isChecked = DisplaySettings.wakeOnPickUp(context)
+        pickUp.setOnCheckedChangeListener { _, checked ->
+            DisplaySettings.setWakeOnPickUp(context, checked)
+            BackScreen.log(if (checked) "Light up when picked up on" else "Light up when picked up off")
+            KeeperService.instance?.displaySettingsChanged()
+        }
+    }
+
+    /** The tab is showing again: Xiaomi's time may have changed meanwhile. */
+    fun reload() {
+        read = false
+        refresh()
+    }
+
+    /** Whether Shizuku is ready for Stays lit for, and the wallpaper for the switches. The tab calls this every second. */
+    fun refresh() {
+        val ready = RearCommands.isReady()
+        chips.setChipsEnabled(ready)
+        shizukuNote.visibility = if (ready) View.GONE else View.VISIBLE
+        wallpaperNote.visibility = if (WallpaperSettings.isEnabled(context)) View.GONE else View.VISIBLE
+        if (ready && !read && !reading) readXiaomi()
+    }
+
+    private fun readXiaomi() {
+        reading = true
+        val app = context.applicationContext
+        thread {
+            val ms = XiaomiLitTime.xiaomiMs(app)
+            BackScreen.mainHandler.post {
+                reading = false
+                read = true
+                asSet.text = ms?.let { context.getString(R.string.rear_lit_as_set_value, formatMs(it)) }
+                    ?: context.getString(R.string.rear_lit_as_set)
+            }
+        }
+    }
+
+    /** 10 s, 2 min, or 1 min 30 s. */
+    private fun formatMs(ms: Int): String {
+        val seconds = (ms + 500) / 1000
+        return when {
+            seconds < 60 -> context.getString(R.string.rear_duration_seconds, seconds)
+            seconds % 60 == 0 -> context.getString(R.string.rear_duration_whole_minutes, seconds / 60)
+            else -> context.getString(R.string.rear_duration_minutes, seconds / 60, seconds % 60)
+        }
+    }
+}

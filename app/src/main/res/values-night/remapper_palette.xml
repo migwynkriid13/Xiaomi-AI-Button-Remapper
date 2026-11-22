@@ -1,0 +1,29 @@
+<resources>
+    <color name="window_accent">#FFFFB69D</color>
+    <color name="remapper_on_primary">#FF531D0E</color>
+    <color name="remapper_primary_container">#FF552B21</color>
+    <color name="remapper_on_primary_container">#FFFFCDBE</color>
+    <color name="remapper_secondary">#FFDFBFB0</color>
+    <color name="remapper_on_secondary">#FF412B22</color>
+    <color name="remapper_secondary_container">#FF45352E</color>
+    <color name="remapper_on_secondary_container">#FFF1D9CE</color>
+    <color name="remapper_surface">#FF221B18</color>
+    <color name="window_background">#FF181310</color>
+    <color name="remapper_surface_container_lowest">#FF120E0C</color>
+    <color name="remapper_surface_container">#FF251D19</color>
+    <color name="remapper_surface_container_low">#FF2B221E</color>
+    <color name="remapper_surface_container_high">#FF302722</color>
+    <color name="remapper_surface_container_highest">#FF3C302A</color>
+    <color name="remapper_surface_variant">#FF3D312B</color>
+    <color name="remapper_on_background">#FFFAF1EB</color>
+    <color name="remapper_on_surface">#FFFAF1EB</color>
+    <color name="remapper_on_surface_variant">#FFCCBAB0</color>
+    <color name="remapper_outline">#FF9B897F</color>
+    <color name="remapper_outline_variant">#FF473933</color>
+    <color name="remapper_inverse_surface">#FFEEE1DB</color>
+    <color name="remapper_inverse_on_surface">#FF302521</color>
+    <color name="remapper_error">#FFFFB4AB</color>
+    <color name="remapper_on_error">#FF650E10</color>
+    <color name="remapper_error_container">#FF682A25</color>
+    <color name="remapper_on_error_container">#FFFFDAD6</color>
+</resources>

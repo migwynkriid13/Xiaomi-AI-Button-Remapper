@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -40,37 +41,39 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 
-private val light = lightColorScheme(
-    primary = Color(0xFF9A3F29), onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFE5D9), onPrimaryContainer = Color(0xFF712C19),
-    secondary = Color(0xFF72564B), onSecondary = Color.White,
-    secondaryContainer = Color(0xFFF2E5DD), onSecondaryContainer = Color(0xFF3D2B24),
-    surface = Color(0xFFFFFCF9), background = Color(0xFFF7F4F0),
-    surfaceContainerLowest = Color.White, surfaceContainer = Color(0xFFFFFCF9),
-    surfaceContainerLow = Color(0xFFF3EEE9), surfaceContainerHigh = Color(0xFFEFE8E2),
-    surfaceContainerHighest = Color(0xFFEBE3DC), surfaceVariant = Color(0xFFEFE7E0),
-    onBackground = Color(0xFF241B17), onSurface = Color(0xFF241B17), onSurfaceVariant = Color(0xFF655650),
-    outline = Color(0xFF87766D), outlineVariant = Color(0xFFE6DCD4),
-    inverseSurface = Color(0xFF312722), inverseOnSurface = Color(0xFFFBF0EA),
-    error = Color(0xFFA42A25), onError = Color.White,
-    errorContainer = Color(0xFFFFDAD6), onErrorContainer = Color(0xFF5B1414)
-)
-
-private val dark = darkColorScheme(
-    primary = Color(0xFFFFB69D), onPrimary = Color(0xFF531D0E),
-    primaryContainer = Color(0xFF552B21), onPrimaryContainer = Color(0xFFFFCDBE),
-    secondary = Color(0xFFDFBFB0), onSecondary = Color(0xFF412B22),
-    secondaryContainer = Color(0xFF45352E), onSecondaryContainer = Color(0xFFF1D9CE),
-    surface = Color(0xFF221B18), background = Color(0xFF181310),
-    surfaceContainerLowest = Color(0xFF120E0C), surfaceContainer = Color(0xFF251D19),
-    surfaceContainerLow = Color(0xFF2B221E), surfaceContainerHigh = Color(0xFF302722),
-    surfaceContainerHighest = Color(0xFF3C302A), surfaceVariant = Color(0xFF3D312B),
-    onBackground = Color(0xFFFAF1EB), onSurface = Color(0xFFFAF1EB), onSurfaceVariant = Color(0xFFCCBAB0),
-    outline = Color(0xFF9B897F), outlineVariant = Color(0xFF473933),
-    inverseSurface = Color(0xFFEEE1DB), inverseOnSurface = Color(0xFF302521),
-    error = Color(0xFFFFB4AB), onError = Color(0xFF650E10),
-    errorContainer = Color(0xFF682A25), onErrorContainer = Color(0xFFFFDAD6)
-)
+@Composable
+private fun remapperColors(): ColorScheme {
+    val base = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = colorResource(R.color.window_accent),
+        onPrimary = colorResource(R.color.remapper_on_primary),
+        primaryContainer = colorResource(R.color.remapper_primary_container),
+        onPrimaryContainer = colorResource(R.color.remapper_on_primary_container),
+        secondary = colorResource(R.color.remapper_secondary),
+        onSecondary = colorResource(R.color.remapper_on_secondary),
+        secondaryContainer = colorResource(R.color.remapper_secondary_container),
+        onSecondaryContainer = colorResource(R.color.remapper_on_secondary_container),
+        surface = colorResource(R.color.remapper_surface),
+        background = colorResource(R.color.window_background),
+        surfaceContainerLowest = colorResource(R.color.remapper_surface_container_lowest),
+        surfaceContainer = colorResource(R.color.remapper_surface_container),
+        surfaceContainerLow = colorResource(R.color.remapper_surface_container_low),
+        surfaceContainerHigh = colorResource(R.color.remapper_surface_container_high),
+        surfaceContainerHighest = colorResource(R.color.remapper_surface_container_highest),
+        surfaceVariant = colorResource(R.color.remapper_surface_variant),
+        onBackground = colorResource(R.color.remapper_on_background),
+        onSurface = colorResource(R.color.remapper_on_surface),
+        onSurfaceVariant = colorResource(R.color.remapper_on_surface_variant),
+        outline = colorResource(R.color.remapper_outline),
+        outlineVariant = colorResource(R.color.remapper_outline_variant),
+        inverseSurface = colorResource(R.color.remapper_inverse_surface),
+        inverseOnSurface = colorResource(R.color.remapper_inverse_on_surface),
+        error = colorResource(R.color.remapper_error),
+        onError = colorResource(R.color.remapper_on_error),
+        errorContainer = colorResource(R.color.remapper_error_container),
+        onErrorContainer = colorResource(R.color.remapper_on_error_container)
+    )
+}
 
 private val type = Typography(
     headlineLarge = TextStyle(fontSize = 36.sp, lineHeight = 41.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-1.35).sp),
@@ -93,7 +96,7 @@ internal val TileShape = RoundedCornerShape(15.dp)
 @Composable
 internal fun RemapperTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) dark else light,
+        colorScheme = remapperColors(),
         typography = type,
         shapes = Shapes(
             small = RoundedCornerShape(12.dp), medium = TileShape,
@@ -103,7 +106,7 @@ internal fun RemapperTheme(content: @Composable () -> Unit) {
 }
 
 internal enum class Mark {
-    BUTTON, PULSE, TUNE, SINGLE, DOUBLE, LONG, TRIPLE, NEXT, BACK, CLOSE, LINK, PLUS
+    BUTTON, REAR_SCREEN, PULSE, TUNE, SINGLE, DOUBLE, LONG, TRIPLE, NEXT, BACK, CLOSE, LINK, PLUS
 }
 
 internal val GestureSlot.mark: Mark
@@ -129,6 +132,11 @@ internal fun LineIcon(mark: Mark, modifier: Modifier = Modifier, color: Color = 
                     drawRoundRect(color, Offset(6f, 3f), Size(11f, 18f), CornerRadius(3f), style = Stroke(1.7f))
                     line(19.5f, 8f, 19.5f, 13f)
                     line(10f, 17.5f, 13f, 17.5f)
+                }
+                Mark.REAR_SCREEN -> {
+                    drawRoundRect(color, Offset(6f, 2.5f), Size(12f, 19f), CornerRadius(3f), style = Stroke(1.7f))
+                    drawRoundRect(color, Offset(8.4f, 5.2f), Size(7.2f, 5.7f), CornerRadius(1.15f), style = Stroke(1.4f))
+                    line(10.5f, 18.5f, 13.5f, 18.5f)
                 }
                 Mark.PULSE -> {
                     line(2f, 13f, 7f, 13f)

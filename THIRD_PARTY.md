@@ -5,7 +5,9 @@ Xiaomi AI Button Remapper source is licensed under the GNU General Public Licens
 | Component | Use and terms |
 | --- | --- |
 | [AndroidX](https://android.googlesource.com/platform/frameworks/support/), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines) | Compose, Material 3, Activity, DataStore and coroutine runtime. Apache License 2.0. [License text](third-party/Apache-2.0.txt). |
-| [Shizuku API and provider](https://github.com/RikkaApps/Shizuku-API) | Starts the raw input helper with the user's authorization. MIT, copyright RikkaW. [Full notice](third-party/Shizuku-API-LICENSE.txt). |
+| [Shizuku API and provider](https://github.com/RikkaApps/Shizuku-API) | Starts the raw input helper and runs bounded rear display commands with the user's authorization. MIT, copyright RikkaW. [Full notice](third-party/Shizuku-API-LICENSE.txt). |
+| [Mi Back Screen](https://github.com/totallynotkasai/mi-back-screen/tree/842d0ca875a16b568d931785e80fd47f1cd10208) | Rear display runtime, controls, and tests adapted from Andrew Worgan's MIT-licensed project, including the four-model [compatibility patch](https://github.com/totallynotkasai/mi-back-screen/pull/3). [Full notice](third-party/Mi-Back-Screen-LICENSE.txt). |
+| [Material Components for Android](https://github.com/material-components/material-components-android) | Rear display settings controls and dialogs. Apache License 2.0. [License text](third-party/Apache-2.0.txt). |
 | [LLVM libc++](https://libcxx.llvm.org/) | Android NDK C++ runtime for the raw input helper. Apache License 2.0 with LLVM exceptions. [Notices](third-party/LLVM-LICENSE.txt). |
 | [Google Material Icons](https://github.com/google/material-design-icons) | Selected Material Icons Round paths distributed as Android vector drawables. Copyright Google LLC. Apache License 2.0. [License text](third-party/Apache-2.0.txt). |
 | [Gradle](https://github.com/gradle/gradle/tree/v9.3.1) | Official wrapper scripts and JAR from Gradle 9.3.1. Apache License 2.0. Wrapper scripts retain their copyright headers. |

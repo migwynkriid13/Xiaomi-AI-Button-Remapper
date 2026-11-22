@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <queries>
         <package android:name="com.android.settings" />
@@ -54,6 +57,152 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!--
+            Xiaomi's opt-in for showing activities on the rear display (found in the open source
+            MiRearScreenSwitcher app). Lets RearHostActivity be launched straight there.
+        -->
+        <meta-data
+            android:name="miui.rear.policy"
+            android:value="1" />
+
+        <activity
+            android:name=".backscreen.RearScreenActivity"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="false"
+            android:theme="@style/Theme.Remapper.Rear" />
+
+        <!--
+            The app's tiles and its notification open it through this private name, which no
+            other app can use; MainActivity acts on what they ask only when it comes this way
+            (see LaunchCommand).
+        -->
+        <activity-alias
+            android:name=".backscreen.CommandLaunch"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="false"
+            android:targetActivity=".backscreen.RearScreenActivity" />
+
+        <!--
+            Exported only so the Shizuku shell process can launch it: the shell can't start an
+            activity that isn't. On either screen it closes itself at once unless it carries the
+            token this app's service gave that launch, and the main screen only ever sees it
+            on its way to the back screen.
+        -->
+        <activity
+            android:name=".backscreen.rear.RearHostActivity"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="io.github.xiaomibutton.remapper.backscreen.rear"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
+            <!--
+                HyperOS reads this as an integer: 1 allows launching straight onto the rear
+                display, but only while the phone is unlocked (when locked it only allows its
+                own built-in list of apps). KeeperService falls back to launch-and-move then.
+            -->
+            <meta-data
+                android:name="miui.rear.policy"
+                android:value="1" />
+        </activity>
+
+        <service
+            android:name=".backscreen.core.KeeperService"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows a user-chosen image, a clock and a charging animation on the phone's rear display, and moves the app in use there and back when the user asks" />
+        </service>
+
+        <!--
+            Notifications on the back screen. Reads new notifications only once you allow
+            Notification access (one tap through Shizuku, or in Settings), and only while that
+            section is on. Nothing is stored or sent anywhere. It asks for notifications that
+            alert or are conversations, so by default silent and ongoing ones don't reach it.
+            That's only a default, which Settings can change; the app leaves them out anyway.
+        -->
+        <service
+            android:name=".backscreen.notifications.RearNotificationListener"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="true"
+            android:label="@string/rear_listener_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.notification.default_filter_types"
+                android:value="conversations|alerting" />
+        </service>
+
+        <!-- Schedule alarms; the system broadcasts below mean the alarm must be set again. -->
+        <receiver
+            android:name=".backscreen.ScheduleReceiver"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- The back screen clock's per-minute alarm. -->
+        <receiver
+            android:name=".backscreen.wallpaper.ClockAlarmReceiver"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="false" />
+
+        <!-- Home screen on/off widget. -->
+        <receiver
+            android:name=".backscreen.ToggleWidget"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="true"
+            android:label="@string/rear_screen_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/rear_toggle_widget_info" />
+        </receiver>
+
+        <!-- Quick Settings on/off tile. -->
+        <service
+            android:name=".backscreen.ToggleTile"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="true"
+            android:icon="@drawable/rear_ic_tile"
+            android:label="@string/rear_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
+        <!-- Quick Settings tile for Quick Switch: the app in use to the back screen and back. -->
+        <service
+            android:name=".backscreen.mirror.QuickSwitchTile"
+            android:enabled="@bool/rear_screen_supported"
+            android:exported="true"
+            android:icon="@drawable/rear_ic_swap"
+            android:label="@string/rear_mirror_switch"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
         <provider android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"
             android:enabled="true"

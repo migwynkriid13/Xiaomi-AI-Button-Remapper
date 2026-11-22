@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The five sections, one tab each (see Feature). -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/rear_nav_wallpaper"
+        android:icon="@drawable/rear_ic_image"
+        android:title="@string/rear_tab_wallpaper" />
+    <item
+        android:id="@+id/rear_nav_notifications"
+        android:icon="@drawable/rear_ic_notifications"
+        android:title="@string/rear_tab_notifications" />
+    <item
+        android:id="@+id/rear_nav_battery"
+        android:icon="@drawable/rear_ic_battery_charging"
+        android:title="@string/rear_tab_battery" />
+    <item
+        android:id="@+id/rear_nav_mirror"
+        android:icon="@drawable/rear_ic_swap"
+        android:title="@string/rear_tab_mirror" />
+    <item
+        android:id="@+id/rear_nav_camera"
+        android:icon="@drawable/rear_ic_camera"
+        android:title="@string/rear_tab_camera" />
+</menu>

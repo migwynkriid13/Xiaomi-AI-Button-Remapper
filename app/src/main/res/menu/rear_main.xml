@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The top bar's menu: the tab's help, always shown beside the overflow, then the overflow menu,
+    the same on every tab.
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/rear_menu_help"
+        android:icon="@drawable/rear_ic_help"
+        android:title="@string/rear_help"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/rear_menu_refresh"
+        android:title="@string/rear_refresh" />
+    <item
+        android:id="@+id/rear_menu_diagnostics"
+        android:title="@string/rear_diagnostics" />
+    <item
+        android:id="@+id/rear_menu_setup_help"
+        android:title="@string/rear_setup_help" />
+    <item
+        android:id="@+id/rear_menu_about"
+        android:title="@string/rear_about_title" />
+</menu>

@@ -3,9 +3,11 @@ package io.github.xiaomibutton.remapper.runtime
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
 import io.github.xiaomibutton.remapper.ConfigStore
+import io.github.xiaomibutton.remapper.xiaomi17ModelLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -142,6 +144,7 @@ object RemapperRuntime {
     }
 
     private fun begin(context: Context, action: String) {
+        if (xiaomi17ModelLabel(Build.MODEL, Build.DEVICE) != null) return
         initialize(context)
         refresh(context)
         if (!status.value.shizukuAuthorized) {

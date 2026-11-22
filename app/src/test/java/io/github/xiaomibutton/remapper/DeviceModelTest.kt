@@ -26,4 +26,13 @@ class DeviceModelTest {
         assertNull(xiaomi18ModelLabel("Android SDK built for x86_64", "emu64x"))
         assertNull(xiaomi18ModelLabel("Xiaomi 18 Fold", "lhasa"))
     }
+
+    @Test fun identifiesRearScreenOnlyModelsByModelOrCodename() {
+        assertEquals("Xiaomi 17 Pro", xiaomi17ModelLabel("25098PN5AC", ""))
+        assertEquals("Xiaomi 17 Pro", xiaomi17ModelLabel("unknown", "pandora"))
+        assertEquals("Xiaomi 17 Pro Max", xiaomi17ModelLabel("2509FPN0BC", ""))
+        assertEquals("Xiaomi 17 Pro Max", xiaomi17ModelLabel("unknown", "popsicle_global"))
+        assertNull(xiaomi17ModelLabel("2609BPN61G", "hongkong"))
+        assertNull(xiaomi18ModelLabel("2509FPN0BC", "popsicle"))
+    }
 }

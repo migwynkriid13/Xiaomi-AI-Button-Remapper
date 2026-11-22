@@ -3,6 +3,7 @@ package io.github.xiaomibutton.remapper
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -27,6 +28,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import io.github.xiaomibutton.remapper.backscreen.RearScreenActivity
+import io.github.xiaomibutton.remapper.backscreen.resumeRearScreen
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +48,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         RemapperRuntime.uiResumed(this)
+        resumeRearScreen(this)
     }
 
     override fun onPause() {
@@ -54,11 +58,12 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Page(val title: String, val icon: Mark) {
-    MAPPINGS("Button", Mark.BUTTON), DIAGNOSTICS("Diagnostics", Mark.PULSE), SETTINGS("Settings", Mark.TUNE)
+    MAPPINGS("Button", Mark.BUTTON), REAR_SCREEN("Back screen", Mark.REAR_SCREEN),
+    DIAGNOSTICS("Diagnostics", Mark.PULSE), SETTINGS("Settings", Mark.TUNE)
 }
 
 @Composable
-private fun PageNavigation(page: Page, showDiagnostics: Boolean, navigate: (Page) -> Unit) {
+private fun PageNavigation(page: Page, pages: List<Page>, navigate: (Page) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Surface(color = colors.surfaceContainer) {
         Column {
@@ -71,7 +76,7 @@ private fun PageNavigation(page: Page, showDiagnostics: Boolean, navigate: (Page
                         .selectableGroup(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Page.entries.filter { it != Page.DIAGNOSTICS || showDiagnostics }.forEach { item ->
+                    pages.forEach { item ->
                         val selected = page == item
                         val tint = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant
                         Column(
@@ -130,9 +135,18 @@ private fun RemapperApp() {
             updateChecked = true
         }
     }
-    var page by rememberSaveable { mutableStateOf(Page.MAPPINGS) }
-    LaunchedEffect(config?.showDiagnostics) {
-        if (config?.showDiagnostics == false && page == Page.DIAGNOSTICS) page = Page.MAPPINGS
+    val rearOnly = remember { xiaomi17ModelLabel(Build.MODEL, Build.DEVICE) != null }
+    val home = if (rearOnly) Page.REAR_SCREEN else Page.MAPPINGS
+    val pages = Page.entries.filter { item ->
+        when (item) {
+            Page.MAPPINGS -> !rearOnly
+            Page.DIAGNOSTICS -> !rearOnly && config?.showDiagnostics == true
+            else -> true
+        }
+    }
+    var page by rememberSaveable { mutableStateOf(home) }
+    LaunchedEffect(pages) {
+        if (config != null && page !in pages) page = home
     }
     fun navigate(next: Page) {
         if (page == Page.DIAGNOSTICS && next != Page.DIAGNOSTICS) RemapperRuntime.endTest()
@@ -152,6 +166,16 @@ private fun RemapperApp() {
             launch()
         } catch (_: android.content.ActivityNotFoundException) {
             message("The Android document picker is unavailable on this device")
+        }
+    }
+    val showUpdate: @Composable () -> Unit = {
+        val available = updateVersion
+        if (available != null && installedVersion != null) {
+            UpdateNotice(
+                installedVersion, available,
+                download = { launchSystem(Intent(Intent.ACTION_VIEW, Uri.parse(releaseApkUrl(available)))) },
+                dismiss = { updateVersion = null }
+            )
         }
     }
     fun startRemapping() {
@@ -183,10 +207,10 @@ private fun RemapperApp() {
                 .onFailure { message("Import failed: " + it.localizedMessage) }
         }
     }
-    BackHandler(enabled = page != Page.MAPPINGS && slot == null && pendingImport == null) { navigate(Page.MAPPINGS) }
+    BackHandler(enabled = page != home && slot == null && pendingImport == null) { navigate(home) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, snackbarHost = {
         SnackbarHost(messages) { data -> Snackbar(data, shape = TileShape) }
-    }, bottomBar = { PageNavigation(page, config?.showDiagnostics == true, ::navigate) }) { insets ->
+    }, bottomBar = { PageNavigation(page, pages, ::navigate) }) { insets ->
         val current = config
         if (current == null) Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -203,18 +227,14 @@ private fun RemapperApp() {
                     when (page) {
                         Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
                             if (on) startRemapping() else RemapperRuntime.stop(context)
-                        }, ::startRemapping, ::launchSystem) {
-                            val available = updateVersion
-                            if (available != null && installedVersion != null) {
-                                UpdateNotice(
-                                    installedVersion, available,
-                                    download = { launchSystem(Intent(Intent.ACTION_VIEW, Uri.parse(releaseApkUrl(available)))) },
-                                    dismiss = { updateVersion = null }
-                                )
-                            }
+                        }, ::startRemapping, ::launchSystem, showUpdate)
+                        Page.REAR_SCREEN -> {
+                            if (rearOnly) showUpdate()
+                            RearScreenOverview { feature -> launchSystem(RearScreenActivity.intent(context, feature)) }
                         }
                         Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem)
-                        Page.SETTINGS -> Preferences(current, status, ::change, ::launchSystem,
+                        Page.SETTINGS -> if (rearOnly) RearOnlyPreferences(::launchSystem)
+                        else Preferences(current, status, ::change, ::launchSystem,
                             { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
                             { openDocumentPicker { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
                             { RemapperRuntime.stop(context); message("Xiaomi default behavior restored") })

@@ -1,0 +1,106 @@
+<resources>
+    <style name="Theme.Remapper.Rear" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="android:windowLightNavigationBar">?attr/isLightTheme</item>
+        <item name="android:colorBackground">@color/window_background</item>
+        <item name="colorOnBackground">@color/remapper_on_background</item>
+        <item name="colorPrimary">@color/window_accent</item>
+        <item name="colorOnPrimary">@color/remapper_on_primary</item>
+        <item name="colorPrimaryContainer">@color/remapper_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/remapper_on_primary_container</item>
+        <item name="colorSecondary">@color/remapper_secondary</item>
+        <item name="colorOnSecondary">@color/remapper_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/remapper_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/remapper_on_secondary_container</item>
+        <item name="colorTertiary">@color/window_accent</item>
+        <item name="colorOnTertiary">@color/remapper_on_primary</item>
+        <item name="colorTertiaryContainer">@color/remapper_primary_container</item>
+        <item name="colorOnTertiaryContainer">@color/remapper_on_primary_container</item>
+        <item name="colorSurface">@color/remapper_surface</item>
+        <item name="colorOnSurface">@color/remapper_on_surface</item>
+        <item name="colorSurfaceVariant">@color/remapper_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/remapper_on_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/remapper_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/remapper_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/remapper_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/remapper_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/remapper_surface_container_highest</item>
+        <item name="colorSurfaceInverse">@color/remapper_inverse_surface</item>
+        <item name="colorOnSurfaceInverse">@color/remapper_inverse_on_surface</item>
+        <item name="colorPrimaryInverse">@color/remapper_primary_container</item>
+        <item name="colorOutline">@color/remapper_outline</item>
+        <item name="colorOutlineVariant">@color/remapper_outline_variant</item>
+        <item name="colorError">@color/remapper_error</item>
+        <item name="colorOnError">@color/remapper_on_error</item>
+        <item name="colorErrorContainer">@color/remapper_error_container</item>
+        <item name="colorOnErrorContainer">@color/remapper_on_error_container</item>
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.Remapper.RearControl</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Remapper.RearControl</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Remapper.RearDialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Remapper.RearDialog</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.Remapper.RearTitle</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.Remapper.RearSection</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.Remapper.RearLabel</item>
+        <item name="toolbarStyle">@style/Widget.Remapper.RearToolbar</item>
+    </style>
+
+    <style name="ShapeAppearance.Remapper.RearControl" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">15dp</item>
+    </style>
+
+    <style name="ShapeAppearance.Remapper.RearDialog" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">32dp</item>
+    </style>
+
+    <style name="ThemeOverlay.Remapper.RearDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Remapper.RearDialog</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Remapper.RearDialog</item>
+        <item name="backgroundTint">@color/remapper_surface_container</item>
+    </style>
+
+    <style name="Widget.Remapper.RearCard" parent="Widget.Material3.CardView.Filled">
+        <item name="cardElevation">0dp</item>
+        <item name="cardCornerRadius">26dp</item>
+        <item name="strokeColor">@color/remapper_outline_variant</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="contentPadding">20dp</item>
+    </style>
+
+    <style name="Widget.Remapper.RearToolbar" parent="Widget.Material3.Toolbar">
+        <item name="android:background">@color/window_background</item>
+        <item name="titleTextAppearance">@style/TextAppearance.Remapper.RearHeading</item>
+        <item name="subtitleTextColor">@color/window_accent</item>
+        <item name="navigationIconTint">@color/remapper_on_surface</item>
+    </style>
+
+    <style name="TextAppearance.Remapper.RearHeading" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">27sp</item>
+    </style>
+
+    <style name="TextAppearance.Remapper.RearTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="TextAppearance.Remapper.RearSection" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textSize">19sp</item>
+    </style>
+
+    <style name="TextAppearance.Remapper.RearLabel" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <color name="rear_widget_on_bg">@color/remapper_primary_container</color>
+    <color name="rear_widget_on_fg">@color/remapper_on_primary_container</color>
+    <color name="rear_widget_off_bg">@color/remapper_surface_container_low</color>
+    <color name="rear_widget_off_fg">@color/remapper_on_surface</color>
+    <color name="rear_on_rear_preview">#FAF1EB</color>
+    <color name="rear_on_rear_preview_variant">#CCBAB0</color>
+</resources>
