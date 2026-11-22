@@ -1,6 +1,7 @@
 name: Build and verify APK
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -8,7 +9,36 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ship: ${{ steps.paths.outputs.ship }}
+      verify: ${{ steps.paths.outputs.verify }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: paths
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          ship=false
+          verify=true
+          if [[ "$EVENT" == push ]]; then
+            ship=$(bash .github/scripts/apk-changes.sh "$BEFORE" "$AFTER")
+            if [[ "$ship" == false ]] && git diff --quiet "$BEFORE" "$AFTER" -- app/src/test app/src/androidTest app/src/debug .github; then
+              verify=false
+            fi
+          fi
+          echo "ship=$ship" >> "$GITHUB_OUTPUT"
+          echo "verify=$verify" >> "$GITHUB_OUTPUT"
+          printf 'APK inputs changed: %s. Build and tests requested: %s.\n' "$ship" "$verify" >> "$GITHUB_STEP_SUMMARY"
+
   verify:
+    needs: changes
+    if: needs.changes.outputs.verify == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +50,8 @@ jobs:
         with:
           packages: 'platform-tools'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Verify release input filters
+        run: bash .github/scripts/test-apk-changes.sh
       - name: Install Android toolchain
         run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "cmake;3.22.1" "ndk;28.2.13676358"
       - name: Verify native forwarding
@@ -27,10 +59,50 @@ jobs:
           cmake -S app/src/main/cpp -B build/native-tests
           cmake --build build/native-tests
           ctest --test-dir build/native-tests --output-on-failure --no-tests=error
-      - name: Build APK and run unit tests and lint
+      - name: Build debug APK and run unit tests and lint
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
       - uses: actions/upload-artifact@v4
         with:
           name: Xiaomi-AI-Button-Remapper-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Build versioned release APK
+        if: needs.changes.outputs.ship == 'true'
+        run: ./gradlew --no-daemon assembleRelease -PreleaseBuildNumber="$GITHUB_RUN_NUMBER"
+      - uses: actions/upload-artifact@v4
+        if: needs.changes.outputs.ship == 'true'
+        with:
+          name: unsigned-release
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [changes, verify]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.ship == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-android-apk
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned-release
+          path: ${{ runner.temp }}/apk
+      - name: Prepare Android signing tools
+        run: |
+          if [[ ! -x "$ANDROID_HOME/build-tools/36.0.0/apksigner" ]]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;36.0.0"
+          fi
+      - name: Sign release APK and verify certificate
+        env:
+          ANDROID_RELEASE_KEYSTORE: ${{ secrets.ANDROID_RELEASE_KEYSTORE }}
+          ANDROID_RELEASE_PASSWORD: ${{ secrets.ANDROID_RELEASE_PASSWORD }}
+        run: bash .github/scripts/sign-apk.sh "$RUNNER_TEMP/apk/app-release-unsigned.apk" "$RUNNER_TEMP/Xiaomi-AI-Button-Remapper.apk"
+      - name: Publish APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-apk.sh "$RUNNER_TEMP/Xiaomi-AI-Button-Remapper.apk"

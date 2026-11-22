@@ -57,7 +57,7 @@ internal class SessionNotifications(private val context: Context) {
         manager.notify(REMINDER_ID, Notification.Builder(context, ACTIONS)
             .setSmallIcon(android.R.drawable.ic_menu_preferences)
             .setContentTitle("Resume AI button remapping")
-            .setContentText("Start Shizuku, then open the remapper to reconnect.")
+            .setContentText("Open the remapper to check your input service and resume.")
             .setContentIntent(openApp())
             .setAutoCancel(true)
             .build())

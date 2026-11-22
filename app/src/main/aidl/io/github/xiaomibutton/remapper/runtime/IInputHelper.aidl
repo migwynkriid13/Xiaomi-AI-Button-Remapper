@@ -11,5 +11,6 @@ interface IInputHelper {
     String openLauncherApp(String packageName) = 5;
     String openSettings(String action) = 6;
     String openWeb(String url) = 7;
+    String deviceAction(String id, String value) = 8;
     void destroy() = 16777114;
 }

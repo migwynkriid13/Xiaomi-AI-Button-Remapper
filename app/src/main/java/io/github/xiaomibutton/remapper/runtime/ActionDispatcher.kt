@@ -1,5 +1,6 @@
 package io.github.xiaomibutton.remapper.runtime
 
+import android.accessibilityservice.AccessibilityService
 import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -23,6 +24,11 @@ import android.service.notification.Condition
 import io.github.xiaomibutton.remapper.validateAction
 import io.github.xiaomibutton.remapper.ActionKind
 import io.github.xiaomibutton.remapper.ActionSpec
+import io.github.xiaomibutton.remapper.ActionLibrary
+import io.github.xiaomibutton.remapper.DeviceActions
+import io.github.xiaomibutton.remapper.InteractionActions
+import io.github.xiaomibutton.remapper.KeyMapInterop
+import io.github.xiaomibutton.remapper.MediaActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -47,36 +53,42 @@ internal class ActionDispatcher(
     private val locked: Boolean get() = (context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != false) ||
         (context.getSystemService(PowerManager::class.java)?.isInteractive != true)
 
-    suspend fun perform(action: ActionSpec, helper: IInputHelper): String {
+    suspend fun perform(action: ActionSpec, helper: IInputHelper?): String {
         validateAction(action)
         return when (action.kind) {
             ActionKind.NONE -> "Button action disabled"
+            ActionKind.SEQUENCE -> error("Sequences must be expanded by the running session")
+            ActionKind.CATALOG -> {
+                val id = action.value
+                val value = action.extra
+                val entry = requireNotNull(ActionLibrary.find(id))
+                when {
+                    entry.requirement == KeyMapInterop.REQUIREMENT -> KeyMapInterop.trigger(context, value)
+                    id.startsWith("flash.") -> flashlight(id, value)
+                    id.startsWith("media.") || id.startsWith("volume.") || id.startsWith("ringer.") -> MediaActions.execute(context, id, value)
+                    id.startsWith("keyboard.") || id.startsWith("input.") -> InteractionActions.execute(context, id, value)
+                    else -> DeviceActions.execute(context, id, value, helper) { intent, label -> launch(intent, label) }
+                }
+            }
             ActionKind.CAMERA -> {
                 val secure = locked
-                val result = withContext(Dispatchers.IO) { helper.openCamera(secure) }
-                if (result.startsWith("Error:")) {
-                    val intent = Intent(if (secure) MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE else MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
-                    "${launch(intent, "Camera")} · $result"
-                } else if (secure) "Secure camera requested" else "Camera requested"
+                val intent = Intent(if (secure) MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE else MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+                if (helper == null) launch(intent, if (secure) "Secure camera" else "Camera", secureCamera = secure)
+                else {
+                    val result = withContext(Dispatchers.IO) { helper.openCamera(secure) }
+                    if (result.startsWith("Error:")) launch(intent, "Camera", secureCamera = secure)
+                    else if (secure) "Secure camera requested" else "Camera requested"
+                }
             }
             ActionKind.APP -> {
                 val intent = context.packageManager.getLaunchIntentForPackage(action.value)
                     ?: error("No launchable activity for this app or profile")
-                if (locked) launch(intent, "Application") else {
+                if (helper == null || locked) launch(intent, "Application") else {
                     val result = withContext(Dispatchers.IO) { helper.openLauncherApp(action.value) }
                     if (result.startsWith("Error:")) launch(intent, "Application") else "Application launch requested"
                 }
             }
-            ActionKind.FLASHLIGHT -> {
-                val flash = checkNotNull(camera) { "Camera service unavailable" }
-                val id = torchStates.keys.firstOrNull {
-                    flash.getCameraCharacteristics(it)[CameraCharacteristics.LENS_FACING] == CameraCharacteristics.LENS_FACING_BACK
-                } ?: torchStates.keys.firstOrNull() ?: error("Flashlight unavailable or camera in use")
-                val enable = torchStates[id] != true
-                flash.setTorchMode(id, enable)
-                torchStates[id] = enable
-                if (enable) "Flashlight on" else "Flashlight off"
-            }
+            ActionKind.FLASHLIGHT -> flashlight("flash.toggle", "")
             ActionKind.SILENT -> {
                 val audio = checkNotNull(context.getSystemService(AudioManager::class.java))
                 val silent = audio.ringerMode != AudioManager.RINGER_MODE_SILENT
@@ -97,7 +109,7 @@ internal class ActionDispatcher(
                 val uri = Uri.parse(action.value).normalizeScheme()
                 require(uri.scheme in setOf("https", "http") && !uri.host.isNullOrBlank()) { "Choose an HTTP or HTTPS URL" }
                 val intent = Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
-                if (locked) launch(intent, "Web link") else {
+                if (helper == null || locked) launch(intent, "Web link") else {
                     val result = withContext(Dispatchers.IO) { helper.openWeb(uri.toString()) }
                     if (result.startsWith("Error:")) launch(intent, "Web link") else "Web link requested"
                 }
@@ -106,7 +118,7 @@ internal class ActionDispatcher(
                 require(action.value.startsWith("android.settings.")) { "Invalid Settings action" }
                 val intent = Intent(action.value)
                 check(intent.resolveActivity(context.packageManager) != null) { "Settings destination unavailable on this device" }
-                if (locked) launch(intent, "Android Settings") else {
+                if (helper == null || locked) launch(intent, "Android Settings") else {
                     val result = withContext(Dispatchers.IO) { helper.openSettings(action.value) }
                     if (result.startsWith("Error:")) launch(intent, "Android Settings") else "Settings page requested"
                 }
@@ -119,7 +131,7 @@ internal class ActionDispatcher(
                     val launcher = checkNotNull(context.getSystemService(LauncherApps::class.java))
                     check(launcher.hasShortcutHostPermission()) { "Android has not granted shortcut-host access" }
                     val user = Process.myUserHandle()
-                    if (RemapperRuntime.visible && !locked) {
+                    if (canLaunchDirectly && !locked) {
                         launcher.startShortcut(action.value, action.extra, null, null, user)
                         "Shortcut launch requested"
                     } else if (Build.VERSION.SDK_INT >= 31) {
@@ -129,8 +141,33 @@ internal class ActionDispatcher(
                     } else "Open the remapper to launch this shortcut on this Android version"
                 }
             }
-            ActionKind.SHELL -> withContext(Dispatchers.IO) { helper.execute(action.value) }.take(300)
+            ActionKind.SHELL -> if (helper == null) "Shell commands require the optional Shizuku input mode"
+                else withContext(Dispatchers.IO) { helper.execute(action.value) }.take(300)
         }
+    }
+
+    private fun flashlight(operation: String, value: String): String {
+        val flash = checkNotNull(camera) { "Camera service unavailable" }
+        val id = torchStates.keys.firstOrNull {
+            flash.getCameraCharacteristics(it)[CameraCharacteristics.LENS_FACING] == CameraCharacteristics.LENS_FACING_BACK
+        } ?: torchStates.keys.firstOrNull() ?: error("Flashlight unavailable or camera in use")
+        if (operation == "flash.strength") {
+            if (Build.VERSION.SDK_INT < 33) error("Strength control requires Android 13+")
+            val maximum = flash.getCameraCharacteristics(id)[CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL] ?: 1
+            check(maximum > 1) { "This flash has a fixed brightness" }
+            val strength = (1 + (maximum - 1) * (value.toInt() - 1) / 99).coerceIn(1, maximum)
+            flash.turnOnTorchWithStrengthLevel(id, strength)
+            torchStates[id] = true
+            return "Flashlight at level $strength of $maximum"
+        }
+        val enable = when (operation) {
+            "flash.on" -> true
+            "flash.off" -> false
+            else -> !torchStates.getValue(id)
+        }
+        flash.setTorchMode(id, enable)
+        torchStates[id] = enable
+        return if (enable) "Flashlight on" else "Flashlight off"
     }
 
     private fun userIntent(encoded: String): Intent {
@@ -143,11 +180,18 @@ internal class ActionDispatcher(
         return intent
     }
 
-    private fun launch(intent: Intent, label: String): String {
+    private val canLaunchDirectly: Boolean
+        get() = RemapperRuntime.visible || context is AccessibilityService
+
+    private fun launch(intent: Intent, label: String, secureCamera: Boolean = false): String {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (RemapperRuntime.visible && !locked) {
-            context.startActivity(intent)
-            return "$label launch requested"
+        if (canLaunchDirectly && (!locked || secureCamera)) {
+            try {
+                context.startActivity(intent)
+                return "$label launch requested"
+            } catch (_: SecurityException) {
+                // Firmware can require an explicit notification tap from the background.
+            }
         }
         // Direct activity PendingIntent lets System UI apply normal keyguard and BAL rules.
         val pending = PendingIntent.getActivity(context, 3, intent, SessionNotifications.FLAGS)

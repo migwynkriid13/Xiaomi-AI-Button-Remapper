@@ -1,0 +1,4 @@
+<resources>
+    <string name="lock_admin_name">Remapper screen lock</string>
+    <string name="lock_admin_description">Allows the Securely lock device mapping to lock your screen.</string>
+</resources>

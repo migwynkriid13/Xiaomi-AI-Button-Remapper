@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseBuildNumber = providers.gradleProperty("releaseBuildNumber").map { it.toInt() }.orElse(0)
+
 val licenseAssetsDir = layout.buildDirectory.dir("generated/license-assets")
 val collectLicenseAssets by tasks.registering(Sync::class) {
     into(licenseAssetsDir)
@@ -19,8 +21,8 @@ android {
         applicationId = "io.github.xiaomibutton.remapper"
         minSdk = 30
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2 + releaseBuildNumber.get()
+        versionName = "0.2.${releaseBuildNumber.get()}"
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         externalNativeBuild {
             cmake { arguments += "-DANDROID_STL=c++_static" }

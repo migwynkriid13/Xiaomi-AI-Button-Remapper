@@ -17,7 +17,7 @@ enum class ActionKind(val title: String) {
     NONE("No action"), CAMERA("Open camera"), FLASHLIGHT("Toggle flashlight"), APP("Open application"),
     SHORTCUT("Launch shortcut"), SILENT("Toggle silent mode"), DND("Toggle Do Not Disturb"),
     URL("Open website"), INTENT("Launch Android intent"), SHELL("Run shell command"),
-    SETTINGS("Open system setting")
+    SETTINGS("Open system setting"), CATALOG("Button action"), SEQUENCE("Action sequence")
 }
 
 data class ActionSpec(val kind: ActionKind, val value: String = "", val extra: String = "", val label: String = "")
@@ -83,12 +83,7 @@ object ConfigJson {
         val actions = JSONObject()
         GestureSlot.entries.forEach { slot ->
             val action = config.action(slot)
-            actions.put(slot.name, JSONObject().apply {
-                put("kind", action.kind.name)
-                put("value", action.value)
-                put("extra", action.extra)
-                if (action.label.isNotEmpty()) put("label", action.label)
-            })
+            actions.put(slot.name, encodeActionSpec(action))
         }
         return JSONObject().apply {
             put("format", "xiaomi-ai-button-remapper")
@@ -125,10 +120,7 @@ object ConfigJson {
         val actions = obj.getJSONObject("actions")
         for (slot in GestureSlot.entries) {
             val item = actions.getJSONObject(slot.name)
-            val action = ActionSpec(
-                ActionKind.valueOf(item.get("kind") as String), item.get("value") as String, item.get("extra") as String,
-                if (item.has("label")) item.get("label") as String else ""
-            )
+            val action = decodeActionSpec(item)
             validateAction(action)
             config = config.withAction(slot, action)
         }

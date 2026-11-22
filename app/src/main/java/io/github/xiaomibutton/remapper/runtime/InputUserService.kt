@@ -132,17 +132,32 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
             "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", packageName))
     }
 
+    override fun deviceAction(id: String, value: String): String {
+        checkOwner()
+        return ExpertDeviceActions.run(id, value, androidUser, ::command)
+    }
+
     private fun command(argv: List<String>): String {
         check(actionsAllowed && started.get() && !stopping.get()) { "Remapping session inactive" }
         if (!commandBusy.compareAndSet(false, true)) return "Error: previous action still running"
         try {
             val child = ProcessBuilder(argv).redirectErrorStream(true).start()
             try {
+                val maxBytes = if (argv == listOf("/system/bin/am", "stack", "list")) 256 * 1024 else 4096
+                val reading = java.util.concurrent.CompletableFuture.supplyAsync {
+                    val collected = java.io.ByteArrayOutputStream()
+                    val block = ByteArray(4096)
+                    child.inputStream.use { stream ->
+                        while (true) {
+                            val n = stream.read(block)
+                            if (n < 0) break
+                            collected.write(block, 0, minOf(n, maxBytes - collected.size()))
+                        }
+                    }
+                    collected.toString(Charsets.UTF_8.name()).trim()
+                }
                 if (!child.waitFor(4, TimeUnit.SECONDS)) return "Error: action timed out"
-                val buffer = ByteArray(4096)
-                val available = minOf(buffer.size, child.inputStream.available())
-                val count = if (available == 0) 0 else child.inputStream.read(buffer, 0, available)
-                val output = if (count > 0) String(buffer, 0, count, Charsets.UTF_8).trim() else ""
+                val output = reading.get(1, TimeUnit.SECONDS)
                 if (child.exitValue() != 0 || output.lineSequence().any {
                     it.startsWith("Error", true) || it.contains("SecurityException")
                 }) return "Error: ${output.ifBlank { "exit ${child.exitValue()}" }}"

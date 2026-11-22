@@ -21,6 +21,10 @@ data class ButtonEvent(val value: Int, val timeMs: Long, val wallTimeMs: Long)
 data class RuntimeStatus(
     val available: Boolean = false,
     val authorized: Boolean = false,
+    val accessibilityConnected: Boolean = false,
+    val calibrationPrompt: String = "",
+    val calibrationCandidate: String? = null,
+    val calibratedKey: String? = null,
     val shizuku: String = "Disconnected",
     val helper: String = "Stopped",
     val running: Boolean = false,
@@ -29,7 +33,9 @@ data class RuntimeStatus(
     val lastAction: String = "",
     val events: List<ButtonEvent> = emptyList(),
     val androidKeyCode: Int? = null,
-)
+) {
+    val backendReady: Boolean get() = accessibilityConnected || authorized
+}
 
 object RemapperRuntime {
     private val mutable = MutableStateFlow(RuntimeStatus())
@@ -94,19 +100,34 @@ object RemapperRuntime {
             .onFailure { error -> change { it.copy(diagnostics = error.message ?: "Permission request failed") } }
     }
 
-    fun start(context: Context) = begin(context, RemapService.REMAP)
-    fun test(context: Context) = begin(context, RemapService.TEST)
+    fun openAccessibility(context: Context) {
+        runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.onFailure {
+            change { it.copy(diagnostics = "Open Android Settings → Accessibility → Xiaomi AI Button Remapper.") }
+        }
+    }
 
-    private fun begin(context: Context, action: String) {
+    fun beginCalibration(context: Context) { initialize(context); ButtonAccessibilityService.connected?.beginCalibration() }
+    fun confirmCalibration(context: Context) { initialize(context); ButtonAccessibilityService.connected?.confirmCalibration() }
+    fun cancelCalibration() { ButtonAccessibilityService.connected?.cancelCalibration() }
+    fun clearCalibration(context: Context) { initialize(context); ButtonAccessibilityService.connected?.clearCalibration() }
+
+    fun start(context: Context) = begin(context, RemapService.REMAP, false)
+    fun test(context: Context) = begin(context, RemapService.TEST, false)
+    fun startExpert(context: Context) = begin(context, RemapService.REMAP, true)
+    fun testExpert(context: Context) = begin(context, RemapService.TEST, true)
+
+    private fun begin(context: Context, action: String, expert: Boolean) {
         initialize(context)
-        refresh()
-        if (!status.value.authorized) {
-            change { it.copy(diagnostics = "Start Shizuku and authorize the remapper first.") }
+        if (expert) refresh()
+        if (if (expert) !status.value.authorized else !status.value.accessibilityConnected) {
+            change { it.copy(diagnostics = if (expert) "Authorize Shizuku to use Expert mode."
+                else "Enable Xiaomi AI Button Remapper in Android Accessibility settings.") }
             return
         }
         testRequested = action == RemapService.TEST
         runCatching {
-            context.startForegroundService(Intent(context, RemapService::class.java).setAction(action))
+            context.startForegroundService(Intent(context, RemapService::class.java).setAction(action).putExtra(RemapService.EXPERT, expert))
         }.onFailure { error -> change { it.copy(diagnostics = "Unable to start service: ${error.message}") } }
     }
 

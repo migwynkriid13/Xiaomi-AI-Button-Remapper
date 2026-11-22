@@ -2,6 +2,7 @@ package io.github.xiaomibutton.remapper.runtime
 
 import android.app.Service
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.ServiceInfo
@@ -10,11 +11,16 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import io.github.xiaomibutton.remapper.SequenceConfig
 import io.github.xiaomibutton.remapper.ActionSpec
 import io.github.xiaomibutton.remapper.ActionKind
 import io.github.xiaomibutton.remapper.AppConfig
 import io.github.xiaomibutton.remapper.ConfigStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -39,11 +45,14 @@ class RemapService : Service() {
     private lateinit var notices: SessionNotifications
     private lateinit var store: ConfigStore
     private var mode: String? = null
+    private var expert = false
+    private var accessibility: ButtonAccessibilityService? = null
     private var generation = 0
     private var configuration: AppConfig? = null
     private var engine: GestureEngine? = null
     private var configJob: Job? = null
     private var actionJob: Job? = null
+    private var sequenceJob: Deferred<String>? = null
     private var actions: Channel<ActionSpec>? = null
     private var dispatcher: ActionDispatcher? = null
     private var helper: IInputHelper? = null
@@ -59,7 +68,7 @@ class RemapService : Service() {
         RemapperRuntime.initialize(this)
         store = ConfigStore(this)
         notices = SessionNotifications(this).also { it.createChannels() }
-        RemapperRuntime.onShizukuLost = { finish("Shizuku disconnected. Restart Shizuku, then resume remapping.") }
+        RemapperRuntime.onShizukuLost = { if (expert) finish("Shizuku disconnected. Restart Shizuku, then resume Expert mode.") }
         RemapperRuntime.onEndTest = { if (mode == TEST) finish("Read-only tester stopped") }
         RemapperRuntime.onStop = { finish("Disabled. The physical button uses Xiaomi's default action.", disable = true) }
     }
@@ -68,6 +77,7 @@ class RemapService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val requested = intent?.action ?: REMAP
+        val useExpert = intent?.getBooleanExtra(EXPERT, false) ?: false
         if (requested == STOP) {
             if (mode == TEST) finish("Read-only tester stopped from notification")
             else finish("Emergency stop. Xiaomi's default action is restored.", disable = true)
@@ -83,24 +93,25 @@ class RemapService : Service() {
             finish("Read-only tester closed")
             return START_NOT_STICKY
         }
-        if (requested == mode || (requested == TEST && mode == REMAP)) {
+        if ((requested == mode && useExpert == expert) || (requested == TEST && mode == REMAP)) {
             foreground(if (ready && mode == REMAP) "Remapping active" else if (ready) "Read-only tester" else "Connecting to input helper…")
-            return if (mode == REMAP) START_STICKY else START_NOT_STICKY
+            return if (mode == REMAP) START_REDELIVER_INTENT else START_NOT_STICKY
         }
         closeSession()
         mode = requested
+        expert = useExpert
         if (!notices.sessionVisible()) {
             finish("Enable the Button remapping notification channel so Stop now is accessible.", disable = requested == REMAP)
             return START_NOT_STICKY
         }
-        RemapperRuntime.change { it.copy(helper = "Connecting", running = false, observing = false, diagnostics = "Waiting for Shizuku…") }
+        RemapperRuntime.change { it.copy(helper = "Connecting", running = false, observing = false, diagnostics = if (useExpert) "Waiting for Shizuku…" else "Waiting for Android Accessibility…") }
         val ticket = generation
         configJob = scope.launch {
             try {
-                val authorized = withTimeoutOrNull(3500) { RemapperRuntime.status.first { it.authorized } }
+                val authorized = withTimeoutOrNull(3500) { RemapperRuntime.status.first { if (useExpert) it.authorized else it.accessibilityConnected } }
                 if (ticket != generation) return@launch
                 if (authorized == null) {
-                    finish("Start Shizuku and grant permission, then resume.")
+                    finish(if (useExpert) "Authorize Shizuku to resume Expert mode." else "Enable the remapper service in Accessibility settings, then resume.")
                     return@launch
                 }
                 store.config.collect { config ->
@@ -111,7 +122,9 @@ class RemapService : Service() {
                     }
                     val first = configuration == null
                     if (configuration != config) configure(config)
-                    if (first) bindHelper(ticket, requested == REMAP)
+                    if (first) {
+                        if (useExpert) bindHelper(ticket, requested == REMAP) else attachAccessibility(ticket, requested == REMAP)
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -119,10 +132,15 @@ class RemapService : Service() {
                 if (ticket == generation) finish("Configuration or binding failed: ${e.message}", disable = requested == REMAP)
             }
         }
-        return if (requested == REMAP) START_STICKY else START_NOT_STICKY
+        return if (requested == REMAP) START_REDELIVER_INTENT else START_NOT_STICKY
     }
 
     private fun configure(config: AppConfig) {
+        if (configuration != null) {
+            sequenceJob?.cancel()
+            val queue = actions
+            if (queue != null) while (queue.tryReceive().isSuccess) { /* discard gestures bound to previous mappings */ }
+        }
         configuration = config
         main.removeCallbacks(timer)
         engine = GestureEngine(config.doubleMs.toLong(), config.longMs.toLong(), config.debounceMs.toLong(),
@@ -134,6 +152,52 @@ class RemapService : Service() {
     }
 
     private val timer = Runnable { engine?.advance(SystemClock.uptimeMillis()) }
+
+    private val emergencyHold = Runnable { finish("Emergency stop. AI button held eight seconds.", disable = true) }
+    private val checkAccessibleNotification = object : Runnable {
+        override fun run() {
+            if (accessibility == null) return
+            if (!notices.sessionVisible()) finish("Session stopped because its notification was disabled.", disable = mode == REMAP)
+            else main.postDelayed(this, 3000)
+        }
+    }
+
+    private fun receiveKey(value: Int, time: Long, intercept: Boolean, canceled: Boolean) {
+        if (value >= 0) {
+            val event = ButtonEvent(value, time, System.currentTimeMillis() - (SystemClock.uptimeMillis() - time))
+            RemapperRuntime.change { it.copy(events = (listOf(event) + it.events).take(40)) }
+        }
+        if (!ready || !intercept) return
+        main.removeCallbacks(timer)
+        if (canceled) {
+            main.removeCallbacks(emergencyHold)
+            engine?.reset()
+            return
+        }
+        if (accessibility != null && value != 2) {
+            main.removeCallbacks(emergencyHold)
+            if (value == 1) main.postAtTime(emergencyHold, time + 8000)
+        }
+        engine?.key(value, time)
+        engine?.nextDeadline?.let { main.postAtTime(timer, it) }
+    }
+
+    private fun attachAccessibility(ticket: Int, intercept: Boolean) {
+        val service = checkNotNull(ButtonAccessibilityService.connected) { "Accessibility service disconnected" }
+        accessibility = service
+        if (intercept) startActions(null, service)
+        service.attach(intercept, { if (ticket == generation) finish("Android disconnected Accessibility. Reconnect and resume.") }) {
+            value, time, canceled -> if (ticket == generation) receiveKey(value, time, intercept, canceled)
+        }
+        ready = true
+        RemapperRuntime.change { it.copy(helper = "Accessibility", running = intercept, observing = !intercept,
+            diagnostics = "Listening for Android key events from the internal AI button. Press the button to verify delivery.") }
+        foreground(if (intercept) "Accessibility remapping active" else "Accessibility tester · stops after one minute")
+        main.postDelayed(checkAccessibleNotification, 3000)
+        if (!intercept) main.postDelayed({
+            if (ticket == generation && mode == TEST) finish("One-minute tester finished. Recent events remain available.")
+        }, 60_000)
+    }
 
     private fun bindHelper(ticket: Int, intercept: Boolean) {
         val ended = exited
@@ -150,15 +214,7 @@ class RemapService : Service() {
                     }, 60_000)
                 }
             }
-            override fun key(value: Int, uptimeMillis: Long) = deliver {
-                val event = ButtonEvent(value, uptimeMillis, System.currentTimeMillis() - (SystemClock.uptimeMillis() - uptimeMillis))
-                RemapperRuntime.change { it.copy(events = (listOf(event) + it.events).take(40)) }
-                if (ready && intercept) {
-                    engine?.key(value, uptimeMillis)
-                    main.removeCallbacks(timer)
-                    engine?.nextDeadline?.let { main.postAtTime(timer, it) }
-                }
-            }
+            override fun key(value: Int, uptimeMillis: Long) = deliver { receiveKey(value, uptimeMillis, intercept, false) }
             override fun pulse() = deliver { lastPulse = SystemClock.uptimeMillis() }
             override fun ended(reason: String) {
                 ended.countDown()
@@ -213,16 +269,25 @@ class RemapService : Service() {
             disable = mode == REMAP && RemapperRuntime.status.value.available)
     }
 
-    private fun startActions(remote: IInputHelper) {
-        val executor = ActionDispatcher(this, notices).also { dispatcher = it }
+    private fun startActions(remote: IInputHelper?, actionContext: Context = this) {
+        val executor = ActionDispatcher(actionContext, notices).also { dispatcher = it }
         val queue = Channel<ActionSpec>(4).also { actions = it }
         actionJob = scope.launch {
             for (action in queue) {
                 val message = try {
                     if (configuration?.haptics == true) executor.haptic()
-                    executor.perform(action, remote)
+                    if (action.kind == ActionKind.SEQUENCE) supervisorScope {
+                        val sequence = SequenceConfig.fromAction(action)
+                        val work = async {
+                            withTimeoutOrNull(120_000L) { sequence.run({ step -> executor.perform(step, remote) }) }
+                                ?: error("Sequence timed out")
+                        }
+                        sequenceJob = work
+                        try { work.await() } finally { sequenceJob = null }
+                    } else executor.perform(action, remote)
                 } catch (e: CancellationException) {
-                    throw e
+                    if (!isActive) throw e
+                    "Sequence stopped after configuration changed"
                 } catch (e: Exception) {
                     "Action unavailable: ${e.message ?: e.javaClass.simpleName}"
                 }
@@ -267,6 +332,11 @@ class RemapService : Service() {
     private fun closeSession() {
         generation++
         mode = null
+        expert = false
+        accessibility?.detach()
+        accessibility = null
+        main.removeCallbacks(emergencyHold)
+        main.removeCallbacks(checkAccessibleNotification)
         configJob?.cancel()
         actionJob?.cancel()
         heartbeatJob?.cancel()
@@ -311,6 +381,7 @@ class RemapService : Service() {
     companion object {
         internal const val REMAP = "remap"
         internal const val TEST = "test"
+        internal const val EXPERT = "expert"
         internal const val STOP = "stop"
         private val control = Executors.newSingleThreadExecutor { Thread(it, "Shizuku-session-control") }
     }

@@ -1,6 +1,15 @@
 # Xiaomi 18 Pro device acceptance test
 
-Use an unlocked, stock HyperOS phone, a trusted PC with current Android platform-tools, and the app's debug APK. Keep a working USB ADB connection for the first active test. Record model, build, active Android user, app version and Shizuku version. Disable other remappers for this session. Keep all diagnostic dumps on your own PC; they may contain unrelated input or app names.
+Install the signed release on the stock phone. Record the model, HyperOS build, Android version, active profile and remapper version. Disable other button remappers for this session.
+
+## Accessibility check on the phone
+
+1. Open Diagnostics, follow the link to Android accessibility settings, enable the remapper service, then return to the app. Leave Shizuku disconnected and USB/wireless debugging off.
+2. With remapping off, start the live tester, tap the AI key and note both edges, the reported scan code and the observed Android keyCode. A normal app cannot infer that the framework delivered an event from an evdev trace. Keep the screen on for the first test.
+3. With the default single-to-camera mapping enabled, go Home, press the key, then return. Record camera launch, presence or absence of Xiaomi's action, and what the app recorded. Test power, volume, keyguard and each gesture using the matrix below. Switch off remapping and confirm the native action returns. If the screen-on test succeeds, repeat with the screen off.
+4. If the service is connected and this button produces no events, record that result and the exact firmware. If the tester sees it but the native action also opens while mapped, record both. These observations distinguish missing framework delivery from a vendor action running independently.
+
+The remaining computer commands are optional engineering diagnostics for comparing Android's framework with the kernel. A trusted computer with Android platform-tools is necessary only for these commands. Keep dumps private because they can include unrelated app and device names. For an expert-mode test, record the Shizuku version and keep a working USB connection available for recovery.
 
 ## Identify the source with remapping off
 
@@ -44,7 +53,7 @@ In `input-before.txt`, find the physical device by its path, then its `KeyLayout
 
 ## Run the acceptance matrix
 
-Begin with all side buttons released. Check **Diagnostics → Live button tester** with interception off before testing the master switch. During an active grab, another physical-node getevent reader will ordinarily stop receiving events. Use the app's event tester and the mirror path reported by Diagnostics. Capture `adb shell dumpsys input > input-active.txt` if needed.
+For an expert-mode run, begin with all side buttons released. Check **Diagnostics → Live button tester** with interception off before testing the master switch. During an active grab, another physical-node getevent reader will ordinarily stop receiving events. Use the app's event tester and the mirror path reported by Diagnostics. Capture `adb shell dumpsys input > input-active.txt` if needed.
 
 | Test | Procedure and pass condition |
 | --- | --- |
@@ -63,7 +72,7 @@ Begin with all side buttons released. Check **Diagnostics → Live button tester
 | Reboot | With remapping active, reboot the phone normally. Confirm stock AI and power/volume before starting Shizuku. Unlock, look for the resume reminder, start Shizuku, reopen the remapper and resume. Check persisted actions and timing. |
 | Import/export | Export a mapping. Change it, import the backup, inspect the preview and confirm. Remapping must be off after import. A malformed backup must produce an error and preserve existing settings. |
 
-**Recovery from the PC** is `adb shell am force-stop io.github.xiaomibutton.remapper`. The app's Binder death and native watchdog provide release paths. If the OS itself is unresponsive, use the phone manufacturer's normal restart procedure. After recovery, capture another `adb shell dumpsys input > input-after.txt` and check that only the original route remains. Record unexpected behavior before enabling again.
+**Optional expert-mode recovery from a PC** is `adb shell am force-stop io.github.xiaomibutton.remapper`. The app's Binder death and native watchdog provide release paths. If the OS itself is unresponsive, use the phone manufacturer's normal restart procedure. After recovery, capture another `adb shell dumpsys input > input-after.txt` and check that only the original route remains. Record unexpected behavior before enabling again.
 
 For a reproducible report include the first failing step, the diagnostics message, relevant physical and mirror device records, the exact APK commit or Actions run, and whether turning remapping off immediately restores the stock behavior. Redact personal data from logs before sharing.
 

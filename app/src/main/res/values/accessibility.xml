@@ -1,0 +1,8 @@
+<resources>
+    <string name="button_accessibility_name">Xiaomi AI Button Remapper</string>
+    <string name="button_accessibility_summary">Identify and remap the dedicated physical AI key.</string>
+    <string name="button_accessibility_description">When you enable remapping, the button tester, or calibration, Android shares hardware key events with this service. It recognizes the internal AI button and runs your chosen actions. Configured touch gestures can tap or swipe the screen. Text actions can edit the focused field. The service does not inspect window content or log typing.</string>
+    <string name="ui_action_name">Remapper UI interaction</string>
+    <string name="ui_action_summary">Run configured app element actions and toggle the notification shade.</string>
+    <string name="ui_action_description">Enable this optional service only for app element interaction or shade toggles. When you trigger one of these actions, it checks the active unlocked window and performs the selected operation. It does not collect window events, record typing, or retain screen contents.</string>
+</resources>

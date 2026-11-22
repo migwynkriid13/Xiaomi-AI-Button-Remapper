@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
+import io.github.xiaomibutton.remapper.runtime.isDirectAiButton
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,12 +40,12 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (event.scanCode == 689) RemapperRuntime.recordAndroidKey(keyCode)
+        if (event.isDirectAiButton()) RemapperRuntime.recordAndroidKey(keyCode)
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (event.scanCode == 689) RemapperRuntime.recordAndroidKey(keyCode)
+        if (event.isDirectAiButton()) RemapperRuntime.recordAndroidKey(keyCode)
         return super.onKeyUp(keyCode, event)
     }
 }
@@ -97,36 +98,36 @@ private fun RemapperApp() {
             message("The Android document picker is unavailable on this device")
         }
     }
-    fun startRemapping() {
+    fun startRemapping(expert: Boolean) {
         scope.launch {
             runCatching {
                 store.update { it.copy(enabled = true) }
-                RemapperRuntime.start(context)
+                if (expert) RemapperRuntime.startExpert(context) else RemapperRuntime.start(context)
             }.onFailure {
                 RemapperRuntime.stop(context)
                 message("Could not start: " + it.localizedMessage)
             }
         }
     }
-    var askingToStart by rememberSaveable { mutableStateOf(false) }
+    var pendingExpertMode by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val notificationRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (askingToStart) {
-            askingToStart = false
-            if (granted) startRemapping() else message("Allow notifications to keep the emergency stop within reach")
+        pendingExpertMode?.let { expert ->
+            pendingExpertMode = null
+            if (granted) startRemapping(expert) else message("Allow notifications to keep the emergency stop within reach")
         }
     }
-    fun enable() {
-        if (!status.available) {
-            page = Page.DIAGNOSTICS
-            message("Start Shizuku, then authorize the remapper")
-        } else if (!status.authorized) {
-            RemapperRuntime.requestPermission()
-            message("After granting access, turn remapping on")
+    fun enable(expert: Boolean = false) {
+        if (!expert && !status.accessibilityConnected) {
+            navigate(Page.DIAGNOSTICS)
+            RemapperRuntime.openAccessibility(context)
+        } else if (expert && !status.authorized) {
+            navigate(Page.DIAGNOSTICS)
+            message("Authorize Shizuku in Expert mode first")
         } else if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED) {
-            askingToStart = true
+            pendingExpertMode = expert
             notificationRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else startRemapping()
+        } else startRemapping(expert)
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val snapshot = config
@@ -165,8 +166,8 @@ private fun RemapperApp() {
                 when (page) {
                     Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
                         if (on) enable() else RemapperRuntime.stop(context)
-                    }, ::enable, { page = Page.DIAGNOSTICS })
-                    Page.DIAGNOSTICS -> Diagnostics(current, status, ::launchSystem)
+                    }, { enable() }, { page = Page.DIAGNOSTICS })
+                    Page.DIAGNOSTICS -> Diagnostics(current, status, ::launchSystem) { enable(expert = true) }
                     Page.SETTINGS -> Preferences(current, ::change, ::launchSystem,
                         { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
                         { openDocumentPicker { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
