@@ -90,6 +90,13 @@ private fun RemapperApp() {
     fun launchSystem(intent: Intent) {
         runCatching { context.startActivity(intent) }.onFailure { message("This screen is unavailable on your device") }
     }
+    fun openDocumentPicker(launch: () -> Unit) {
+        try {
+            launch()
+        } catch (_: android.content.ActivityNotFoundException) {
+            message("The Android document picker is unavailable on this device")
+        }
+    }
     fun startRemapping() {
         scope.launch {
             runCatching {
@@ -161,8 +168,8 @@ private fun RemapperApp() {
                     }, ::enable, { page = Page.DIAGNOSTICS })
                     Page.DIAGNOSTICS -> Diagnostics(current, status, ::launchSystem)
                     Page.SETTINGS -> Preferences(current, ::change, ::launchSystem,
-                        { export.launch("xiaomi-button-config.json") },
-                        { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+                        { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
+                        { openDocumentPicker { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
                         { RemapperRuntime.stop(context); message("Xiaomi default behavior restored") })
                 }
             }
