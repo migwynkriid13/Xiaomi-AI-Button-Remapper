@@ -61,29 +61,30 @@ private fun AccessOptions(action: CatalogAction, report: (String) -> Unit) {
             ?.let { "Open Key Mapper" to it }
         else -> null
     }
-    if (setting != null) OutlinedButton(onClick = { system(setting.second) }) { Text(setting.first) }
+    if (setting != null) SecondaryButton(setting.first, { system(setting.second) })
     if (localNetwork) QuietText("Android 17 requires local network access for LAN devices. Public URLs work without that permission.")
     if (requirement == UiActions.REQUIREMENT) {
         val status by RemapperRuntime.status.collectAsState()
         QuietText("This action reads the active unlocked window when it runs.")
         if (!status.uiActionsEnabled) {
-            OutlinedButton(onClick = { RemapperRuntime.enableUiActions(context, true) }) { Text("Enable UI interactions") }
+            SecondaryButton("Enable UI interactions", { RemapperRuntime.enableUiActions(context, true) })
         }
         if (!status.accessibilityConnected) {
-            OutlinedButton(onClick = { RemapperRuntime.openAccessibility(context) }) { Text("Open accessibility settings") }
+            SecondaryButton("Open accessibility settings", { RemapperRuntime.openAccessibility(context) })
         }
     }
     if (requirement.contains("device admin", true)) {
         if (DeviceAdminLock.available(context)) QuietText("Screen-lock permission is enabled.")
-        else OutlinedButton(onClick = { system(DeviceAdminLock.enroll(context)) }) { Text("Allow device lock") }
+        else SecondaryButton("Allow device lock", { system(DeviceAdminLock.enroll(context)) })
     }
-    if (requirement.contains("Accessibility", true)) OutlinedButton(onClick = { RemapperRuntime.openAccessibility(context) }) {
-        Text("Open accessibility settings")
+    if (requirement.contains("Accessibility", true)) {
+        SecondaryButton("Open accessibility settings", { RemapperRuntime.openAccessibility(context) })
     }
     if (permission != null && context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-        OutlinedButton(onClick = {
+        val label = if (denied) "Open app permissions" else if (localNetwork) "Allow local network access" else "Request permission"
+        SecondaryButton(label, {
             if (denied) system(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, detailUri)) else grant.launch(permission)
-        }) { Text(if (denied) "Open app permissions" else if (localNetwork) "Allow local network access" else "Request permission") }
+        })
     }
 }
 
@@ -148,16 +149,22 @@ internal fun CatalogEditor(action: CatalogAction, current: ActionSpec, icons: Pi
         }
         return
     }
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(ScreenGutter),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
         AccessOptions(action) { message = it }
         if (action.hint.isNotBlank()) QuietText(action.hint)
         if (action.parameter == ActionParameter.APP || appNumber) {
             val label = selectedLabel.ifEmpty { pkg }.ifBlank { "Choose application" }
-            OutlinedButton(onClick = { setChoosingApp(true) }) { Text(label) }
+            Panel {
+                SettingRow(label, onClick = { setChoosingApp(true) }, icon = R.drawable.action_apps)
+            }
         }
         when (action.parameter) {
-            ActionParameter.CHOICE -> action.choices.forEach { (id, label) ->
-                SettingRow(label, onClick = { commit(id, label) })
+            ActionParameter.CHOICE -> Panel {
+                action.choices.forEachIndexed { index, (id, label) ->
+                    if (index > 0) RowDivider()
+                    SettingRow(label, onClick = { commit(id, label) })
+                }
             }
             ActionParameter.TEXT, ActionParameter.POINT, ActionParameter.NUMBER, ActionParameter.APP_NUMBER -> {
                 val number = appNumber || action.parameter == ActionParameter.NUMBER
@@ -167,7 +174,7 @@ internal fun CatalogEditor(action: CatalogAction, current: ActionSpec, icons: Pi
                     action.requirement == KeyMapInterop.REQUIREMENT || action.id.startsWith("maps.") -> "Mapping or group UID"
                     else -> "Value"
                 }
-                OutlinedTextField(value, { value = it; message = null }, Modifier.fillMaxWidth(), label = { Text(fieldName) },
+                EditorField(value, { value = it; message = null }, Modifier.fillMaxWidth(), label = { Text(fieldName) },
                     singleLine = number || action.parameter == ActionParameter.POINT, maxLines = 5,
                     keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Number else KeyboardType.Text))
                 if (action.id == "keyboard.switch") {
@@ -182,7 +189,8 @@ internal fun CatalogEditor(action: CatalogAction, current: ActionSpec, icons: Pi
             }
             ActionParameter.AUDIO, ActionParameter.RINGTONE -> {
                 if (value.isNotBlank()) QuietText(selectedLabel.ifBlank { value })
-                OutlinedButton(onClick = {
+                val label = if (action.parameter == ActionParameter.AUDIO) "Choose audio file" else "Choose system sound"
+                SecondaryButton(label, {
                     try {
                         if (action.parameter == ActionParameter.AUDIO) filePicker.launch(arrayOf("audio/*"))
                         else ringtone.launch(Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
@@ -190,12 +198,12 @@ internal fun CatalogEditor(action: CatalogAction, current: ActionSpec, icons: Pi
                             .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
                             .putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, value.takeIf { it.isNotBlank() }?.let(Uri::parse)))
                     } catch (_: Exception) { message = "No compatible Android picker is installed" }
-                }) { Text(if (action.parameter == ActionParameter.AUDIO) "Choose audio file" else "Choose system sound") }
+                })
             }
             else -> Unit
         }
         message?.let { Text(it, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium) }
-        if (action.parameter != ActionParameter.CHOICE) Button(onClick = {
+        if (action.parameter != ActionParameter.CHOICE) PrimaryButton("Save action", {
             val result = when (action.parameter) {
                 ActionParameter.NONE -> ""
                 ActionParameter.APP -> pkg
@@ -211,6 +219,6 @@ internal fun CatalogEditor(action: CatalogAction, current: ActionSpec, icons: Pi
                 else -> ""
             }
             commit(result, label)
-        }) { Text("Save action") }
+        }, Modifier.fillMaxWidth())
     }
 }

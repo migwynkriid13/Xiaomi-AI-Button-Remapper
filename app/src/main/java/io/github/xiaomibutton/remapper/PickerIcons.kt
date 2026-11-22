@@ -18,7 +18,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -175,7 +174,7 @@ internal fun PickerIcon(source: PickerIconSource, cache: PickerIconCache) {
     val bitmap = image
     if (bitmap != null) {
         Image(bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.size(side))
-    } else Box(Modifier.size(side).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerLow),
+    } else Box(Modifier.size(side).clip(TileShape).background(MaterialTheme.colorScheme.surfaceContainerLow),
         contentAlignment = Alignment.Center) {
         LineIcon(Mark.BUTTON, Modifier.size(21.dp), MaterialTheme.colorScheme.onSurfaceVariant)
     }

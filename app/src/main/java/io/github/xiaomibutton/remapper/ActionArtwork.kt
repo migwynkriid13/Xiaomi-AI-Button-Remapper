@@ -3,7 +3,6 @@ package io.github.xiaomibutton.remapper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -137,10 +136,13 @@ internal fun glyphFor(kind: ActionKind?, catalog: CatalogAction? = null): Int = 
 }
 
 @Composable
-internal fun ActionGlyph(resource: Int) {
-    Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+internal fun ActionGlyph(resource: Int, muted: Boolean = false) {
+    val colors = MaterialTheme.colorScheme
+    Box(Modifier.size(40.dp).clip(TileShape)
+        .background(if (muted) colors.surfaceContainerLow else colors.primaryContainer),
         contentAlignment = Alignment.Center) {
-        Icon(painterResource(resource), null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        Icon(painterResource(resource), null, Modifier.size(21.dp),
+            tint = if (muted) colors.onSurfaceVariant else colors.onPrimaryContainer)
     }
 }
 

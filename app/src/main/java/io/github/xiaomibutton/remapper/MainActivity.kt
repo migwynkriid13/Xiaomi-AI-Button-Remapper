@@ -10,15 +10,22 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
 import java.io.ByteArrayOutputStream
@@ -30,6 +37,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = false
         RemapperRuntime.initialize(this)
         setContent { RemapperTheme { RemapperApp() } }
     }
@@ -47,6 +55,46 @@ class MainActivity : ComponentActivity() {
 
 private enum class Page(val title: String, val icon: Mark) {
     MAPPINGS("Button", Mark.BUTTON), DIAGNOSTICS("Diagnostics", Mark.PULSE), SETTINGS("Settings", Mark.TUNE)
+}
+
+@Composable
+private fun PageNavigation(page: Page, showDiagnostics: Boolean, navigate: (Page) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Surface(color = colors.surfaceContainer) {
+        Column {
+            HorizontalDivider(color = colors.outlineVariant)
+            Box(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(
+                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+            )), contentAlignment = Alignment.Center) {
+                Row(
+                    Modifier.widthIn(max = ScreenWidth).fillMaxWidth().padding(horizontal = 12.dp)
+                        .selectableGroup(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Page.entries.filter { it != Page.DIAGNOSTICS || showDiagnostics }.forEach { item ->
+                        val selected = page == item
+                        val tint = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant
+                        Column(
+                            Modifier.weight(1f).heightIn(min = 64.dp).clip(PanelShape)
+                                .selectable(selected, role = Role.Tab) { navigate(item) }
+                                .padding(horizontal = 4.dp, vertical = 7.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+                        ) {
+                            Box(
+                                Modifier.size(48.dp, 28.dp).clip(CircleShape).then(
+                                    if (selected) Modifier.background(colors.primaryContainer) else Modifier
+                                ), contentAlignment = Alignment.Center
+                            ) {
+                                LineIcon(item.icon, Modifier.size(20.dp), tint)
+                            }
+                            Text(item.title, style = MaterialTheme.typography.labelMedium, color = tint)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 private suspend fun readBackup(context: Context, uri: Uri): AppConfig = withContext(Dispatchers.IO) {
@@ -72,6 +120,7 @@ private fun RemapperApp() {
     val status by RemapperRuntime.status.collectAsState()
     val scope = rememberCoroutineScope()
     val messages = remember { SnackbarHostState() }
+    val pageState = rememberSaveableStateHolder()
     var page by rememberSaveable { mutableStateOf(Page.MAPPINGS) }
     LaunchedEffect(config?.showDiagnostics) {
         if (config?.showDiagnostics == false && page == Page.DIAGNOSTICS) page = Page.MAPPINGS
@@ -126,31 +175,32 @@ private fun RemapperApp() {
         }
     }
     BackHandler(enabled = page != Page.MAPPINGS && slot == null && pendingImport == null) { navigate(Page.MAPPINGS) }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, snackbarHost = { SnackbarHost(messages) },
-        bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-                Page.entries.filter { it != Page.DIAGNOSTICS || config?.showDiagnostics == true }.forEach { item ->
-                    NavigationBarItem(selected = page == item, onClick = { navigate(item) },
-                        icon = { LineIcon(item.icon) }, label = { Text(item.title) })
-                }
-            }
-        }) { insets ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, snackbarHost = {
+        SnackbarHost(messages) { data -> Snackbar(data, shape = TileShape) }
+    }, bottomBar = { PageNavigation(page, config?.showDiagnostics == true, ::navigate) }) { insets ->
         val current = config
         if (current == null) Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
-        } else key(page) {
-            Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState())
-                .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                when (page) {
-                    Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
-                        if (on) startRemapping() else RemapperRuntime.stop(context)
-                    }, ::startRemapping, ::launchSystem)
-                    Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem)
-                    Page.SETTINGS -> Preferences(current, status, ::change, ::launchSystem,
-                        { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
-                        { openDocumentPicker { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
-                        { RemapperRuntime.stop(context); message("Xiaomi default behavior restored") })
+        } else pageState.SaveableStateProvider(page.name) {
+            Box(
+                Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Column(
+                    Modifier.widthIn(max = ScreenWidth).fillMaxSize().verticalScroll(rememberScrollState())
+                        .padding(start = ScreenGutter, end = ScreenGutter, top = 15.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    when (page) {
+                        Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
+                            if (on) startRemapping() else RemapperRuntime.stop(context)
+                        }, ::startRemapping, ::launchSystem)
+                        Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem)
+                        Page.SETTINGS -> Preferences(current, status, ::change, ::launchSystem,
+                            { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
+                            { openDocumentPicker { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
+                            { RemapperRuntime.stop(context); message("Xiaomi default behavior restored") })
+                    }
                 }
             }
         }
@@ -163,18 +213,17 @@ private fun RemapperApp() {
         }
     }
     val candidate = pendingImport
-    if (candidate != null) AlertDialog(
+    if (candidate != null) RemapperDialog(
         onDismissRequest = { pendingImport = null }, title = { Text("Import configuration?") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Text("This replaces your gestures and timing. Review the actions before enabling remapping again.")
                 GestureSlot.entries.forEach { s ->
                     val action = candidate.action(s)
-                    Text(s.title, style = MaterialTheme.typography.labelLarge)
-                    QuietText(actionLabel(action, context, detail = true))
+                    Panel { SettingRow(s.title, actionLabel(action, context, detail = true)) }
                 }
             }
-        }, confirmButton = { TextButton(onClick = {
+        }, confirmButton = { PrimaryButton("Import", onClick = {
             pendingImport = null
             scope.launch {
                 RemapperRuntime.stop(context)
@@ -182,7 +231,7 @@ private fun RemapperApp() {
                     .onSuccess { message("Configuration imported") }
                     .onFailure { message("Import failed: " + it.localizedMessage) }
             }
-        }) { Text("Import") } }, dismissButton = { TextButton(onClick = { pendingImport = null }) { Text("Cancel") } }
+        }) }, dismissButton = { TextButton(onClick = { pendingImport = null }) { Text("Cancel") } }
     )
 }
 

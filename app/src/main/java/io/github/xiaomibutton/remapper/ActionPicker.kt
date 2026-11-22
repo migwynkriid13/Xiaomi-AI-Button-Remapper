@@ -12,14 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -94,50 +90,48 @@ internal fun ActionPicker(slot: GestureSlot, current: ActionSpec, dismiss: () ->
         else if (atHome) dismiss() else { categoryName = null; catalogId = null; problem = null }
     }
 
-    Dialog(onDismissRequest = ::goBack, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(modifier = Modifier.widthIn(max = 660.dp).fillMaxWidth(.96f).imePadding()
-            .heightIn(max = 850.dp).fillMaxHeight(.93f), shape = MaterialTheme.shapes.extraLarge) {
-            Column(Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 12.dp, top = 5.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(slot.title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                        TextButton(onClick = ::goBack) { Text(if (atHome) "Close" else "Back") }
-                    }
-                    Text(if (choosingCatalogApp) "Choose application" else catalog?.title ?: category?.title ?: "Choose action",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold)
-                }
-                problem?.let { Text(it, Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
-                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
-                when {
-                    category == ActionKind.SEQUENCE && allowSequence -> SequenceEditor(slot, current, save)
-                    catalog != null -> key(catalog.id) {
-                        CatalogEditor(catalog, current, icons, choosingCatalogApp, { choosingCatalogApp = it }, save)
-                    }
-                    category == null -> browserState.SaveableStateProvider("actions") {
-                        ActionBrowser(slot, icons, allowSequence, ::basic, ::openCatalog, ::pick)
-                    }
-                    category in setOf(ActionKind.APP, ActionKind.SHORTCUT, ActionKind.SETTINGS) ->
-                        ChoiceList(category, icons, ::pick)
-                    else -> key(category) {
-                        var value by rememberSaveable { mutableStateOf(if (category == current.kind) current.value else "") }
-                        Column(Modifier.verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            if (category == ActionKind.DND || category == ActionKind.SILENT) {
-                                QuietText("Android requires Do Not Disturb access for interruption policy and some silent-mode changes.")
-                                OutlinedButton(onClick = { try { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
-                                    catch (_: Exception) { problem = "This setting is unavailable" } }) { Text("Open Do Not Disturb access") }
-                            } else {
-                                val website = category == ActionKind.URL
-                                OutlinedTextField(value, { value = it; problem = null }, modifier = Modifier.fillMaxWidth(),
-                                    label = { Text(if (website) "Website address" else "Intent URI") }, maxLines = 5)
-                                QuietText(if (website) "https://example.org" else "intent:#Intent;action=android.settings.DISPLAY_SETTINGS;end")
-                            }
-                            Button(onClick = {
-                                val action = ActionSpec(category, value.trim())
-                                try { validateAction(action); save(action) } catch (e: Exception) { problem = e.localizedMessage ?: "Invalid action" }
-                            }) { Text("Save action") }
+    val title = if (choosingCatalogApp) "Choose application" else catalog?.title ?: category?.title ?: "Choose action"
+    EditorPage(title, slot.title, atHome, ::goBack) {
+        problem?.let {
+            Text(it, Modifier.padding(horizontal = ScreenGutter, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
+        when {
+            category == ActionKind.SEQUENCE && allowSequence -> SequenceEditor(slot, current, save)
+            catalog != null -> key(catalog.id) {
+                CatalogEditor(catalog, current, icons, choosingCatalogApp, { choosingCatalogApp = it }, save)
+            }
+            category == null -> browserState.SaveableStateProvider("actions") {
+                ActionBrowser(slot, icons, allowSequence, ::basic, ::openCatalog, ::pick)
+            }
+            category in setOf(ActionKind.APP, ActionKind.SHORTCUT, ActionKind.SETTINGS) ->
+                ChoiceList(category, icons, ::pick)
+            else -> key(category) {
+                var value by rememberSaveable { mutableStateOf(if (category == current.kind) current.value else "") }
+                Column(
+                    Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(ScreenGutter),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (category == ActionKind.DND || category == ActionKind.SILENT) {
+                        Panel {
+                            SettingRow("Do Not Disturb access",
+                                "Required for interruption policy and some silent-mode changes.", icon = R.drawable.action_do_not_disturb_on)
+                            SecondaryButton("Open Do Not Disturb access", {
+                                try { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
+                                catch (_: Exception) { problem = "This setting is unavailable" }
+                            }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp))
                         }
+                    } else {
+                        val website = category == ActionKind.URL
+                        EditorField(value, { value = it; problem = null }, modifier = Modifier.fillMaxWidth(),
+                            label = { Text(if (website) "Website address" else "Intent URI") }, maxLines = 5)
+                        QuietText(if (website) "https://example.org" else "intent:#Intent;action=android.settings.DISPLAY_SETTINGS;end")
                     }
+                    PrimaryButton("Save action", {
+                        val action = ActionSpec(category, value.trim())
+                        try { validateAction(action); save(action) }
+                        catch (e: Exception) { problem = e.localizedMessage ?: "Invalid action" }
+                    }, Modifier.fillMaxWidth())
                 }
             }
         }

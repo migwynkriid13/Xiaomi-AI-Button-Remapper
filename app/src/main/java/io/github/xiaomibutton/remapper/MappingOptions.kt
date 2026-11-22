@@ -21,25 +21,35 @@ internal fun MappingOptions(config: AppConfig, change: ((AppConfig) -> AppConfig
     fun appName(pkg: String) = actionLabel(ActionSpec(ActionKind.APP, pkg), context)
     GroupTitle("When actions run")
     Panel {
-        for (slot in GestureSlot.entries) SettingRow(slot.title, (config.conditions[slot] ?: TriggerCondition.ALWAYS).title,
-            { conditionSlot = slot })
+        for (slot in GestureSlot.entries) {
+            SettingRow(slot.title, (config.conditions[slot] ?: TriggerCondition.ALWAYS).title,
+                { conditionSlot = slot }, mark = slot.mark)
+            RowDivider(start = 68)
+        }
         SettingRow("Also run Xiaomi's action", "Pass through the AI button while running custom actions",
-            { change { it.copy(keepOriginalAction = !it.keepOriginalAction) } }, checked = config.keepOriginalAction,
+            { change { it.copy(keepOriginalAction = !it.keepOriginalAction) } }, mark = Mark.BUTTON, checked = config.keepOriginalAction,
             trailing = { Switch(config.keepOriginalAction, onCheckedChange = null) })
     }
     GroupTitle("App profiles")
     Panel {
-        for ((pkg, overrides) in config.profiles) {
-            SettingRow(appName(pkg), if (overrides.isEmpty()) "Uses every default action" else "${overrides.size} gesture overrides",
-                { profile = pkg }, trailing = { MappedActionIcon(ActionSpec(ActionKind.APP, pkg), icons) })
+        for ((index, profileEntry) in config.profiles.entries.withIndex()) {
+            val (pkg, overrides) = profileEntry
+            if (index > 0) RowDivider(start = 68)
+            SettingRow(appName(pkg), when (overrides.size) {
+                0 -> "Uses every default action"
+                1 -> "1 gesture override"
+                else -> "${overrides.size} gesture overrides"
+            }, { profile = pkg }, leading = { MappedActionIcon(ActionSpec(ActionKind.APP, pkg), icons) })
         }
-        if (config.profiles.size < ConfigJson.MAX_PROFILES) SettingRow("Add app profile",
-            "Override gestures when a chosen app is in front", { choosingApp = true })
+        if (config.profiles.size < ConfigJson.MAX_PROFILES) {
+            if (config.profiles.isNotEmpty()) RowDivider(start = 68)
+            SettingRow("Add app profile", "Override gestures when a chosen app is in front", { choosingApp = true }, mark = Mark.PLUS)
+        }
     }
 
     conditionSlot?.let { slot ->
-        AlertDialog(onDismissRequest = { conditionSlot = null }, title = { Text(slot.title) }, text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+        RemapperDialog(onDismissRequest = { conditionSlot = null }, title = { Text(slot.title) }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (condition in TriggerCondition.entries) ChoiceRow(condition.title, "", {
                     change { current ->
                         current.copy(conditions = if (condition == TriggerCondition.ALWAYS) current.conditions - slot
@@ -53,8 +63,8 @@ internal fun MappingOptions(config: AppConfig, change: ((AppConfig) -> AppConfig
         }, confirmButton = { TextButton(onClick = { conditionSlot = null }) { Text("Cancel") } })
     }
 
-    if (choosingApp) AlertDialog(onDismissRequest = { choosingApp = false }, title = { Text("Choose an app for the profile") }, text = {
-        Column(Modifier.heightIn(max = 400.dp)) {
+    if (choosingApp) {
+        EditorPage("Choose an app", "App profiles", atRoot = true, back = { choosingApp = false }) {
             ChoiceList(ActionKind.APP, icons) { choice ->
                 val pkg = choice.action?.value ?: return@ChoiceList
                 change { current ->
@@ -65,26 +75,28 @@ internal fun MappingOptions(config: AppConfig, change: ((AppConfig) -> AppConfig
                 choosingApp = false
             }
         }
-    }, confirmButton = { TextButton(onClick = { choosingApp = false }) { Text("Cancel") } })
+    }
 
     profile?.let { pkg ->
         val overrides = config.profiles[pkg] ?: return@let
         val slot = editing
-        if (slot == null) AlertDialog(
+        if (slot == null) RemapperDialog(
             onDismissRequest = { profile = null }, title = { Text(appName(pkg)) },
             text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (gesture in GestureSlot.entries) {
                         val override = overrides[gesture]
-                        SettingRow(gesture.title, override?.let { actionLabel(it, context) }
-                            ?: "Default · " + actionLabel(config.action(gesture), context), { editing = gesture })
+                        ChoiceRow(gesture.title, override?.let { actionLabel(it, context) }
+                            ?: "Default · " + actionLabel(config.action(gesture), context), { editing = gesture }) {
+                            IconTile(gesture.mark)
+                        }
                         if (override != null) TextButton(onClick = {
                             change { it.withProfileAction(pkg, gesture, null) }
                         }) { Text("Use default for " + gesture.title.lowercase()) }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { profile = null }) { Text("Done") } },
+            confirmButton = { PrimaryButton("Done", onClick = { profile = null }) },
             dismissButton = { TextButton(onClick = {
                 profile = null
                 change { it.copy(profiles = it.profiles - pkg) }
