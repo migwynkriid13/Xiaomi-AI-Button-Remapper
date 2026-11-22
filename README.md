@@ -1,59 +1,70 @@
-# Xiaomi AI Button Remapper
+<h1 align="center">Xiaomi AI Button Remapper</h1>
 
-Assign the physical AI button on a Xiaomi 18 Pro to Camera, Screenshot, an app shortcut, media controls, or an action sequence. The app reads the physical key through Shizuku on compatible HyperOS builds. Root is unnecessary.
+<p align="center">
+  Custom gestures for the physical AI Button on Xiaomi 18 Pro and Xiaomi 18 Pro Max.
+  <br>
+  Powered by Shizuku. No root required.
+</p>
 
-[Download the latest signed APK](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/latest/download/Xiaomi-AI-Button-Remapper.apk) · [All releases](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases)
+<p align="center">
+  <a href="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/latest">
+    <img src="https://img.shields.io/github/v/release/migwynkriid13/Xiaomi-AI-Button-Remapper?label=release" alt="Latest release">
+  </a>
+  <a href="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/actions/workflows/android.yml">
+    <img src="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/actions/workflows/android.yml/badge.svg?branch=main" alt="APK build and verification status">
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-GPLv3-64748b" alt="GPLv3 license">
+  </a>
+</p>
 
-<img src="docs/screenshots/picker-dark.png" alt="Searchable media actions" width="190"> <img src="docs/screenshots/shortcuts-light.png" alt="Shortcut providers with their icons" width="190">
+<p align="center">
+  <strong><a href="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/latest/download/Xiaomi-AI-Button-Remapper.apk">Download signed APK</a></strong>
+  · <a href="#get-started">Get started</a>
+  · <a href="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases">Release notes</a>
+</p>
 
-## Set up on Android 11 or later
+## What you can do
 
-1. Install the release APK. Start Shizuku using its in-app wireless debugging setup. If you already use Key Mapper Expert mode for the AI button, stop its Expert System Bridge before testing. [Shizuku setup guide](https://shizuku.rikka.app/guide/setup/)
-2. Open Xiaomi AI Button Remapper and tap **Grant Shizuku access**. Once you approve the request, press the AI button and look for **DOWN** and **UP** on the Button page. The test leaves Xiaomi's action available. Tap **Test button** to repeat it.
-3. Choose **Open camera** for the single press and turn on **Remap button**. To use screenshots, choose **Button actions → Take screenshot** for a gesture.
-4. For more troubleshooting details, turn on **Enable diagnostics** in Settings and open the Diagnostics tab.
+Assign different actions to a **single press, double press, triple press, or long press**. Open Camera with one press, skip a track with two, or hold the button to turn on the flashlight.
 
-The helper locates a physical `gpio-keys` device advertising Linux EV_KEY 689 (`KEY_MACRO_RECORD_STOP`, `0x2B1`). It creates a virtual mirror for the other input events before grabbing the device. If setup fails, the helper closes its descriptors so Xiaomi can continue handling the button.
+| Feature | What you can assign |
+| --- | --- |
+| **Apps and shortcuts** | Open an installed app, a supported app shortcut, a Settings page, or a link. |
+| **Device controls** | Take a screenshot, lock the screen, go Back or Home, or open Quick Settings. |
+| **Media and sound** | Play or pause, skip or seek, adjust volume, or change the ringer or Do Not Disturb mode. |
+| **App profiles and conditions** | Give a gesture a different action in a specific app, or run it only when a condition is met, such as headphones being connected. |
+| **Action sequences** | Run up to 12 steps from one gesture, with optional delays and repeats. |
 
-This app needs Shizuku running for the whole session. Key Mapper's Expert mode can continue through a separate System Bridge process after Shizuku stops. [Key Mapper System Bridge startup](https://github.com/keymapperorg/KeyMapper/blob/8073a40dd548c29f70105022224a6ed1db4a18ae/sysbridge/src/main/java/io/github/sds100/keymapper/sysbridge/starter/SystemBridgeStarter.kt#L85-L103)
+You can tune gesture timing, export and import your settings, and choose whether Xiaomi's original action runs alongside your mapping.
 
-Camera and Screenshot can run through Shizuku. Enable the optional accessibility service if you use configured screen interactions or foreground app profiles. See the [physical test procedure](docs/device-testing.md) and [verification record](docs/verification.md).
+<p align="center">
+  <a href="docs/screenshots/button-light.png"><img src="docs/screenshots/button-light.png" width="29%" alt="Button dashboard with single, double, long, and triple press mappings"></a>
+  <a href="docs/screenshots/picker-dark.png"><img src="docs/screenshots/picker-dark.png" width="29%" alt="Searchable action picker showing media controls in dark mode"></a>
+  <a href="docs/screenshots/shortcuts-light.png"><img src="docs/screenshots/shortcuts-light.png" width="29%" alt="Shortcut picker showing contact, dial, message, and Settings shortcuts"></a>
+</p>
 
-When moving from the original `v0.1.0-preview.1` debug-signed APK, export your settings, uninstall that preview, install this release, then import. The official signed releases use the same certificate and normally update in place.
+## Get started
 
-## Actions and options
+Use a **Xiaomi 18 Pro** or **Xiaomi 18 Pro Max** with the dedicated AI Button and an up-to-date HyperOS build. The Xiaomi 17 Pro and Xiaomi 17 Pro Max lack the dedicated key this app uses.
 
-- **Apps, shortcuts and Settings.** Search installed launchable apps, shortcut creators, and supported Settings destinations. Android provides app and shortcut artwork. Launcher-published shortcuts require shortcut-host access. Legacy creators can supply the selected shortcut's own artwork.
-- **Device and navigation.** Camera, screenshot, flashlight and supported torch strength, Home, Back, Recents, app menu, D-pad navigation, lock screen, Quick Settings and notification shade. Some options depend on the Android version. Connectivity changes can open a system panel for confirmation.
-- **Media and sound.** Playback and seek actions, including actions that target a particular installed media player. Per-app media and notification dismissal use Android's optional notification access. Choose a ringtone or audio file, adjust a volume stream, control the ringer, or change Do Not Disturb with permission.
-- **App profiles and conditions.** Override any gesture for a foreground app. The other gestures continue to use their defaults. Add per-gesture conditions for screen state, lock, media, Wi-Fi, charging, orientation or headphones. A failed condition skips the mapped action. Turn on **Also run Xiaomi's action** to pass through the physical button while remapping is enabled.
-- **Gesture timing.** All three controls can reach 0 ms. A zero multi-press interval treats each tap as a single press. A zero long-press threshold runs the mapped long-press action on button down. Zero debounce turns off the contact-bounce filter.
-- **Automation.** Run a sequence of up to 12 actions with delays and repetitions. Other options include selected touch and editor operations, UI element interaction, URL, Android intents, HTTP requests, local variables, and supported phone or SMS actions. The picker shows extra access when an action needs it.
+1. Install the [latest signed APK](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/latest/download/Xiaomi-AI-Button-Remapper.apk).
+2. Install Shizuku and start it through wireless debugging. [Shizuku setup guide](https://shizuku.rikka.app/guide/setup/#start-via-wireless-debugging)
+3. Open the remapper and tap **Grant Shizuku access**. Press and release the AI Button when the button test starts. **DOWN** and **UP** confirm the app can read it. Use **Test button** to repeat the check.
+4. Choose an action for a gesture and turn on **Remap button**.
 
-The app reads the active window's package for an app profile when a press begins. A configured app element or shade action inspects the active unlocked window only when it runs and **UI interactions** is on. The app does not store window contents or record typed text. Accessibility setup grants these capabilities through one Android service. No analytics or telemetry are collected. A configured HTTP action sends the request you provided when its gesture runs. Exported JSON may contain endpoint details, text, or phone numbers.
+Keep Shizuku running while remapping. After restarting your phone, start Shizuku again and tap **Resume remapping**. HyperOS determines whether the AI Button sends presses while the phone is locked or the screen is off.
 
-Previously saved custom shell and retired privileged mappings appear as unavailable when importing those older backups.
+## How it works
 
-## Background operation and stop controls
+Shizuku gives the app access to the physical button. The remapper recognizes your gesture and runs the action you assigned while passing power and volume events through to Android. Turn off **Remap button** or hold the AI Button for eight seconds to restore Xiaomi's normal behavior.
 
-Remapping runs in a visible foreground session with a Shizuku helper and a watchdog. You can close the settings screen. Stopping the helper or Shizuku ends remapping and releases the grab. After a restart, start Shizuku and tap **Resume remapping** on the Button page. HyperOS controls whether the key produces events before the first unlock and with the screen off.
+App profiles and configured screen interactions use optional Accessibility access. Per-app media controls require notification access. The action picker shows which actions need extra permissions. The remapper's own notifications are optional.
 
-Turn off **Remap button**, use **Emergency disable** in Diagnostics, or hold the button for eight seconds while events are being delivered. Allow notifications if you want **Stop now** in the notification shade or use an action that needs a tap-to-open notification. Android 13 and later can show the running service under **Active apps** even when app notifications are off. Notification access for per-app media is a separate permission. [Android foreground-service controls](https://developer.android.com/develop/background-work/services/fgs/handle-user-stopping)
+The app collects no analytics or telemetry. Settings are stored on your device, and HTTP requests run only when you trigger a mapping configured to send one.
 
-If Android closes the remapper when you turn off notifications, reopen it and tap **Resume remapping**.
+## Project links
 
-If HyperOS stops the service in the background, check the app's **Background autostart** and battery setting in App info. [Xiaomi autostart](https://www.mi.com/uk/support/faq/details/KA-507608/) · [Xiaomi battery settings](https://www.mi.com/global/support/faq/details/KA-538010/)
-
-## Build and release
-
-Use JDK 21, Android SDK Platform 37.0, Build Tools 36.0.0, NDK 28.2.13676358, CMake 3.22.1 and the included Gradle wrapper. Set `ANDROID_HOME` or configure the SDK in Android Studio.
-
-```sh
-./gradlew assembleDebug testDebugUnitTest lintDebug
-```
-
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. On Windows use `gradlew.bat`. Android's debug and official release certificates differ.
-
-GitHub Actions publishes a signed APK only when a push to `main` changes an APK input. Documentation and screenshots alone skip the build and release. Tests, debug sources and CI configuration can run verification without publishing. The release's signing certificate is pinned in [gradle/release-certificate.sha256](gradle/release-certificate.sha256).
-
-[Device testing](docs/device-testing.md) · [Emulator testing](docs/emulator-testing.md) · [License and attributions](THIRD_PARTY.md)
+- **Troubleshooting.** Open **Settings → Enable diagnostics** to see button detection and session status. If you report a problem, include your phone model, HyperOS version, and button test result. [GitHub Issues](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/issues)
+- **Development.** Find the build requirements and test procedures in the project documentation. [Build workflow](.github/workflows/android.yml) · [Device testing](docs/device-testing.md) · [Emulator testing](docs/emulator-testing.md) · [Verification record](docs/verification.md)
+- **License.** The project is open source under the GNU General Public License v3. [License](LICENSE) · [Third-party notices](THIRD_PARTY.md)
