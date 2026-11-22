@@ -15,7 +15,8 @@ internal fun actionLabel(action: ActionSpec, context: Context, detail: Boolean =
     ActionKind.SHORTCUT -> if (detail) {
         if (action.extra.isEmpty()) action.value else action.value + " / " + action.extra
     } else action.label.ifEmpty { action.extra.ifEmpty { "App shortcut" } }
-    ActionKind.CATALOG -> if (detail) listOfNotNull(ActionLibrary.find(action.value)?.title ?: action.value,
+    ActionKind.CATALOG -> if (ActionLibrary.isRetired(action.value)) "Unavailable · ${ActionLibrary.find(action.value)?.title}"
+        else if (detail) listOfNotNull(ActionLibrary.find(action.value)?.title ?: action.value,
         action.extra.takeIf { it.isNotBlank() }).joinToString(" · ") else action.label.ifBlank { ActionLibrary.find(action.value)?.title ?: action.value }
     ActionKind.SEQUENCE -> runCatching {
         val sequence = SequenceConfig.fromAction(action)
@@ -27,7 +28,7 @@ internal fun actionLabel(action: ActionSpec, context: Context, detail: Boolean =
     }.getOrDefault(action.kind.title)
     ActionKind.SETTINGS -> systemPages[action.value] ?: action.value
     ActionKind.URL, ActionKind.INTENT -> action.value
-    ActionKind.SHELL -> if (detail) action.value else PermittedCommands.options[action.value] ?: action.value
+    ActionKind.SHELL -> "Unavailable · ${if (detail) action.value else PermittedCommands.options[action.value] ?: action.value}"
     else -> action.kind.title
 }
 
@@ -70,7 +71,6 @@ internal fun loadChoices(context: Context, kind: ActionKind): List<Choice> {
         }
         ActionKind.SETTINGS -> systemPages.filterKeys { Intent(it).resolveActivity(pm) != null }
             .map { (id, label) -> Choice(label, id, ActionSpec(kind, id)) }
-        ActionKind.SHELL -> PermittedCommands.options.map { (cmd, label) -> Choice(label, cmd, ActionSpec(kind, cmd)) }
         else -> emptyList()
     }
     return choices.sortedBy { it.title.lowercase() }

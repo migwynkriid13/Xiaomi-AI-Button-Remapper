@@ -17,7 +17,6 @@ import android.telephony.SmsManager
 import android.widget.Toast
 import io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService
 import io.github.xiaomibutton.remapper.runtime.UiActions
-import io.github.xiaomibutton.remapper.runtime.IInputHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -27,8 +26,7 @@ import java.net.URL
 
 internal object DeviceActions {
     private const val WRITE = "Modify system settings"
-    private const val EXPERT = "Shizuku Expert"
-    private const val PANEL = "System panel · automatic in Shizuku Expert"
+    private const val PANEL = "Confirm in Android Settings"
     private const val ACCESS = "Accessibility"
     private const val PER_PHONE = "Phone permissions"
     private const val MAP = "Mappings"
@@ -60,27 +58,30 @@ internal object DeviceActions {
         action("display.cycle", "Cycle screen orientations", DISPLAY, requirement = WRITE)
         for ((id, name) in listOf("back" to "Go back", "home" to "Go home", "recents" to "Open recents",
             "last" to "Go to last app", "split" to "Toggle split screen")) action("nav.$id", name, NAV, requirement = ACCESS)
-        action("nav.menu", "Open app menu", NAV, requirement = EXPERT)
+        action("nav.menu", "Open app menu", NAV, requirement = ACCESS, hint = "Requires Android 16 or later.")
+        action("nav.all_apps", "Open all apps", NAV, requirement = ACCESS, hint = "Requires Android 12 or later.")
+        action("nav.headset", "Press headset button", NAV, requirement = ACCESS, hint = "Requires Android 12 or later.")
+        val direction = listOf("up" to "Up", "down" to "Down", "left" to "Left", "right" to "Right", "center" to "Select")
+        action("nav.dpad", "Send navigation key", NAV, ActionParameter.CHOICE, ACCESS, direction,
+            "Works outside a text field when the device supports this action. Requires Android 13 or later.")
+        for ((key, title) in listOf("shortcut" to "Run accessibility shortcut", "button" to "Press accessibility button",
+            "choose" to "Choose an accessibility button action")) {
+            action("a11y.$key", title, "Interface", requirement = ACCESS, hint = "Requires Android 12 or later.")
+        }
         for ((id, label) in listOf("notifications" to "Expand notifications", "quick" to "Open quick settings",
             "collapse" to "Close the notification shade")) action("shade.$id", label, "Interface", requirement = ACCESS)
         action("shade.toggle_notifications", "Toggle notification drawer", "Interface", requirement = UiActions.REQUIREMENT)
         action("shade.toggle_quick", "Toggle quick settings", "Interface", requirement = UiActions.REQUIREMENT)
-        action("device.screenshot", "Take screenshot", DISPLAY, requirement = ACCESS)
+        action("device.screenshot", "Take screenshot", "Button actions")
         action("device.lock", "Lock screen", DEVICE, requirement = ACCESS)
         action("device.power_menu", "Show power menu", DEVICE, requirement = ACCESS)
-        action("device.power", "Turn screen on or off", DEVICE, requirement = EXPERT)
         action("device.controls", "Open device controls", DEVICE, requirement = ACCESS)
         action("device.secure_lock", "Securely lock device", DEVICE, requirement = "Device admin (lock only)")
-        for ((id, label) in listOf("shutdown" to "Shut down device", "reboot" to "Restart device"))
-            action("device.$id", label, DEVICE, ActionParameter.CHOICE, EXPERT,
-                choices = listOf("confirmed" to "Run this power action when the gesture is pressed"))
         action("apps.assistant", "Open device assistant", "Apps")
         action("apps.voice", "Open voice assistant", "Apps")
         action("apps.details", "Open app info", "Apps", ActionParameter.APP)
         action("intent.broadcast", "Send an Android broadcast", "Automation", ActionParameter.TEXT, hint = "Explicit Android intent URI with a package or component")
         action("intent.service", "Start an Android service", "Automation", ActionParameter.TEXT, hint = "Explicit Android intent URI with a target component")
-        action("apps.stop", "Force stop an app", "Apps", ActionParameter.APP, EXPERT)
-        action("apps.clear_recent", "Close app and clear it from recents", "Apps", ActionParameter.APP, EXPERT)
         action("apps.setting", "Modify system setting", "Settings", ActionParameter.TEXT, WRITE,
             hint = "Writable Android System setting, in the form name=value")
         action("flash.on", "Enable flashlight", "Flashlight")
@@ -105,6 +106,15 @@ internal object DeviceActions {
             action("maps.$type.$verb", verb.replaceFirstChar { it.uppercase() } + " Key Mapper " + type, MAP,
                 ActionParameter.TEXT, "Key Mapper", hint = "Paste the $type UID from Key Mapper")
         }
+    }
+
+    // Retain IDs so an older backup can still restore every supported gesture in the same file.
+    val retired = listOf(
+        CatalogAction("device.power", "Turn screen on or off", DEVICE),
+        CatalogAction("apps.stop", "Force stop an app", "Apps", ActionParameter.APP),
+        CatalogAction("apps.clear_recent", "Close app and clear it from recents", "Apps", ActionParameter.APP),
+    ) + listOf("shutdown" to "Shut down device", "reboot" to "Restart device").map { (id, label) ->
+        CatalogAction("device.$id", label, DEVICE, ActionParameter.CHOICE, choices = listOf("confirmed" to "Confirmed"))
     }
 
     private val variableName = Regex("[A-Za-z][A-Za-z0-9_]{0,47}")
@@ -155,8 +165,7 @@ internal object DeviceActions {
         return intent
     }
 
-    suspend fun execute(context: Context, id: String, value: String, helper: IInputHelper?,
-                        launch: (Intent,String) -> String): String {
+    suspend fun execute(context: Context, id: String, value: String, launch: (Intent, String) -> String): String {
         val action = requireNotNull(ActionLibrary.find(id))
         if (action.requirement == KeyMapInterop.REQUIREMENT) return KeyMapInterop.trigger(context, value)
         if (id.startsWith("radio.hotspot.")) {
@@ -166,23 +175,19 @@ internal object DeviceActions {
             }
             return launch(Intent("android.settings.TETHER_SETTINGS"), "Confirm hotspot change in Settings")
         }
-        if (action.requirement == EXPERT || action.requirement == PANEL) {
-            if (helper == null && (id.startsWith("radio.") || id.startsWith("display.night."))) {
-                val page = when {
-                    id.startsWith("radio.wifi.") -> Settings.Panel.ACTION_WIFI
-                    id.startsWith("radio.bluetooth.") -> Settings.ACTION_BLUETOOTH_SETTINGS
-                    id.startsWith("radio.airplane.") -> Settings.ACTION_AIRPLANE_MODE_SETTINGS
-                    id.startsWith("radio.nfc.") -> Settings.ACTION_NFC_SETTINGS
-                    id.startsWith("display.night.") -> Settings.ACTION_NIGHT_DISPLAY_SETTINGS
-                    else -> Settings.Panel.ACTION_INTERNET_CONNECTIVITY
-                }
-                return launch(Intent(page), "Confirm " + action.title + " in Settings")
+        if (action.requirement == PANEL) {
+            val page = when {
+                id.startsWith("radio.wifi.") -> Settings.Panel.ACTION_WIFI
+                id.startsWith("radio.bluetooth.") -> Settings.ACTION_BLUETOOTH_SETTINGS
+                id.startsWith("radio.airplane.") -> Settings.ACTION_AIRPLANE_MODE_SETTINGS
+                id.startsWith("radio.nfc.") -> Settings.ACTION_NFC_SETTINGS
+                id.startsWith("display.night.") -> Settings.ACTION_NIGHT_DISPLAY_SETTINGS
+                else -> Settings.Panel.ACTION_INTERNET_CONNECTIVITY
             }
-            checkNotNull(helper) { "This action requires an active optional Shizuku Expert session" }
-            return withContext(Dispatchers.IO) { helper.deviceAction(id, value) }
+            return launch(Intent(page), "Confirm " + action.title + " in Settings")
         }
         if (action.requirement == WRITE) return updateSetting(context, id, value)
-        if (action.requirement == ACCESS) return global(context, id, action.title)
+        if (action.requirement == ACCESS || id == "device.screenshot") return global(context, id, action.title, value)
         if (id.startsWith("maps.")) return KeyMapInterop.control(context, id, value)
         val values = context.getSharedPreferences("action_variables", Context.MODE_PRIVATE)
         fun expand(text: String) = Regex("\\{([A-Za-z][A-Za-z0-9_]*)}").replace(text) { values.getString(it.groupValues[1], "") ?: "" }.take(2048)
@@ -268,13 +273,34 @@ internal object DeviceActions {
         check(context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) { "Grant the action's permission in the picker or system app settings" }
     }
 
-    private suspend fun global(context: Context, id: String, label: String): String {
+    private suspend fun global(context: Context, id: String, label: String, value: String): String {
         val service = (context as? AccessibilityService) ?: ButtonAccessibilityService.connected ?: error("Enable the accessibility service")
         val key = when (id) {
             "nav.home" -> AccessibilityService.GLOBAL_ACTION_HOME
             "nav.back" -> AccessibilityService.GLOBAL_ACTION_BACK
             "nav.recents","nav.last" -> AccessibilityService.GLOBAL_ACTION_RECENTS
             "nav.split" -> AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN
+            "nav.menu" -> if (Build.VERSION.SDK_INT >= 36) AccessibilityService.GLOBAL_ACTION_MENU else error("Requires Android 16 or later")
+            "nav.all_apps" -> if (Build.VERSION.SDK_INT >= 31) AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_ALL_APPS else error("Requires Android 12 or later")
+            "nav.headset" -> if (Build.VERSION.SDK_INT >= 31) AccessibilityService.GLOBAL_ACTION_KEYCODE_HEADSETHOOK else error("Requires Android 12 or later")
+            "a11y.shortcut", "a11y.button", "a11y.choose" -> {
+                if (Build.VERSION.SDK_INT < 31) error("Requires Android 12 or later")
+                when (id) {
+                    "a11y.shortcut" -> AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_SHORTCUT
+                    "a11y.button" -> AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_BUTTON
+                    else -> AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_BUTTON_CHOOSER
+                }
+            }
+            "nav.dpad" -> {
+                if (Build.VERSION.SDK_INT < 33) error("Requires Android 13 or later")
+                when (value) {
+                    "up" -> AccessibilityService.GLOBAL_ACTION_DPAD_UP
+                    "down" -> AccessibilityService.GLOBAL_ACTION_DPAD_DOWN
+                    "left" -> AccessibilityService.GLOBAL_ACTION_DPAD_LEFT
+                    "right" -> AccessibilityService.GLOBAL_ACTION_DPAD_RIGHT
+                    else -> AccessibilityService.GLOBAL_ACTION_DPAD_CENTER
+                }
+            }
             "device.lock" -> AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
             "device.screenshot" -> AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT
             "device.power_menu" -> AccessibilityService.GLOBAL_ACTION_POWER_DIALOG

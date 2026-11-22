@@ -35,7 +35,11 @@ data class AppConfig(
     val doubleMs: Int = 300,
     val longMs: Int = 600,
     val debounceMs: Int = 25,
-    val haptics: Boolean = false
+    val haptics: Boolean = false,
+    val showDiagnostics: Boolean = false,
+    val conditions: Map<GestureSlot, TriggerCondition> = emptyMap(),
+    val profiles: Map<String, Map<GestureSlot, ActionSpec>> = emptyMap(),
+    val keepOriginalAction: Boolean = false,
 ) {
     fun action(slot: GestureSlot) = when (slot) {
         GestureSlot.SINGLE -> single
@@ -50,6 +54,11 @@ data class AppConfig(
         GestureSlot.LONG -> copy(longPress = action)
         GestureSlot.TRIPLE -> copy(triple = action)
     }
+
+    fun withProfileAction(pkg: String, slot: GestureSlot, action: ActionSpec?) =
+        copy(profiles = profiles + (pkg to profiles.getValue(pkg).let { entries ->
+            if (action == null) entries - slot else entries + (slot to action)
+        }))
 }
 
 /** Shared application-scoped instance. Only the normal application process accesses this file. */
@@ -75,6 +84,7 @@ class ConfigStore(context: Context) {
 
 object ConfigJson {
     const val MAX_BYTES = 64 * 1024
+    const val MAX_PROFILES = 12
     val doubleRange = 120..800
     val longRange = 250..1800
     val debounceRange = 0..75
@@ -94,6 +104,20 @@ object ConfigJson {
             put("longMs", config.longMs)
             put("debounceMs", config.debounceMs)
             put("haptics", config.haptics)
+            if (!export && config.showDiagnostics) put("showDiagnostics", true)
+            if (config.keepOriginalAction) put("keepOriginalAction", true)
+            if (config.conditions.isNotEmpty()) put("conditions", JSONObject().apply {
+                config.conditions.forEach { (slot, condition) -> put(slot.name, condition.name) }
+            })
+            if (config.profiles.isNotEmpty()) put("profiles", JSONObject().apply {
+                require(config.profiles.size <= MAX_PROFILES) { "Too many app profiles" }
+                config.profiles.forEach { (pkg, overrides) ->
+                    validatePackage(pkg)
+                    put(pkg, JSONObject().apply {
+                        overrides.forEach { (slot, spec) -> put(slot.name, encodeActionSpec(spec)) }
+                    })
+                }
+            })
         }.toString(2).also {
             require(it.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Configuration exceeds 64 KiB" }
         }
@@ -115,7 +139,9 @@ object ConfigJson {
             doubleMs = intIn("doubleMs", doubleRange),
             longMs = intIn("longMs", longRange),
             debounceMs = intIn("debounceMs", debounceRange),
-            haptics = obj.get("haptics") as? Boolean ?: error("Invalid haptic setting")
+            haptics = obj.get("haptics") as? Boolean ?: error("Invalid haptic setting"),
+            showDiagnostics = !imported && obj.optBoolean("showDiagnostics", false),
+            keepOriginalAction = obj.optBoolean("keepOriginalAction", false),
         )
         val actions = obj.getJSONObject("actions")
         for (slot in GestureSlot.entries) {
@@ -124,7 +150,22 @@ object ConfigJson {
             validateAction(action)
             config = config.withAction(slot, action)
         }
-        return config
+        val conditions = if (!obj.has("conditions")) emptyMap() else with(obj.getJSONObject("conditions")) {
+            keys().asSequence().associate { key -> GestureSlot.valueOf(key) to TriggerCondition.valueOf(getString(key)) }
+        }
+        val profiles = if (!obj.has("profiles")) emptyMap() else with(obj.getJSONObject("profiles")) {
+            require(length() <= MAX_PROFILES) { "Too many app profiles" }
+            keys().asSequence().associateWith { pkg ->
+                validatePackage(pkg)
+                with(getJSONObject(pkg)) {
+                    keys().asSequence().associate { key ->
+                        val action = decodeActionSpec(getJSONObject(key)).also(::validateAction)
+                        GestureSlot.valueOf(key) to action
+                    }
+                }
+            }
+        }
+        return config.copy(conditions = conditions, profiles = profiles)
     }
 }
 

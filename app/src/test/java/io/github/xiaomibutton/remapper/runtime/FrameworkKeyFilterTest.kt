@@ -69,12 +69,4 @@ class FrameworkKeyFilterTest {
         assertFalse(alternate.copy(descriptor = "usb-macro").target(learned))
     }
 
-    @Test fun shizukuAuthorizationDoesNotGetMistakenForAccessibility() {
-        val shizukuOnly = RuntimeStatus(authorized = true)
-        assertFalse(shizukuOnly.backendReady)
-        assertTrue(shizukuOnly.copy(inputMethod = InputMethod.SHIZUKU).backendReady)
-        val accessibilityOnly = RuntimeStatus(accessibilityConnected = true)
-        assertTrue(accessibilityOnly.backendReady)
-        assertFalse(accessibilityOnly.copy(inputMethod = InputMethod.SHIZUKU).backendReady)
-    }
 }

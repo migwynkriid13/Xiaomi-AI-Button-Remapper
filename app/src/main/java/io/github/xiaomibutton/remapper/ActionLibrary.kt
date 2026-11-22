@@ -20,8 +20,10 @@ internal data class CatalogAction(
 
 internal object ActionLibrary {
     val actions by lazy { DeviceActions.actions + MediaActions.actions + InteractionActions.actions }
+    private val retired by lazy { DeviceActions.retired.associateBy { it.id } }
     private val byId by lazy { actions.associateBy { it.id }.also { check(it.size == actions.size) { "Duplicate action ID" } } }
-    fun find(id: String): CatalogAction? = byId[id]
+    fun find(id: String): CatalogAction? = byId[id] ?: retired[id]
+    fun isRetired(id: String): Boolean = id in retired
 
     fun validate(id: String, value: String) {
         val action = requireNotNull(find(id)) { "Unknown action: $id" }

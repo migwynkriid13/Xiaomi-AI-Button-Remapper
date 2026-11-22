@@ -19,6 +19,8 @@ internal class GestureEngine(
     private var held = false
     private var bouncing = false
 
+    val inProgress: Boolean get() = pressedAt != null || tapDeadline != null || bouncing
+
     val nextDeadline: Long?
         get() = if (pressedAt != null && !held && longEnabled) pressedAt!! + longThreshold else tapDeadline
 

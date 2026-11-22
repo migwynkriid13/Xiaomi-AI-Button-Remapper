@@ -1,6 +1,5 @@
 package io.github.xiaomibutton.remapper.runtime
 
-import android.accessibilityservice.AccessibilityService
 import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -29,8 +28,6 @@ import io.github.xiaomibutton.remapper.DeviceActions
 import io.github.xiaomibutton.remapper.InteractionActions
 import io.github.xiaomibutton.remapper.KeyMapInterop
 import io.github.xiaomibutton.remapper.MediaActions
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 internal class ActionDispatcher(
     private val context: Context,
@@ -53,13 +50,14 @@ internal class ActionDispatcher(
     private val locked: Boolean get() = (context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != false) ||
         (context.getSystemService(PowerManager::class.java)?.isInteractive != true)
 
-    suspend fun perform(action: ActionSpec, helper: IInputHelper?): String {
+    suspend fun perform(action: ActionSpec): String {
         validateAction(action)
         return when (action.kind) {
             ActionKind.NONE -> "Button action disabled"
             ActionKind.SEQUENCE -> error("Sequences must be expanded by the running session")
             ActionKind.CATALOG -> {
                 val id = action.value
+                check(!ActionLibrary.isRetired(id)) { "This older mapping requires privileges unavailable through Accessibility. Choose a new action." }
                 val value = action.extra
                 val entry = requireNotNull(ActionLibrary.find(id))
                 when {
@@ -67,26 +65,18 @@ internal class ActionDispatcher(
                     id.startsWith("flash.") -> flashlight(id, value)
                     id.startsWith("media.") || id.startsWith("volume.") || id.startsWith("ringer.") -> MediaActions.execute(context, id, value)
                     id.startsWith("keyboard.") || id.startsWith("input.") -> InteractionActions.execute(context, id, value)
-                    else -> DeviceActions.execute(context, id, value, helper) { intent, label -> launch(intent, label) }
+                    else -> DeviceActions.execute(context, id, value) { intent, label -> launch(intent, label) }
                 }
             }
             ActionKind.CAMERA -> {
                 val secure = locked
                 val intent = Intent(if (secure) MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE else MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
-                if (helper == null) launch(intent, if (secure) "Secure camera" else "Camera", secureCamera = secure)
-                else {
-                    val result = withContext(Dispatchers.IO) { helper.openCamera(secure) }
-                    if (result.startsWith("Error:")) launch(intent, "Camera", secureCamera = secure)
-                    else if (secure) "Secure camera requested" else "Camera requested"
-                }
+                launch(intent, if (secure) "Secure camera" else "Camera", secureCamera = secure)
             }
             ActionKind.APP -> {
                 val intent = context.packageManager.getLaunchIntentForPackage(action.value)
                     ?: error("No launchable activity for this app or profile")
-                if (helper == null || locked) launch(intent, "Application") else {
-                    val result = withContext(Dispatchers.IO) { helper.openLauncherApp(action.value) }
-                    if (result.startsWith("Error:")) launch(intent, "Application") else "Application launch requested"
-                }
+                launch(intent, "Application")
             }
             ActionKind.FLASHLIGHT -> flashlight("flash.toggle", "")
             ActionKind.SILENT -> {
@@ -109,19 +99,13 @@ internal class ActionDispatcher(
                 val uri = Uri.parse(action.value).normalizeScheme()
                 require(uri.scheme in setOf("https", "http") && !uri.host.isNullOrBlank()) { "Choose an HTTP or HTTPS URL" }
                 val intent = Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
-                if (helper == null || locked) launch(intent, "Web link") else {
-                    val result = withContext(Dispatchers.IO) { helper.openWeb(uri.toString()) }
-                    if (result.startsWith("Error:")) launch(intent, "Web link") else "Web link requested"
-                }
+                launch(intent, "Web link")
             }
             ActionKind.SETTINGS -> {
                 require(action.value.startsWith("android.settings.")) { "Invalid Settings action" }
                 val intent = Intent(action.value)
                 check(intent.resolveActivity(context.packageManager) != null) { "Settings destination unavailable on this device" }
-                if (helper == null || locked) launch(intent, "Android Settings") else {
-                    val result = withContext(Dispatchers.IO) { helper.openSettings(action.value) }
-                    if (result.startsWith("Error:")) launch(intent, "Android Settings") else "Settings page requested"
-                }
+                launch(intent, "Android Settings")
             }
             ActionKind.INTENT -> launch(userIntent(action.value), "Custom intent")
             ActionKind.SHORTCUT -> {
@@ -131,7 +115,7 @@ internal class ActionDispatcher(
                     val launcher = checkNotNull(context.getSystemService(LauncherApps::class.java))
                     check(launcher.hasShortcutHostPermission()) { "Android has not granted shortcut-host access" }
                     val user = Process.myUserHandle()
-                    if (canLaunchDirectly && !locked) {
+                    if (!locked) {
                         launcher.startShortcut(action.value, action.extra, null, null, user)
                         "Shortcut launch requested"
                     } else if (Build.VERSION.SDK_INT >= 31) {
@@ -141,8 +125,7 @@ internal class ActionDispatcher(
                     } else "Open the remapper to launch this shortcut on this Android version"
                 }
             }
-            ActionKind.SHELL -> if (helper == null) "Shell commands require the optional Shizuku input mode"
-                else withContext(Dispatchers.IO) { helper.execute(action.value) }.take(300)
+            ActionKind.SHELL -> error("Shell commands are unavailable through Accessibility. Choose a new action.")
         }
     }
 
@@ -180,12 +163,9 @@ internal class ActionDispatcher(
         return intent
     }
 
-    private val canLaunchDirectly: Boolean
-        get() = RemapperRuntime.visible || context is AccessibilityService
-
     private fun launch(intent: Intent, label: String, secureCamera: Boolean = false): String {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (canLaunchDirectly && (!locked || secureCamera)) {
+        if (!locked || secureCamera) {
             try {
                 context.startActivity(intent)
                 return "$label launch requested"

@@ -13,7 +13,7 @@ if details=$(gh release view "$tag" --json isDraft,assets 2>/dev/null); then
     fi
 else
     checksum=$(sha256sum "$apk" | cut -d ' ' -f1)
-    printf 'Install **%s** on an ARM64 Android 11+ phone. Accessibility mode works through Android Settings.\n\nUpgrading from v0.1.0-preview.1? Export your settings before uninstalling the debug preview, then install this release and import them.\n\n[Setup and permissions](https://github.com/%s/blob/%s/README.md) · [Verified build](%s/%s/actions/runs/%s)\n\nAPK SHA-256: `%s`\n' \
+    printf 'Install **%s** on Android 11 or later. For APK installs, open App info and allow restricted settings, then enable Xiaomi AI Button Remapper in Accessibility.\n\nUpgrading from v0.1.0-preview.1? Export your settings before uninstalling the debug preview, then install this release and import them.\n\n[Setup and permissions](https://github.com/%s/blob/%s/README.md) · [Verified build](%s/%s/actions/runs/%s)\n\nAPK SHA-256: `%s`\n' \
         "$asset" "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$checksum" > "$RUNNER_TEMP/release-notes.md"
     gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Xiaomi AI Button Remapper $version" --notes-file "$RUNNER_TEMP/release-notes.md"
 fi

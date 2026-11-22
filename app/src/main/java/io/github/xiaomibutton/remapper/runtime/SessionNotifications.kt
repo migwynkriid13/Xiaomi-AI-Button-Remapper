@@ -17,22 +17,23 @@ internal class SessionNotifications(private val context: Context) {
         ))
     }
 
-    fun sessionVisible(): Boolean = manager.areNotificationsEnabled() &&
-        manager.getNotificationChannel(SESSION)?.importance != NotificationManager.IMPORTANCE_NONE
-
-    fun session(detail: String): Notification {
-        val stop = Intent(context, RemapService::class.java).setAction(RemapService.STOP)
-        return Notification.Builder(context, SESSION)
+    fun showSession() {
+        if (!manager.areNotificationsEnabled()) return
+        val stop = Intent(context, StopRemappingReceiver::class.java)
+        val notification = Notification.Builder(context, SESSION)
             .setSmallIcon(android.R.drawable.ic_menu_preferences)
             .setContentTitle("Xiaomi AI Button Remapper")
-            .setContentText(detail)
+            .setContentText("Accessibility remapping enabled")
             .setContentIntent(openApp())
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .setOngoing(true)
-            .addAction(Notification.Action.Builder(null, "Stop now", PendingIntent.getService(context, 2, stop, FLAGS)).build())
+            .addAction(Notification.Action.Builder(null, "Stop now", PendingIntent.getBroadcast(context, 2, stop, FLAGS)).build())
             .build()
+        runCatching { manager.notify(SESSION_ID, notification) }
     }
+
+    fun clearSession() = manager.cancel(SESSION_ID)
 
     fun offer(label: String, pending: PendingIntent): String {
         check(manager.areNotificationsEnabled() &&
@@ -52,26 +53,14 @@ internal class SessionNotifications(private val context: Context) {
 
     fun clearOffer() = manager.cancel(ACTION_ID)
 
-    fun resumeAfterReboot() {
-        if (!manager.areNotificationsEnabled()) return
-        manager.notify(REMINDER_ID, Notification.Builder(context, ACTIONS)
-            .setSmallIcon(android.R.drawable.ic_menu_preferences)
-            .setContentTitle("Resume AI button remapping")
-            .setContentText("Open the remapper to check your input service and resume.")
-            .setContentIntent(openApp())
-            .setAutoCancel(true)
-            .build())
-    }
-
     private fun openApp(): PendingIntent? = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
         PendingIntent.getActivity(context, 1, it, FLAGS)
     }
 
     companion object {
-        const val SESSION_ID = 689
+        private const val SESSION_ID = 689
         const val FLAGS = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         private const val ACTION_ID = 690
-        private const val REMINDER_ID = 691
         private const val SESSION = "remap_session"
         private const val ACTIONS = "remap_actions"
     }

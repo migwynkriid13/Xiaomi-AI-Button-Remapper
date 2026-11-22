@@ -84,12 +84,10 @@ internal fun ActionBrowser(slot: GestureSlot, icons: PickerIconCache, allowSeque
             "Advanced" to buildList {
                 if (allowSequence) add(ActionKind.SEQUENCE)
                 add(ActionKind.INTENT)
-                add(ActionKind.SHELL)
             })
         groups.flatMap { (group, kinds) -> kinds.map { kind ->
             val detail = when (kind) {
                 ActionKind.DND -> "Requires Do Not Disturb access"
-                ActionKind.SHELL -> "Requires Shizuku Expert mode"
                 ActionKind.NONE -> if (slot == GestureSlot.SINGLE) "Consume the button press" else "Turn off this gesture"
                 else -> ""
             }

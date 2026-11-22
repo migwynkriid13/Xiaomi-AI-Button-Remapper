@@ -1,6 +1,6 @@
 package io.github.xiaomibutton.remapper.runtime
 
-/** Literal command choices. Privileged execution receives argv and never invokes sh -c. */
+/** Labels and validation for shell mappings stored by older releases. */
 object PermittedCommands {
     val options = mapOf(
         "input keyevent KEYCODE_MEDIA_PLAY_PAUSE" to "Play or pause media",

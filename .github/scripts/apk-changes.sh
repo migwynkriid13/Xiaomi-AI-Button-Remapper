@@ -19,13 +19,9 @@ inputs=(
     buildSrc/ build-logic/ LICENSE THIRD_PARTY.md third-party/ .github/scripts/sign-apk.sh
 )
 for source in app/src/{main,release}; do
-    inputs+=("$source/AndroidManifest.xml" "$source/assets/" "$source/res/" "$source/resources/"
-        "$source/jniLibs/" ":(glob)$source/aidl/**/*.aidl")
+    inputs+=("$source/AndroidManifest.xml" "$source/assets/" "$source/res/" "$source/resources/")
     for language in java kotlin; do
         inputs+=(":(glob)$source/$language/**/*.kt" ":(glob)$source/$language/**/*.java")
-    done
-    for pattern in CMakeLists.txt '*.cmake' '*.cpp' '*.hpp' '*.c' '*.h' '*.cc' '*.hh' '*.inc' '*.S'; do
-        inputs+=(":(glob)$source/cpp/**/$pattern")
     done
 done
 if git diff --quiet "$before" "$after" -- "${inputs[@]}"; then

@@ -1,5 +1,5 @@
 <resources>
     <string name="button_accessibility_name">Xiaomi AI Button Remapper</string>
     <string name="button_accessibility_summary">Identify and remap the dedicated physical AI key.</string>
-    <string name="button_accessibility_description">Lets the remapper receive the AI button and run your chosen actions. Android also grants screen access for app element and notification shade actions. Those actions inspect the active unlocked window only when you enable them in the remapper and run one. The app does not record typing or store screen contents.</string>
+    <string name="button_accessibility_description">Lets the remapper receive the AI button and run your chosen actions. Android grants screen access for optional UI actions and app profiles. UI actions inspect the unlocked window only when used. App profiles check which app is open when you press the button. The app does not record typing or store screen contents.</string>
 </resources>

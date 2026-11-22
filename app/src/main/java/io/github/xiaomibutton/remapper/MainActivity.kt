@@ -1,11 +1,8 @@
 package io.github.xiaomibutton.remapper
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -25,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
-import io.github.xiaomibutton.remapper.runtime.InputMethod
 import io.github.xiaomibutton.remapper.runtime.isDirectAiButton
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
@@ -79,8 +75,11 @@ private fun RemapperApp() {
     val scope = rememberCoroutineScope()
     val messages = remember { SnackbarHostState() }
     var page by rememberSaveable { mutableStateOf(Page.MAPPINGS) }
+    LaunchedEffect(config?.showDiagnostics) {
+        if (config?.showDiagnostics == false && page == Page.DIAGNOSTICS) page = Page.MAPPINGS
+    }
     fun navigate(next: Page) {
-        if (page == Page.DIAGNOSTICS && next != Page.DIAGNOSTICS) RemapperRuntime.endTest(context)
+        if (page == Page.DIAGNOSTICS && next != Page.DIAGNOSTICS) RemapperRuntime.endTest()
         page = next
     }
     var slot by rememberSaveable { mutableStateOf<GestureSlot?>(null) }
@@ -103,32 +102,15 @@ private fun RemapperApp() {
         scope.launch {
             runCatching {
                 store.update { it.copy(enabled = true) }
-                RemapperRuntime.start(context)
+                RemapperRuntime.resumeAfterUserEnable()
             }.onFailure {
                 RemapperRuntime.stop(context)
                 message("Could not start: " + it.localizedMessage)
             }
         }
     }
-    var pendingStart by rememberSaveable { mutableStateOf(false) }
-    val notificationRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (pendingStart) {
-            pendingStart = false
-            if (granted) startRemapping() else message("Allow notifications to keep the emergency stop within reach")
-        }
-    }
     fun enable() {
-        if (status.inputMethod == InputMethod.ACCESSIBILITY && !status.accessibilityConnected) {
-            navigate(Page.DIAGNOSTICS)
-            RemapperRuntime.openAccessibility(context)
-        } else if (status.inputMethod == InputMethod.SHIZUKU && !status.authorized) {
-            navigate(Page.DIAGNOSTICS)
-            message("Start Shizuku and grant access under Diagnostics")
-        } else if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED) {
-            pendingStart = true
-            notificationRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else startRemapping()
+        if (status.accessibilityConnected) startRemapping()
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val snapshot = config
@@ -151,7 +133,7 @@ private fun RemapperApp() {
     Scaffold(containerColor = MaterialTheme.colorScheme.background, snackbarHost = { SnackbarHost(messages) },
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-                Page.entries.forEach { item ->
+                Page.entries.filter { it != Page.DIAGNOSTICS || config?.showDiagnostics == true }.forEach { item ->
                     NavigationBarItem(selected = page == item, onClick = { navigate(item) },
                         icon = { LineIcon(item.icon) }, label = { Text(item.title) })
                 }
@@ -167,7 +149,7 @@ private fun RemapperApp() {
                 when (page) {
                     Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
                         if (on) enable() else RemapperRuntime.stop(context)
-                    }, { enable() }, { page = Page.DIAGNOSTICS })
+                    }, ::enable, ::launchSystem)
                     Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem)
                     Page.SETTINGS -> Preferences(current, status, ::change, ::launchSystem,
                         { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
@@ -200,7 +182,7 @@ private fun RemapperApp() {
             pendingImport = null
             scope.launch {
                 RemapperRuntime.stop(context)
-                runCatching { store.update { candidate.copy(enabled = false) } }
+                runCatching { store.update { candidate.copy(enabled = false, showDiagnostics = it.showDiagnostics) } }
                     .onSuccess { message("Configuration imported") }
                     .onFailure { message("Import failed: " + it.localizedMessage) }
             }

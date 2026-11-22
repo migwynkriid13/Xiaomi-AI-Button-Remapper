@@ -1,13 +1,14 @@
 # Verification
 
-## Single accessibility service and input selection
+## Accessibility-only setup and actions
 
-- Upgraded an Android 17 emulator where both v0.2.12 accessibility services had been enabled. Android Settings showed only **Xiaomi AI Button Remapper** after the upgrade. Turning it off and back on displayed the new consent, then connected the combined service.
-- Revoked notification permission and used the Accessibility live tester. A synthetic internal `gpio-keys` press showed DOWN and UP with scan 689 and Android keyCode 0. The volume button still raised Android's volume and the passive tester did not start the app's foreground service.
-- Granted notifications for active remapping. A fresh fixture press launched Camera from the remapper UID with its settings screen in the background.
-- Chose **Shizuku** from Diagnostics and reopened the app. It retained the selection, prompted for authorization, and started the native helper. The helper correctly rejected the emulator's synthetic device for raw capture. The raw implementation is unchanged from the preview that could listen on the physical Xiaomi handset.
+The app was installed from Downloads using Android 17's Files app. App info initially had no restricted-settings menu. Attempting to open the remapper in Accessibility produced Android's access-denied screen. Returning to App info revealed **⋮ → Allow restricted settings**, after which Android let us enable **Xiaomi AI Button Remapper** and displayed its consent prompt. Android listed one accessibility service for the app.
 
-The handset report for v0.2.12 says it stopped listening. Retesting both methods on the phone is required to determine whether HyperOS delivers the AI key to Accessibility.
+The Button page initially displayed setup instructions and dimmed controls. Setup disappeared and the controls became active after consent. The Diagnostics tab was initially absent and appeared after enabling it in Settings.
+
+A separate emulator-only internal `gpio-keys` fixture supplied EV_KEY 689. With **Button actions → Take screenshot** mapped to a single press and Android Display settings in front, the button saved a new PNG in `Pictures/Screenshots`. With an app profile active for Files, the same press opened Camera. Back in Display settings, it again took the default screenshot. The remapper's own notification permission was off during both tests.
+
+Linux scan 689 reached Accessibility on this emulator. The original Xiaomi 18 Pro preview could read the physical event directly. The handset owner reported no events in the later Accessibility release. These are separate paths, and stock Android testing cannot confirm that HyperOS forwards the key. Use the [handset test procedure](device-testing.md) to verify delivery and Xiaomi action suppression.
 
 ## v0.2.12 accessibility and the action picker
 
@@ -54,4 +55,4 @@ For these checks a separate, unpublished emulator-only APK selected a marked vir
 
 ## Physical handset acceptance
 
-The supplied Xiaomi 18 Pro evidence establishes the Linux event identity, previous preview listening and a successful Key Mapper Expert Mode remap. This project still needs a Xiaomi 18 Pro test of Xiaomi assistant suppression, secure camera behavior, power/volume propagation, and HyperOS idle and battery management. A stock emulator cannot exercise those vendor paths. Use the [handset acceptance matrix](device-testing.md) to record results. The [standalone emulator probe](emulator-testing.md) can be repeated before trying a new kernel or firmware.
+The supplied Xiaomi 18 Pro evidence establishes the Linux event identity, previous preview listening and a successful Key Mapper Expert Mode remap. This project still needs a Xiaomi 18 Pro test of Xiaomi assistant suppression, secure camera behavior, power/volume propagation, and HyperOS idle and battery management. A stock emulator cannot exercise those vendor paths. Use the [handset acceptance matrix](device-testing.md) to record results. The [emulator checklist](emulator-testing.md) explains the current Accessibility-only setup.

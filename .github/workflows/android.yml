@@ -53,12 +53,7 @@ jobs:
       - name: Verify release input filters
         run: bash .github/scripts/test-apk-changes.sh
       - name: Install Android toolchain
-        run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "cmake;3.22.1" "ndk;28.2.13676358"
-      - name: Verify native forwarding
-        run: |
-          cmake -S app/src/main/cpp -B build/native-tests
-          cmake --build build/native-tests
-          ctest --test-dir build/native-tests --output-on-failure --no-tests=error
+        run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
       - name: Build debug APK and run unit tests and lint
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
       - uses: actions/upload-artifact@v4

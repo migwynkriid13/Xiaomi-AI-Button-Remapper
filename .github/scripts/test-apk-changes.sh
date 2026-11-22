@@ -14,10 +14,10 @@ touch_file() { mkdir -p "$(dirname "$1")"; echo "$1" > "$1"; }
 save() { git add -A && git commit -qm fixture; }
 expect() { [[ "$(bash "$filter" "$1" HEAD)" == "$2" ]] || { echo "Unexpected release decision: $1..HEAD, expected $2" >&2; exit 1; }; }
 
-for path in README.md docs/guide.md .github/workflows/android.yml app/src/test/cpp/input_tests.cpp app/src/debug/res/raw/debug.json app/src/main/java/README.md gradle/README.md; do
+for path in README.md docs/guide.md .github/workflows/android.yml app/src/test/java/p/AppTest.kt app/src/debug/res/raw/debug.json app/src/main/java/README.md gradle/README.md; do
     touch_file "$path"; save; expect HEAD^ false
 done
-for path in app/src/main/AndroidManifest.xml app/src/main/java/p/App.kt app/src/main/aidl/p/IHelper.aidl app/src/main/res/raw/data.json app/src/main/assets/README.md app/src/main/cpp/native.cpp app/src/release/java/Foo.java gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties gradle/libs.versions.toml app/build.gradle.kts LICENSE THIRD_PARTY.md third-party/notice.txt .github/scripts/sign-apk.sh; do
+for path in app/src/main/AndroidManifest.xml app/src/main/java/p/App.kt app/src/main/res/raw/data.json app/src/main/assets/README.md app/src/release/java/Foo.java gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties gradle/libs.versions.toml app/build.gradle.kts LICENSE THIRD_PARTY.md third-party/notice.txt .github/scripts/sign-apk.sh; do
     touch_file "$path"; save; expect HEAD^ true
 done
 # Path filters must catch deletion/renaming and inspect the whole push, including changes after 300 files.

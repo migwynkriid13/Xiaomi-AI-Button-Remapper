@@ -2,6 +2,7 @@ package io.github.xiaomibutton.remapper.runtime
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Handler
@@ -9,6 +10,8 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import io.github.xiaomibutton.remapper.AppConfig
+import io.github.xiaomibutton.remapper.ConfigStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
@@ -17,6 +20,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
@@ -39,8 +43,11 @@ class ButtonAccessibilityService : AccessibilityService() {
     private var editorRequested = false
     private var learning: TwoPressCalibration? = null
     private var learned: LearnedKey? = null
-    private var onLost: (() -> Unit)? = null
     private var observing = false
+    private var session: RemapSession? = null
+    private var configJob: Job? = null
+    private var latestConfig: AppConfig? = null
+    private var pausedUntilDisabled = false
     internal val canInspectWindow: Boolean get() = serviceInfo?.let {
         (it.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_RETRIEVE_WINDOW_CONTENT) != 0
     } == true
@@ -69,13 +76,54 @@ class ButtonAccessibilityService : AccessibilityService() {
         connected = this
         refreshFlags()
         RemapperRuntime.change { it.copy(accessibilityConnected = true) }
+        configJob?.cancel()
+        configJob = scope.launch {
+            ConfigStore(applicationContext).config.collect(::applyConfig)
+        }
     }
 
-    internal fun attach(capture: Boolean, lost: () -> Unit, event: (Int, Long, Boolean) -> Unit) {
+    private fun applyConfig(config: AppConfig) {
+        latestConfig = config
+        if (!config.enabled) {
+            pausedUntilDisabled = false
+            closeRemapping()
+            return
+        }
+        if (connected !== this || pausedUntilDisabled) return
+        stopObservation()
+        val active = session ?: RemapSession(this, scope).also {
+            session = it
+            RemapperRuntime.clearTesterEvents()
+            attach(!config.keepOriginalAction, it::receive)
+            RemapperRuntime.change { state -> state.copy(running = true,
+                diagnostics = "Remapping enabled. Press the AI button to verify delivery.") }
+        }
+        intercept = !config.keepOriginalAction
+        active.configure(config)
+    }
+
+    internal fun resumeAfterUserEnable() {
+        pausedUntilDisabled = false
+        latestConfig?.let(::applyConfig)
+    }
+
+    internal fun pauseRemapping() {
+        pausedUntilDisabled = true
+        closeRemapping()
+    }
+
+    private fun closeRemapping() {
+        val active = session ?: return
+        session = null
+        detach()
+        active.close()
+        RemapperRuntime.change { it.copy(running = false) }
+    }
+
+    private fun attach(capture: Boolean, event: (Int, Long, Boolean) -> Unit) {
         check(connected === this)
         cancelCalibration()
         listener = event
-        onLost = lost
         intercept = capture
         refreshFlags()
     }
@@ -84,9 +132,8 @@ class ButtonAccessibilityService : AccessibilityService() {
         if (listener != null || connected !== this) return
         RemapperRuntime.clearTesterEvents()
         observing = true
-        attach(false, {}, { value, time, _ -> if (value >= 0) RemapperRuntime.recordEvent(value, time) })
-        RemapperRuntime.change { it.copy(helper = "Read-only", observing = true,
-            activeInput = InputMethod.ACCESSIBILITY, diagnostics = "Listening through Accessibility for 60 seconds.") }
+        attach(false) { value, time, _ -> if (value >= 0) RemapperRuntime.recordEvent(value, time) }
+        RemapperRuntime.change { it.copy(observing = true, diagnostics = "Listening through Accessibility for 60 seconds.") }
         main.postDelayed(observationTimeout, 60_000L)
     }
 
@@ -97,14 +144,12 @@ class ButtonAccessibilityService : AccessibilityService() {
         observing = false
         main.removeCallbacks(observationTimeout)
         detach()
-        RemapperRuntime.change { it.copy(helper = "Stopped", observing = false, activeInput = null, diagnostics = reason) }
+        RemapperRuntime.change { it.copy(observing = false, diagnostics = reason) }
     }
 
-    internal fun detach() {
+    private fun detach() {
         listener = null
-        onLost = null
         intercept = false
-        refreshFlags()
         if (filter.hasHeld) {
             main.removeCallbacks(clearStale)
             main.postDelayed(clearStale, 12_000)
@@ -112,19 +157,14 @@ class ButtonAccessibilityService : AccessibilityService() {
     }
 
     private val clearStale = Runnable {
-        if (listener == null) {
-            filter.reset()
-            refreshFlags()
-        }
+        if (listener == null) filter.reset()
     }
 
     internal fun refreshFlags() {
         if (connected !== this) return
         val info = serviceInfo ?: return
         val viewIds = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-        val keys = AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
-        val shouldListen = RemapperRuntime.status.value.inputMethod == InputMethod.ACCESSIBILITY || listener != null || filter.hasHeld
-        var flags = if (shouldListen) info.flags or keys else info.flags and keys.inv()
+        var flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
         flags = if (RemapperRuntime.status.value.uiActionsEnabled) flags or viewIds else flags and viewIds.inv()
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             val ime = AccessibilityServiceInfo.FLAG_INPUT_METHOD_EDITOR
@@ -139,6 +179,15 @@ class ButtonAccessibilityService : AccessibilityService() {
     internal fun requestEditor(requested: Boolean) {
         editorRequested = requested
         refreshFlags()
+    }
+
+    @Suppress("DEPRECATION")
+    internal fun activeAppForProfiles(): String? {
+        if (getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != false) return null
+        return runCatching {
+            val root = rootInActiveWindow ?: return null
+            try { root.packageName?.toString() } finally { root.recycle() }
+        }.getOrNull()
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -183,12 +232,11 @@ class ButtonAccessibilityService : AccessibilityService() {
                 }
             }
         }
-        if (consume && value == 0 && receive == null) refreshFlags()
         return consume
     }
 
     internal fun beginCalibration() {
-        if (listener != null || connected !== this || !RemapperRuntime.visible) return
+        if (listener != null || connected !== this) return
         cancelCalibration()
         learning = TwoPressCalibration()
         RemapperRuntime.change { it.copy(calibrationPrompt = "Press and release only the AI button twice within 20 seconds.",
@@ -198,7 +246,6 @@ class ButtonAccessibilityService : AccessibilityService() {
 
     internal fun confirmCalibration() {
         val choice = learning?.candidate ?: return
-        if (!RemapperRuntime.visible) return
         cancelCalibration()
         scope.launch {
             runCatching { applicationContext.learnedButtons.edit {
@@ -226,7 +273,7 @@ class ButtonAccessibilityService : AccessibilityService() {
 
     private val calibrationTimeout = Runnable {
         cancelCalibration()
-        RemapperRuntime.change { it.copy(diagnostics = "No compatible button was learned. Try the read-only Shizuku input tester if available.") }
+        RemapperRuntime.change { it.copy(diagnostics = "No compatible button was learned. Check the live tester with the screen on.") }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -237,14 +284,15 @@ class ButtonAccessibilityService : AccessibilityService() {
     private fun disconnect() {
         if (connected !== this) return
         connected = null
-        val lost = onLost
+        configJob?.cancel()
+        latestConfig = null
         stopObservation("Android disconnected Accessibility. Turn the remapper service off and back on in Settings.")
-        detach()
+        closeRemapping()
         cancelCalibration()
         filter.reset()
         main.removeCallbacks(clearStale)
-        RemapperRuntime.change { it.copy(accessibilityConnected = false) }
-        lost?.invoke()
+        RemapperRuntime.change { it.copy(accessibilityConnected = false,
+            diagnostics = "Accessibility disconnected. Check the setup steps below.") }
     }
 
     override fun onUnbind(intent: Intent?): Boolean { disconnect(); return super.onUnbind(intent) }
