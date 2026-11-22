@@ -73,7 +73,8 @@ private fun loadChoices(context: Context, kind: ActionKind): List<Choice> {
                 }
             }
         }
-        ActionKind.SETTINGS -> systemPages.map { (id, label) -> Choice(label, id, ActionSpec(kind, id)) }
+        ActionKind.SETTINGS -> systemPages.filterKeys { Intent(it).resolveActivity(pm) != null }
+            .map { (id, label) -> Choice(label, id, ActionSpec(kind, id)) }
         ActionKind.SHELL -> PermittedCommands.options.map { (cmd, label) -> Choice(label, cmd, ActionSpec(kind, cmd)) }
         else -> emptyList()
     }
@@ -171,6 +172,7 @@ internal fun ActionPicker(slot: GestureSlot, current: ActionSpec, dismiss: () ->
                         if (filtered.isEmpty()) QuietText(
                             if (category == ActionKind.SHORTCUT && available.isEmpty())
                                 "No shortcut providers are available. Android limits launcher shortcuts to shortcut hosts. Apps can also publish a shortcut creator."
+                            else if (category == ActionKind.SETTINGS && available.isEmpty()) "No supported Settings destinations on this device."
                             else "No matching entries", Modifier.padding(22.dp))
                         LazyColumn(modifier = Modifier.weight(1f, fill = false), contentPadding = PaddingValues(bottom = 16.dp)) {
                             items(filtered) { item ->

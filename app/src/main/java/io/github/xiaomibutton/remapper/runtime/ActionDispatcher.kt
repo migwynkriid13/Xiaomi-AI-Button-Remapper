@@ -105,6 +105,7 @@ internal class ActionDispatcher(
             ActionKind.SETTINGS -> {
                 require(action.value.startsWith("android.settings.")) { "Invalid Settings action" }
                 val intent = Intent(action.value)
+                check(intent.resolveActivity(context.packageManager) != null) { "Settings destination unavailable on this device" }
                 if (locked) launch(intent, "Android Settings") else {
                     val result = withContext(Dispatchers.IO) { helper.openSettings(action.value) }
                     if (result.startsWith("Error:")) launch(intent, "Android Settings") else "Settings page requested"
