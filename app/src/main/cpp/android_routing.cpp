@@ -100,7 +100,8 @@ Route compareRoutes(const std::string& dump, const std::string& sourcePath,
           {"IsExternal", "Sources", "KeyboardType", "AssociatedDisplayPort"})) return {};
     // Some releases don't expose IsWaking or display binding. If present on one
     // side they must be present on both, with identical values.
-    for (auto field : {"IsWaking", "AssociatedDisplayUniqueIdByPort", "AssociatedDisplayUniqueIdByDescriptor"}) {
+    for (auto field : {"IsWaking", "IsVirtualDevice", "AssociatedDisplayUniqueIdByPort",
+                       "AssociatedDisplayUniqueIdByDescriptor"}) {
         if ((a->fields.count(field) || b->fields.count(field)) &&
             !equalFields(a->fields, b->fields, {field})) return {};
     }

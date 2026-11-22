@@ -18,6 +18,8 @@ class BootReceiver : BroadcastReceiver() {
                 if (ConfigStore(context).config.first().enabled) {
                     SessionNotifications(context).apply { createChannels(); resumeAfterReboot() }
                 }
+            } catch (_: java.io.IOException) {
+                // Storage may be unavailable directly after a reboot. Opening the UI can retry.
             } finally { pending.finish() }
         }
     }

@@ -15,6 +15,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.os.Process
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.MediaStore
@@ -36,15 +37,15 @@ internal class ActionDispatcher(
         override fun onTorchModeUnavailable(cameraId: String) { torchStates.remove(cameraId) }
     }
     private val listening = runCatching {
-        camera.registerTorchCallback(torchObserver, Handler(Looper.getMainLooper()))
+        camera?.registerTorchCallback(torchObserver, Handler(Looper.getMainLooper()))
     }.isSuccess
 
     override fun close() {
-        if (listening) camera.unregisterTorchCallback(torchObserver)
+        if (listening) runCatching { camera?.unregisterTorchCallback(torchObserver) }
     }
 
-    private val locked: Boolean get() = context.getSystemService(KeyguardManager::class.java).isKeyguardLocked ||
-        !context.getSystemService(PowerManager::class.java).isInteractive
+    private val locked: Boolean get() = (context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != false) ||
+        (context.getSystemService(PowerManager::class.java)?.isInteractive != true)
 
     suspend fun perform(action: ActionSpec, helper: IInputHelper): String {
         validateAction(action)
@@ -67,22 +68,23 @@ internal class ActionDispatcher(
                 }
             }
             ActionKind.FLASHLIGHT -> {
+                val flash = checkNotNull(camera) { "Camera service unavailable" }
                 val id = torchStates.keys.firstOrNull {
-                    camera.getCameraCharacteristics(it)[CameraCharacteristics.LENS_FACING] == CameraCharacteristics.LENS_FACING_BACK
+                    flash.getCameraCharacteristics(it)[CameraCharacteristics.LENS_FACING] == CameraCharacteristics.LENS_FACING_BACK
                 } ?: torchStates.keys.firstOrNull() ?: error("Flashlight unavailable or camera in use")
                 val enable = torchStates[id] != true
-                camera.setTorchMode(id, enable)
+                flash.setTorchMode(id, enable)
                 torchStates[id] = enable
                 if (enable) "Flashlight on" else "Flashlight off"
             }
             ActionKind.SILENT -> {
-                val audio = context.getSystemService(AudioManager::class.java)
+                val audio = checkNotNull(context.getSystemService(AudioManager::class.java))
                 val silent = audio.ringerMode != AudioManager.RINGER_MODE_SILENT
                 audio.ringerMode = if (silent) AudioManager.RINGER_MODE_SILENT else AudioManager.RINGER_MODE_NORMAL
                 if (audio.ringerMode == AudioManager.RINGER_MODE_SILENT) "Ringer silent" else "Ringer normal"
             }
             ActionKind.DND -> {
-                val nm = context.getSystemService(NotificationManager::class.java)
+                val nm = checkNotNull(context.getSystemService(NotificationManager::class.java))
                 check(nm.isNotificationPolicyAccessGranted) { "Grant Do Not Disturb access in Android Settings" }
                 // API 35+ gives each app its own rule. Another app's mode must not invert our toggle.
                 val active = if (Build.VERSION.SDK_INT >= 35) nm.automaticZenRules.keys.any {
@@ -92,7 +94,7 @@ internal class ActionDispatcher(
                 if (active) "Remapper DND off" else "Remapper DND on"
             }
             ActionKind.URL -> {
-                val uri = Uri.parse(action.value)
+                val uri = Uri.parse(action.value).normalizeScheme()
                 require(uri.scheme in setOf("https", "http") && !uri.host.isNullOrBlank()) { "Choose an HTTP or HTTPS URL" }
                 val intent = Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
                 if (locked) launch(intent, "Web link") else {
@@ -113,7 +115,7 @@ internal class ActionDispatcher(
                 if (action.extra.isBlank() || action.value.isBlank()) {
                     launch(userIntent(action.value.ifBlank { action.extra }), "App shortcut")
                 } else {
-                    val launcher = context.getSystemService(LauncherApps::class.java)
+                    val launcher = checkNotNull(context.getSystemService(LauncherApps::class.java))
                     check(launcher.hasShortcutHostPermission()) { "Android has not granted shortcut-host access" }
                     val user = Process.myUserHandle()
                     if (RemapperRuntime.visible && !locked) {
@@ -153,6 +155,10 @@ internal class ActionDispatcher(
 
     @Suppress("DEPRECATION")
     fun haptic() {
-        context.getSystemService(Vibrator::class.java).vibrate(VibrationEffect.createOneShot(25, VibrationEffect.DEFAULT_AMPLITUDE))
+        val vibrator = context.getSystemService(Vibrator::class.java) ?: return
+        val feedback = VibrationEffect.createOneShot(25, VibrationEffect.DEFAULT_AMPLITUDE)
+        if (Build.VERSION.SDK_INT >= 33) vibrator.vibrate(feedback,
+            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_HARDWARE_FEEDBACK))
+        else vibrator.vibrate(feedback)
     }
 }

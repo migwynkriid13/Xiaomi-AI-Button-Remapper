@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(ANDROID)
     add_library(remap_input SHARED native_input.cpp android_routing.cpp watchdog.cpp)
+    target_compile_definitions(remap_input PRIVATE _GNU_SOURCE)
     target_compile_options(remap_input PRIVATE -Wall -Wextra -Werror)
     target_link_options(remap_input PRIVATE "-Wl,-z,max-page-size=16384")
 else()

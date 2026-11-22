@@ -66,3 +66,14 @@ Begin with all side buttons released. Check **Diagnostics → Live button tester
 **Recovery from the PC** is `adb shell am force-stop io.github.xiaomibutton.remapper`. The app's Binder death and native watchdog provide release paths. If the OS itself is unresponsive, use the phone manufacturer's normal restart procedure. After recovery, capture another `adb shell dumpsys input > input-after.txt` and check that only the original route remains. Record unexpected behavior before enabling again.
 
 For a reproducible report include the first failing step, the diagnostics message, relevant physical and mirror device records, the exact APK commit or Actions run, and whether turning remapping off immediately restores the stock behavior. Redact personal data from logs before sharing.
+
+### Unexpected helper exit with the Shizuku server still running
+
+For an additional crash test, use Diagnostics to read the **active helper PID**. Replace 12345 below with that exact PID from the current session. Confirm the PID belongs to the shell-owned remapper helper before sending the signal. The separate guardian can have a similar process name. Stop if the PID or identity differs.
+
+```sh
+adb shell ps -p 12345 -o USER,PID,PPID,NAME
+adb shell kill -KILL 12345
+```
+
+Check that the foreground session ends, the device disappears from the mirror records, Shizuku remains available, and subsequent AI, volume and power presses use the stock path. A firmware that denies the shell signal can still exercise normal teardown through the notification. The Linux native test suite independently exercises a genuinely frozen helper using SIGSTOP.

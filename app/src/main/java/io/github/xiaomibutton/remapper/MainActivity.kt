@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -37,14 +38,14 @@ class MainActivity : ComponentActivity() {
         setContent { RemapperTheme { RemapperApp() } }
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.scanCode == 689) RemapperRuntime.recordAndroidKey(event.keyCode)
-        return super.dispatchKeyEvent(event)
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (event.scanCode == 689) RemapperRuntime.recordAndroidKey(keyCode)
+        return super.onKeyDown(keyCode, event)
     }
 
-    override fun onStop() {
-        RemapperRuntime.endTest(this)
-        super.onStop()
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (event.scanCode == 689) RemapperRuntime.recordAndroidKey(keyCode)
+        return super.onKeyUp(keyCode, event)
     }
 }
 
@@ -76,6 +77,10 @@ private fun RemapperApp() {
     val scope = rememberCoroutineScope()
     val messages = remember { SnackbarHostState() }
     var page by rememberSaveable { mutableStateOf(Page.MAPPINGS) }
+    fun navigate(next: Page) {
+        if (page == Page.DIAGNOSTICS && next != Page.DIAGNOSTICS) RemapperRuntime.endTest(context)
+        page = next
+    }
     var slot by rememberSaveable { mutableStateOf<GestureSlot?>(null) }
     var pendingImport by remember { mutableStateOf<AppConfig?>(null) }
     fun message(text: String) { scope.launch { messages.showSnackbar(text) } }
@@ -133,11 +138,12 @@ private fun RemapperApp() {
                 .onFailure { message("Import failed: " + it.localizedMessage) }
         }
     }
+    BackHandler(enabled = page != Page.MAPPINGS && slot == null && pendingImport == null) { navigate(Page.MAPPINGS) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, snackbarHost = { SnackbarHost(messages) },
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
                 Page.entries.forEach { item ->
-                    NavigationBarItem(selected = page == item, onClick = { page = item },
+                    NavigationBarItem(selected = page == item, onClick = { navigate(item) },
                         icon = { LineIcon(item.icon) }, label = { Text(item.title) })
                 }
             }

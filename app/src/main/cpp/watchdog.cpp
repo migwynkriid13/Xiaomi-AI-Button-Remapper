@@ -60,6 +60,8 @@ long long monotonicMs() {
             armed = true;
             const char acknowledged = 'Y';
             if (write(3, &acknowledged, 1) != 1) _exit(1);
+        } else if (code == 'D') {
+            armed = false;
         } else if (code != 'H' || !armed) {
             _exit(1);
         }
@@ -85,10 +87,14 @@ Watchdog::Watchdog() {
     const int childSocket = fcntl(pair[1], F_DUPFD_CLOEXEC, 5);
     if (childSocket < 0) err = errno;
     rlimit limit{};
-    if (childSocket >= 0 && childPin >= 0 && getrlimit(RLIMIT_NOFILE, &limit) == 0) {
-        child_ = fork();
-        if (child_ == 0) guardParent(childSocket, childPin, parent, limit.rlim_cur);
-        if (child_ < 0) err = errno;
+    if (childSocket >= 0 && childPin >= 0) {
+        if (getrlimit(RLIMIT_NOFILE, &limit) < 0) {
+            err = errno;
+        } else {
+            child_ = fork();
+            if (child_ == 0) guardParent(childSocket, childPin, parent, limit.rlim_cur);
+            if (child_ < 0) err = errno;
+        }
     }
     if (pin >= 0) close(pin);
     if (childPin >= 0) close(childPin);
@@ -96,6 +102,13 @@ Watchdog::Watchdog() {
     close(pair[1]);
     if (child_ < 0) { close(pair[0]); unavailable(err); }
     socket_ = pair[0];
+    childPin_ = static_cast<int>(syscall(__NR_pidfd_open, child_, 0));
+    if (childPin_ < 0) {
+        const int error = errno;
+        close(socket_); // guardian is unarmed, so EOF terminates it
+        while (waitpid(child_, nullptr, 0) < 0 && errno == EINTR) {}
+        unavailable(error);
+    }
 }
 
 Watchdog::~Watchdog() {
@@ -106,9 +119,10 @@ Watchdog::~Watchdog() {
     pid_t waited;
     do { waited = waitpid(child_, &status, WNOHANG); } while (waited < 0 && errno == EINTR);
     if (waited == 0) {
-        kill(child_, SIGKILL);
+        syscall(__NR_pidfd_send_signal, childPin_, SIGKILL, nullptr, 0);
         while (waitpid(child_, &status, 0) < 0 && errno == EINTR) {}
     }
+    close(childPin_);
 }
 
 void Watchdog::arm() {
@@ -126,5 +140,10 @@ void Watchdog::beat() {
     const char heartbeat = 'H';
     if (send(socket_, &heartbeat, 1, MSG_NOSIGNAL) != 1) unavailable(errno);
     nextBeat_ = now + 500;
+}
+
+void Watchdog::disarm() {
+    const char disarm = 'D';
+    send(socket_, &disarm, 1, MSG_NOSIGNAL);
 }
 

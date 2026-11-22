@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 
 internal class SessionNotifications(private val context: Context) {
-    private val manager = context.getSystemService(NotificationManager::class.java)
+    private val manager = checkNotNull(context.getSystemService(NotificationManager::class.java))
 
     fun createChannels() {
         manager.createNotificationChannels(listOf(

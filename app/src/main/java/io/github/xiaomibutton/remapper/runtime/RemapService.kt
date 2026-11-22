@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import io.github.xiaomibutton.remapper.ActionSpec
 import io.github.xiaomibutton.remapper.ActionKind
 import io.github.xiaomibutton.remapper.AppConfig
 import io.github.xiaomibutton.remapper.ConfigStore
@@ -43,7 +44,7 @@ class RemapService : Service() {
     private var engine: GestureEngine? = null
     private var configJob: Job? = null
     private var actionJob: Job? = null
-    private var actions: Channel<io.github.xiaomibutton.remapper.ActionSpec>? = null
+    private var actions: Channel<ActionSpec>? = null
     private var dispatcher: ActionDispatcher? = null
     private var helper: IInputHelper? = null
     private var connection: ServiceConnection? = null
@@ -68,7 +69,8 @@ class RemapService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val requested = intent?.action ?: REMAP
         if (requested == STOP) {
-            finish("Emergency stop. Xiaomi's default action is restored.", disable = true)
+            if (mode == TEST) finish("Read-only tester stopped from notification")
+            else finish("Emergency stop. Xiaomi's default action is restored.", disable = true)
             return START_NOT_STICKY
         }
         try {
@@ -141,7 +143,12 @@ class RemapService : Service() {
                 ready = message.startsWith(if (intercept) "Active:" else "Observing:")
                 val label = if (ready && intercept) "Active" else if (ready) "Read-only" else "Preparing"
                 RemapperRuntime.change { it.copy(helper = label, running = intercept && ready, observing = !intercept && ready, diagnostics = message) }
-                if (ready) foreground(if (intercept) "Remapping active · Stop now restores the original key" else "Read-only button tester")
+                if (ready) {
+                    foreground(if (intercept) "Remapping active · Stop now restores the original key" else "Read-only tester · stops after one minute")
+                    if (!intercept) main.postDelayed({
+                        if (ticket == generation && mode == TEST) finish("One-minute tester finished. Recent events remain available.")
+                    }, 60_000)
+                }
             }
             override fun key(value: Int, uptimeMillis: Long) = deliver {
                 val event = ButtonEvent(value, uptimeMillis, System.currentTimeMillis() - (SystemClock.uptimeMillis() - uptimeMillis))
@@ -208,7 +215,7 @@ class RemapService : Service() {
 
     private fun startActions(remote: IInputHelper) {
         val executor = ActionDispatcher(this, notices).also { dispatcher = it }
-        val queue = Channel<io.github.xiaomibutton.remapper.ActionSpec>(4).also { actions = it }
+        val queue = Channel<ActionSpec>(4).also { actions = it }
         actionJob = scope.launch {
             for (action in queue) {
                 val message = try {

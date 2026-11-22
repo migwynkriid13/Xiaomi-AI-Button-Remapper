@@ -37,6 +37,8 @@ internal fun validateAction(action: ActionSpec) {
         "Action contains a control character"
     }
     require(action.kind == ActionKind.SHORTCUT || action.extra.isEmpty()) { "Unexpected additional action data" }
+    require(action.label.length <= 120 && action.label.none { it.isISOControl() } &&
+        (action.kind == ActionKind.SHORTCUT || action.label.isEmpty())) { "Invalid shortcut label" }
     when (action.kind) {
         ActionKind.URL -> {
             val uri = URI(action.value)
@@ -47,7 +49,10 @@ internal fun validateAction(action: ActionSpec) {
         ActionKind.INTENT -> validateIntentUri(action.value)
         ActionKind.SHORTCUT -> if (action.extra.isEmpty()) {
             validateIntentUri(action.value)
-        } else validatePackage(action.value)
+        } else {
+            validatePackage(action.value)
+            require(action.extra.isNotBlank()) { "Shortcut ID is empty" }
+        }
         ActionKind.SETTINGS -> require(action.value in systemPages) { "Unrecognized Settings destination" }
         ActionKind.SHELL -> require(PermittedCommands.accepts(action.value)) { "Command is outside the permitted list" }
         ActionKind.APP -> validatePackage(action.value)

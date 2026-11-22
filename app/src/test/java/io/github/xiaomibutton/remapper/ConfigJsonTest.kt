@@ -30,6 +30,7 @@ class ConfigJsonTest {
             assertThrows(Exception::class.java) { ConfigJson.decode(JSONObject(base).put(key, value).toString(), true) }
         }
         assertThrows(Exception::class.java) { ConfigJson.decode("garbage", true) }
+        assertThrows(Exception::class.java) { ConfigJson.decode(base + "trailing data", true) }
         assertThrows(Exception::class.java) { ConfigJson.decode(" ".repeat(ConfigJson.MAX_BYTES + 1), true) }
     }
 
@@ -56,7 +57,7 @@ class ConfigJsonTest {
     }
 
     @Test fun hostedShortcutKeepsPackageAndIdSeparate() {
-        val config = AppConfig(double = ActionSpec(ActionKind.SHORTCUT, "org.example", "open/inbox"))
+        val config = AppConfig(double = ActionSpec(ActionKind.SHORTCUT, "org.example", "open/inbox", "My inbox"))
         assertEquals(config, ConfigJson.decode(ConfigJson.encode(config, export = true), imported = true))
     }
 }

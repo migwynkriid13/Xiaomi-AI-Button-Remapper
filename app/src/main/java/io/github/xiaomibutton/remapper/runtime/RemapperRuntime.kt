@@ -84,7 +84,11 @@ object RemapperRuntime {
     fun requestPermission() {
         refresh()
         if (!status.value.available || status.value.authorized) return
-        runCatching { Shizuku.requestPermission(814) }
+        runCatching {
+            if (Shizuku.shouldShowRequestPermissionRationale()) {
+                change { it.copy(diagnostics = "Permission was denied. Allow the remapper in Shizuku’s Authorized applications.") }
+            } else Shizuku.requestPermission(814)
+        }
             .onFailure { error -> change { it.copy(diagnostics = error.message ?: "Permission request failed") } }
     }
 
@@ -113,13 +117,19 @@ object RemapperRuntime {
     fun stop(context: Context) {
         initialize(context)
         testRequested = false
-        onStop?.invoke() ?: context.stopService(Intent(context, RemapService::class.java))
-        disableConfig(context)
+        val stopSession = onStop
+        if (stopSession != null) stopSession() else {
+            context.stopService(Intent(context, RemapService::class.java))
+            disableConfig(context)
+        }
     }
 
     internal fun disableConfig(context: Context) {
         val store = ConfigStore(context.applicationContext)
-        scope.launch { store.update { it.copy(enabled = false) } }
+        scope.launch {
+            runCatching { store.update { it.copy(enabled = false) } }
+                .onFailure { error -> change { it.copy(diagnostics = "Input stopped. Could not save disabled state: ${error.message}") } }
+        }
     }
 
     fun recordAndroidKey(code: Int) = change { it.copy(androidKeyCode = code) }

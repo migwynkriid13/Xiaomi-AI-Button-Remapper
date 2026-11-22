@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <spawn.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -20,6 +21,7 @@
 #include <atomic>
 #include <cerrno>
 #include <chrono>
+#include <condition_variable>
 #include <climits>
 #include <cstdio>
 #include <cstring>
@@ -203,7 +205,7 @@ public:
     bool send(const input_event& event) {
         ssize_t written;
         do { written = write(fd.get(), &event, sizeof(event)); } while (written < 0 && errno == EINTR);
-        if (written != sizeof(event)) return false;
+        if (written != static_cast<ssize_t>(sizeof(event))) return false;
         pressed.written(event);
         return true;
     }
@@ -290,26 +292,76 @@ bool allReleased(int fd) {
 
 class Grab {
 public:
-    explicit Grab(int fd) : fd(fd) {
-        if (ioctl(fd, EVIOCGRAB, 1) < 0) fail("Grab gpio-keys");
+    Grab(int fd, Watchdog& watchdog) : fd(fd), watchdog(watchdog) {
+        watchdog.arm();
+        checkLease();
+        if (ioctl(fd, EVIOCGRAB, 1) < 0) {
+            const int error = errno;
+            watchdog.disarm();
+            errno = error;
+            fail("Grab gpio-keys");
+        }
     }
-    ~Grab() { ioctl(fd, EVIOCGRAB, 0); }
+    ~Grab() {
+        if (ioctl(fd, EVIOCGRAB, 0) < 0) {
+            // Closing the entire dedicated service is the kernel-backed fallback.
+            _exit(70);
+        }
+        watchdog.disarm();
+    }
 private:
     int fd;
+    Watchdog& watchdog;
 };
 
-void loop(int fd, Mirror* mirror, Watchdog* watchdog, const Callbacks& callbacks) {
+// Writes to uinput can still succeed when Android has disabled the virtual
+// device. Recheck Android's routing away from the latency-sensitive input loop.
+class RouteMonitor {
+public:
+    RouteMonitor(std::string source, std::string destination) :
+            worker([this, source = std::move(source), destination = std::move(destination)] {
+        std::unique_lock<std::mutex> lock(mutex);
+        while (!wake.wait_for(lock, 30s, [&] { return done; })) {
+            lock.unlock();
+            try {
+                if (compareRoutes(inputDump(), source, kMarker).mirrorPath != destination) lost = true;
+            } catch (const std::exception&) {
+                lost = true;
+            }
+            if (lost) return;
+            lock.lock();
+        }
+    }) {}
+    ~RouteMonitor() {
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            done = true;
+        }
+        wake.notify_one();
+        worker.join();
+    }
+    bool healthy() const { return !lost.load(); }
+private:
+    std::mutex mutex;
+    std::condition_variable wake;
+    bool done = false;
+    std::atomic<bool> lost{false};
+    std::thread worker;
+};
+
+void loop(int fd, Mirror* mirror, Watchdog* watchdog, RouteMonitor* routes, const Callbacks& callbacks) {
     Frame<input_event> frame;
     EmergencyHold emergency;
     int64_t frameStart = 0;
     std::array<input_event, 64> events{};
     while (true) {
         checkLease();
+        if (routes && !routes->healthy()) throw std::runtime_error("Android no longer confirms the mirror route.");
         if (watchdog) watchdog->beat();
         if (mirror && emergency.expired(nowMs())) throw std::runtime_error("Emergency stop: AI button held eight seconds.");
         if (frame.incomplete() && nowMs() - frameStart > 1000) throw std::runtime_error("Input frame timed out.");
         pollfd p{fd, POLLIN, 0};
-        const int ready = poll(&p, 1, 100);
+        const int ready = poll(&p, 1, 250);
         if (ready < 0) { if (errno == EINTR) continue; fail("Poll physical input"); }
         if (!ready) continue;
         if (p.revents & (POLLERR | POLLHUP | POLLNVAL)) throw std::runtime_error("Physical input disconnected.");
@@ -323,7 +375,11 @@ void loop(int fd, Mirror* mirror, Watchdog* watchdog, const Callbacks& callbacks
             if (result == FrameResult::LostSync)
                 throw std::runtime_error("Input synchronization lost. Original route restored.");
             if (result == FrameResult::Ready && !frame.deliver(mirror != nullptr,
-                    [&](const input_event& e) { return mirror->send(e); },
+                    [&](const input_event& e) {
+                        if (e.type == EV_REP && e.value > 0)
+                            throw std::runtime_error("Kernel repeat configuration changed. Remapping stopped.");
+                        return mirror->send(e);
+                    },
                     [&](const input_event& e) {
                         const int64_t time = int64_t(e.time.tv_sec) * 1000 + e.time.tv_usec / 1000;
                         emergency.key(e.value, time);
@@ -340,7 +396,7 @@ void monitor(bool intercept, const Callbacks& callbacks) {
     const int fd = source.fd.get();
     if (!intercept) {
         callbacks.status("Observing: " + source.path + " (gpio-keys, EV_KEY 689)");
-        loop(fd, nullptr, nullptr, callbacks);
+        loop(fd, nullptr, nullptr, nullptr, callbacks);
         return;
     }
     callbacks.status("Preparing gpio-keys mirror for " + source.path);
@@ -358,10 +414,15 @@ void monitor(bool intercept, const Callbacks& callbacks) {
 
     // Record the layout selected by Android. The Linux code is never passed
     // to Android as a KeyEvent keyCode.
-    std::string mapping;
+    std::string mapping = "key layout unavailable";
     if (route.layout.size() > 3 && route.layout.substr(route.layout.size()-3) == ".kl") {
         std::ifstream layout(route.layout);
-        if (layout) { std::ostringstream bytes; bytes << layout.rdbuf(); mapping = describeMapping(bytes.str()); }
+        if (layout) {
+            std::ostringstream bytes;
+            bytes << layout.rdbuf();
+            mapping = describeMapping(bytes.str());
+            if (mapping.empty()) mapping = "no scan-code entry in this layout";
+        }
     }
     const auto types = capabilities<EV_MAX>(fd, 0);
     if (bit(types, EV_REP)) {
@@ -372,8 +433,14 @@ void monitor(bool intercept, const Callbacks& callbacks) {
             throw std::runtime_error("Cannot verify that the mirror has kernel auto-repeat disabled.");
     }
 
-    // Events queued during Android registration already went to the physical
-    // device. Drop only that pre-grab queue, and start with every key released.
+    // The second reader witnesses the pre-grab side of the handover. An event
+    // first seen after the grab is queued only on fd and must be forwarded;
+    // rejecting it as a transition would swallow a real power/volume DOWN.
+    Fd witness(open(source.path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_NOFOLLOW));
+    struct stat inputStat{}, witnessStat{};
+    if (witness.get() < 0 || fstat(fd, &inputStat) < 0 || fstat(witness.get(), &witnessStat) < 0 ||
+        inputStat.st_rdev != witnessStat.st_rdev || inputStat.st_ino != witnessStat.st_ino)
+        throw std::runtime_error("Physical input changed while preparing.");
     std::array<input_event, 64> stale{};
     while (true) {
         checkLease();
@@ -382,15 +449,17 @@ void monitor(bool intercept, const Callbacks& callbacks) {
         if (n < 0 && errno == EAGAIN) break;
         if (n <= 0) throw std::runtime_error("Input device disappeared while preparing.");
     }
-    if (!allReleased(fd)) throw std::runtime_error("Release all side buttons, then enable again.");
-    watchdog->arm();
-    Grab grab(fd);
-    pollfd pending{fd, POLLIN, 0};
+    pollfd pending{witness.get(), POLLIN, 0};
     if (!allReleased(fd) || poll(&pending, 1, 0) != 0)
+        throw std::runtime_error("Release all side buttons, then enable again.");
+    RouteMonitor routes(source.path, route.mirrorPath);
+    Grab grab(fd, *watchdog);
+    if (poll(&pending, 1, 0) != 0)
         throw std::runtime_error("Input changed while arming. Release all side buttons and retry.");
+    witness = Fd{};
     callbacks.status("Active: " + source.path + " → " + route.mirrorPath + " | " + route.layout +
-                     " | 689: " + (mapping.empty() ? "no scan-code entry found" : mapping));
-    loop(fd, &mirror, &*watchdog, callbacks);
+                     " | 689: " + mapping);
+    loop(fd, &mirror, &*watchdog, &routes, callbacks);
 }
 
 } // namespace
@@ -399,9 +468,11 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_io_github_xiaomibutton_remapper_runtime_NativeInput_run(JNIEnv* env, jobject, jboolean intercept, jobject receiver) {
     std::unique_lock<std::mutex> guard(session, std::try_to_lock);
     if (!guard.owns_lock()) return env->NewStringUTF("An input session is already running.");
-    stopRequested = false;
+    // UserService is a one-session process. Keep a stop issued just before
+    // this worker entered JNI sticky, including during mirror preparation.
     lastRenewal = nowMs();
     try {
+        checkLease();
         Callbacks callbacks(env, receiver);
         monitor(intercept, callbacks);
         return env->NewStringUTF("Stopped");

@@ -25,7 +25,7 @@ android {
             version = "3.22.1"
         }
     }
-    sourceSets["main"].assets.srcDir(rootProject.file("third-party"))
+    sourceSets["main"].assets.directories.add(rootProject.file("third-party").path)
     buildFeatures {
         aidl = true
         compose = true

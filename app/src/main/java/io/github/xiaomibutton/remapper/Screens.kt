@@ -111,15 +111,21 @@ internal fun Diagnostics(config: AppConfig, status: RuntimeStatus, launchSystem:
         notificationDenied = !allowed
         if (allowed) RemapperRuntime.test(context)
     }
-    DisposableEffect(Unit) { onDispose { RemapperRuntime.endTest(context) } }
     Headline("Diagnostics")
     GroupTitle("Connection")
     Panel {
         SettingRow("Shizuku", status.shizuku)
         if (!status.authorized && status.available) TextButton(onClick = { RemapperRuntime.requestPermission() },
             modifier = Modifier.padding(start = 8.dp)) { Text("Grant Shizuku access") }
-        if (!status.available) QuietText("Start Shizuku with wireless debugging or USB debugging, then return here.",
-            Modifier.padding(start = 18.dp, end = 18.dp, bottom = 18.dp))
+        if (!status.available) {
+            QuietText("Start Shizuku with wireless debugging or USB debugging, then return here.",
+                Modifier.padding(horizontal = 18.dp))
+            val managerIntent = remember { context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api") }
+            if (managerIntent != null) TextButton(onClick = { launchSystem(managerIntent) },
+                modifier = Modifier.padding(start = 8.dp)) { Text("Open Shizuku") }
+            TextButton(onClick = { launchSystem(Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/guide/setup/"))) },
+                modifier = Modifier.padding(start = 8.dp)) { Text("Shizuku setup guide") }
+        }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         SettingRow("Privileged helper", status.helper)
         if (status.diagnostics.isNotBlank()) SelectionContainer { QuietText(status.diagnostics,
@@ -131,6 +137,8 @@ internal fun Diagnostics(config: AppConfig, status: RuntimeStatus, launchSystem:
         SettingRow("Android key code", status.androidKeyCode?.let { KeyEvent.keyCodeToString(it) + " (" + it + ")" }
             ?: "Awaiting a key event delivered to this window. HyperOS can consume it first.")
         if (!config.enabled && !status.running && status.authorized) {
+            QuietText("The passive listener runs for up to 60 seconds, including while Xiaomi opens its own action. Return here to read the full press.",
+                Modifier.padding(start = 18.dp, end = 18.dp, bottom = 8.dp))
             if (notificationDenied) SettingRow("Notification permission required", "Open app info to allow notifications",
                 { launchSystem(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName))) })
             Button(onClick = {
@@ -170,6 +178,15 @@ internal fun Diagnostics(config: AppConfig, status: RuntimeStatus, launchSystem:
         SettingRow("After a restart", "Start Shizuku again if necessary. Return to Button and resume remapping.")
         SettingRow("Device", Build.MANUFACTURER + " " + Build.MODEL + " · Android " + Build.VERSION.RELEASE +
             " (API " + Build.VERSION.SDK_INT + ")")
+        var showAdb by rememberSaveable { mutableStateOf(false) }
+        SettingRow("ADB input checks", if (showAdb) "Hide commands" else "Show read-only commands for a connected computer",
+            { showAdb = !showAdb })
+        if (showAdb) Column(Modifier.padding(start = 18.dp, end = 18.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            QuietText("Disable remapping before checking the physical device. List its capabilities, then press the AI button while watching events. Stop with Ctrl+C.")
+            SelectionContainer { Text("adb shell getevent -lp\nadb shell getevent -lt",
+                style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace) }
+        }
     }
 }
 
@@ -197,7 +214,8 @@ internal fun Preferences(config: AppConfig, change: ((AppConfig) -> AppConfig) -
     Headline("Settings")
     GroupTitle("Gesture timing")
     Panel {
-        TimingControl("Multi-press interval", "Maximum gap between taps.", config.doubleMs, ConfigJson.doubleRange, 10) { ms ->
+        TimingControl("Multi-press interval", "Maximum gap between taps. Single presses wait only when double or triple press is assigned.",
+            config.doubleMs, ConfigJson.doubleRange, 10) { ms ->
             change { it.copy(doubleMs = ms) }
         }
         TimingControl("Long press", "Hold time before the long-press action runs.", config.longMs, ConfigJson.longRange, 25) { ms ->

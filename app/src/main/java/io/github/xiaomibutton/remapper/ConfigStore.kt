@@ -7,8 +7,11 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
+import org.json.JSONTokener
+import java.io.IOException
 
 enum class ActionKind(val title: String) {
     NONE("No action"), CAMERA("Open camera"), FLASHLIGHT("Toggle flashlight"), APP("Open application"),
@@ -17,7 +20,7 @@ enum class ActionKind(val title: String) {
     SETTINGS("Open system setting")
 }
 
-data class ActionSpec(val kind: ActionKind, val value: String = "", val extra: String = "")
+data class ActionSpec(val kind: ActionKind, val value: String = "", val extra: String = "", val label: String = "")
 
 enum class GestureSlot(val title: String) {
     SINGLE("Single press"), DOUBLE("Double press"), LONG("Long press"), TRIPLE("Triple press")
@@ -58,7 +61,9 @@ private val Context.settingsDataStore by preferencesDataStore(
 class ConfigStore(context: Context) {
     private val store = context.applicationContext.settingsDataStore
     private val key = stringPreferencesKey("config_v1")
-    val config: Flow<AppConfig> = store.data.map { preferences -> read(preferences[key]) }
+    val config: Flow<AppConfig> = store.data.map { preferences -> read(preferences[key]) }.catch { error ->
+        if (error is IOException) emit(AppConfig()) else throw error
+    }
 
     suspend fun update(transform: (AppConfig) -> AppConfig) {
         store.edit { preferences -> preferences[key] = ConfigJson.encode(transform(read(preferences[key]))) }
@@ -82,6 +87,7 @@ object ConfigJson {
                 put("kind", action.kind.name)
                 put("value", action.value)
                 put("extra", action.extra)
+                if (action.label.isNotEmpty()) put("label", action.label)
             })
         }
         return JSONObject().apply {
@@ -100,7 +106,9 @@ object ConfigJson {
 
     fun decode(raw: String, imported: Boolean = false): AppConfig {
         require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Configuration exceeds 64 KiB" }
-        val obj = JSONObject(raw)
+        val parser = JSONTokener(raw)
+        val obj = parser.nextValue() as? JSONObject ?: error("Expected a JSON configuration object")
+        require(parser.nextClean() == 0.toChar()) { "Unexpected content after configuration" }
         require(obj.get("format") == "xiaomi-ai-button-remapper" && obj.get("version") == 1) {
             "Unsupported configuration format or version"
         }
@@ -118,7 +126,8 @@ object ConfigJson {
         for (slot in GestureSlot.entries) {
             val item = actions.getJSONObject(slot.name)
             val action = ActionSpec(
-                ActionKind.valueOf(item.get("kind") as String), item.get("value") as String, item.get("extra") as String
+                ActionKind.valueOf(item.get("kind") as String), item.get("value") as String, item.get("extra") as String,
+                if (item.has("label")) item.get("label") as String else ""
             )
             validateAction(action)
             config = config.withAction(slot, action)

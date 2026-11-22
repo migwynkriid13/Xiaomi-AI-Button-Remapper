@@ -9,10 +9,12 @@ public:
     Watchdog(const Watchdog&) = delete;
     Watchdog& operator=(const Watchdog&) = delete;
     void arm();
+    void disarm();
     void beat();
 private:
     int socket_ = -1;
     int child_ = -1;
+    int childPin_ = -1;
     long long nextBeat_ = 0;
 };
 

@@ -23,12 +23,13 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
     private val started = AtomicBoolean()
     private val stopping = AtomicBoolean()
     @Volatile private var clientSink: IInputClient? = null
+    @Volatile private var actionsAllowed = false
     private val commandBusy = AtomicBoolean()
     private val sender = ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, ArrayBlockingQueue(128))
     private val ownerDeath = IBinder.DeathRecipient { exitProcess(0) }
 
     private fun checkOwner() {
-        check(Binder.getCallingUid() == ownerUid) { "Unexpected Binder caller" }
+        if (Binder.getCallingUid() != ownerUid) throw SecurityException("Unexpected Binder caller")
     }
 
     override fun start(intercept: Boolean, client: IInputClient) {
@@ -36,8 +37,11 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
         check(!stopping.get() && started.compareAndSet(false, true)) { "Session already used" }
         client.asBinder().linkToDeath(ownerDeath, 0)
         clientSink = client
+        actionsAllowed = intercept
         val callbacks = object : NativeCallbacks {
-            override fun onStatus(message: String) = send { client.status(message) }
+            override fun onStatus(message: String) = send {
+                client.status("$message · Helper PID ${Process.myPid()}, UID ${Process.myUid()}")
+            }
             override fun onKey(value: Int, uptimeMillis: Long) = send { client.key(value, uptimeMillis) }
         }
         thread(name = "gpio-input") {
@@ -50,6 +54,10 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
             }
             stopping.set(true)
             send { client.ended(result) }
+            // A stopped Shizuku server can no longer deliver its destroy transaction.
+            // End this one-session process even when its former manager is gone.
+            Thread.sleep(1200)
+            exitProcess(0)
         }
     }
 
@@ -109,7 +117,7 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
     override fun openWeb(url: String): String {
         checkOwner()
         val uri = Uri.parse(url)
-        require(url.length <= 2048 && uri.scheme in setOf("https", "http") && !uri.host.isNullOrBlank()) {
+        require(url.length <= 2048 && uri.scheme?.lowercase() in setOf("https", "http") && !uri.host.isNullOrBlank()) {
             "Expected an HTTP or HTTPS URL"
         }
         // -d is a single argv value; never place the URL in shell source.
@@ -125,14 +133,15 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
     }
 
     private fun command(argv: List<String>): String {
-        check(started.get() && !stopping.get()) { "Input session inactive" }
+        check(actionsAllowed && started.get() && !stopping.get()) { "Remapping session inactive" }
         if (!commandBusy.compareAndSet(false, true)) return "Error: previous action still running"
         try {
             val child = ProcessBuilder(argv).redirectErrorStream(true).start()
             try {
                 if (!child.waitFor(4, TimeUnit.SECONDS)) return "Error: action timed out"
                 val buffer = ByteArray(4096)
-                val count = child.inputStream.read(buffer)
+                val available = minOf(buffer.size, child.inputStream.available())
+                val count = if (available == 0) 0 else child.inputStream.read(buffer, 0, available)
                 val output = if (count > 0) String(buffer, 0, count, Charsets.UTF_8).trim() else ""
                 if (child.exitValue() != 0 || output.lineSequence().any {
                     it.startsWith("Error", true) || it.contains("SecurityException")
@@ -142,6 +151,8 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
                 child.destroyForcibly()
                 child.inputStream.close()
             }
+        } catch (e: Exception) {
+            return "Error: ${e.message ?: e.javaClass.simpleName}"
         } finally {
             commandBusy.set(false)
         }

@@ -32,7 +32,9 @@ internal fun actionLabel(action: ActionSpec, context: Context, detail: Boolean =
         val pm = context.packageManager
         pm.getApplicationLabel(pm.getApplicationInfo(action.value, 0)).toString()
     }.getOrDefault(action.value)
-    ActionKind.SHORTCUT -> if (action.extra.isNotEmpty()) action.extra else if (detail) action.value else "App shortcut"
+    ActionKind.SHORTCUT -> if (detail) {
+        if (action.extra.isEmpty()) action.value else action.value + " / " + action.extra
+    } else action.label.ifEmpty { action.extra.ifEmpty { "App shortcut" } }
     ActionKind.SETTINGS -> systemPages[action.value] ?: action.value
     ActionKind.URL, ActionKind.INTENT -> action.value
     ActionKind.SHELL -> if (detail) action.value else PermittedCommands.options[action.value] ?: action.value
@@ -41,6 +43,8 @@ internal fun actionLabel(action: ActionSpec, context: Context, detail: Boolean =
 
 private data class Choice(val title: String, val detail: String, val action: ActionSpec? = null,
     val provider: ComponentName? = null)
+
+private fun shortcutLabel(text: String?) = text.orEmpty().filterNot(Char::isISOControl).trim().take(120)
 
 @Suppress("DEPRECATION")
 private fun loadChoices(context: Context, kind: ActionKind): List<Choice> {
@@ -64,7 +68,8 @@ private fun loadChoices(context: Context, kind: ActionKind): List<Choice> {
                     LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST
                 val query = LauncherApps.ShortcutQuery().setQueryFlags(flags)
                 launcher.getShortcuts(query, Process.myUserHandle()).orEmpty().filter { it.isEnabled }.forEach {
-                    add(Choice(it.shortLabel?.toString() ?: it.id, it.`package`, ActionSpec(kind, it.`package`, it.id)))
+                    val label = shortcutLabel(it.shortLabel?.toString())
+                    add(Choice(label.ifEmpty { it.id }, it.`package`, ActionSpec(kind, it.`package`, it.id, label)))
                 }
             }
         }
@@ -89,7 +94,13 @@ internal fun ActionPicker(slot: GestureSlot, current: ActionSpec, dismiss: () ->
                 @Suppress("DEPRECATION")
                 val intent = result.data?.getParcelableExtra<Intent>(Intent.EXTRA_SHORTCUT_INTENT)
                     ?: error("The provider returned no shortcut")
-                val action = ActionSpec(ActionKind.SHORTCUT, intent.toUri(Intent.URI_INTENT_SCHEME))
+                val encoded = intent.toUri(Intent.URI_INTENT_SCHEME)
+                val stored = Intent.parseUri(encoded, Intent.URI_INTENT_SCHEME)
+                require(intent.clipData == null && intent.extras?.keySet().orEmpty() == stored.extras?.keySet().orEmpty()) {
+                    "This provider returned shortcut data that cannot be saved as an Android intent URI"
+                }
+                val label = shortcutLabel(result.data?.getStringExtra(Intent.EXTRA_SHORTCUT_NAME))
+                val action = ActionSpec(ActionKind.SHORTCUT, encoded, label = label)
                 validateAction(action)
                 save(action)
             }.onFailure { problem = it.localizedMessage ?: "The shortcut could not be read" }
