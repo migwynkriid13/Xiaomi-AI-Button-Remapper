@@ -64,7 +64,8 @@ Route compareRoutes(const std::string& dump, const std::string& sourcePath,
         } else if (section == Section::Reader) {
             if (indent == 2 && body.rfind("Device ", 0) == 0) readers.emplace_back();
             if (readers.empty()) continue;
-            if (indent == 2 && field == "EventHub Devices" && !value.empty() && value.front() == '[') {
+            if ((indent == 2 || indent == 4) && field == "EventHub Devices" &&
+                value.size() >= 2 && value.front() == '[' && value.back() == ']') {
                 std::string ids = value.substr(1, value.find(']') - 1);
                 std::replace(ids.begin(), ids.end(), ',', ' ');
                 std::istringstream list(ids);

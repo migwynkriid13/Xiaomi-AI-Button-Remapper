@@ -62,4 +62,4 @@ cmake --build build/native-tests
 ctest --test-dir build/native-tests --output-on-failure
 ```
 
-Follow the [real-device test procedure](docs/device-testing.md) to verify suppression, lock-screen actions, helper failures and the shared power and volume keys. The [license and attributions](THIRD_PARTY.md) identify upstream tools and remapper references.
+Use the [Android emulator probe](docs/emulator-testing.md) to exercise actual kernel grab, filtering and release with a disposable virtual keyboard. Follow the [real-device test procedure](docs/device-testing.md) to verify suppression, lock-screen actions, helper failures and the shared power and volume keys. The [license and attributions](THIRD_PARTY.md) identify upstream tools and remapper references.

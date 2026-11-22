@@ -97,7 +97,7 @@ std::string hub(int id, std::string path, std::string location, std::string layo
         layout + "\n      KeyCharacterMapFile: /system/Generic.kcm\n      ConfigurationFile: \n";
 }
 std::string reader(int id, std::string external, std::string waking) {
-    return "  Device " + std::to_string(id) + ": gpio-keys\n  EventHub Devices: [ " + std::to_string(id) +
+    return "  Device " + std::to_string(id) + ": gpio-keys\n    EventHub Devices: [ " + std::to_string(id) +
         " ] \n    IsExternal: " + external + "\n    IsWaking: " + waking +
         "\n    Sources: KEYBOARD\n    KeyboardType: 1\n    AssociatedDisplayPort: <none>\n";
 }
