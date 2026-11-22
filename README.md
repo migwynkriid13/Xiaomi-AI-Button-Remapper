@@ -40,6 +40,8 @@ Remapping runs in a visible foreground session with a Shizuku helper and a watch
 
 Turn off **Remap button**, use **Emergency disable** in Diagnostics, or hold the button for eight seconds while events are being delivered. Allow notifications if you want **Stop now** in the notification shade or use an action that needs a tap-to-open notification. Android 13 and later can show the running service under **Active apps** even when app notifications are off. Notification access for per-app media is a separate permission. [Android foreground-service controls](https://developer.android.com/develop/background-work/services/fgs/handle-user-stopping)
 
+If Android closes the remapper when you turn off notifications, reopen it and tap **Resume remapping**.
+
 If HyperOS stops the service in the background, check the app's **Background autostart** and battery setting in App info. [Xiaomi autostart](https://www.mi.com/uk/support/faq/details/KA-507608/) · [Xiaomi battery settings](https://www.mi.com/global/support/faq/details/KA-538010/)
 
 ## Build and release

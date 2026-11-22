@@ -1,5 +1,11 @@
 # Verification
 
+## v0.2.19 optional notifications, app launch and gesture timing
+
+On the Android 17 emulator, a synthetic button press launched two apps selected with **Open application** while Android Settings was in front and notifications were denied. The previous launch command could not resolve these activities. Revoking the permission while the service was running stopped the app process. **Resume remapping** restored the saved mapping with notifications still denied, and the eight-second hold stopped it again.
+
+All three sliders saved 0 ms and kept that value after reopening Settings. The unit tests cover a zero multi-press interval, immediate long press, no debounce and exporting and importing zero values. Third-party app launches on HyperOS still need the [physical device checks](device-testing.md).
+
 ## v0.2.17 Shizuku input
 
 The stock Android 17 emulator reported no compatible physical input device and stopped the helper. A separate emulator-only fixture build narrowed discovery to one synthetic `gpio-keys` device so the raw input path could be exercised. Shizuku ran as shell (UID 2000) and Android Accessibility was off.

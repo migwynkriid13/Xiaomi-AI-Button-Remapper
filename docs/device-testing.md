@@ -13,7 +13,7 @@
 | Profiles and conditions | Enable the optional accessibility service for foreground app profiles. Try one mapping in and out of the selected app. Try an unlocked or charging condition with both states. |
 | Keyguard | Test an awake locked screen and a sleeping screen separately. Camera uses Android's secure camera when available. |
 | Power and volume | Verify wake, lock, power menu, and both volume keys, including a press held over the AI gesture. |
-| Notifications off | Try starting remapping with app notifications off. Try turning them off while remapping is active. Camera should still launch in both cases. |
+| Notifications off | Start remapping with app notifications off and verify the mapped app opens. If Android stops the remapper when permission is revoked during a session, reopen it and tap **Resume remapping**. |
 | Disable | Turn remapping off in the app or hold the AI button for eight seconds. If notifications are enabled, also test **Stop now**. The next independent AI press should run the Xiaomi behavior. |
 | Stop the helper | Stop the remapper from Android's active apps screen or App info. Confirm that the original action and other keys return. |
 | Stop Shizuku | Stop Shizuku during active remapping. Check that status disconnects and the original action returns. Restart Shizuku and tap **Resume remapping**. |
