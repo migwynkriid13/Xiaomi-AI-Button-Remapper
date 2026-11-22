@@ -121,6 +121,15 @@ private fun RemapperApp() {
     val scope = rememberCoroutineScope()
     val messages = remember { SnackbarHostState() }
     val pageState = rememberSaveableStateHolder()
+    val installedVersion = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
+    var updateChecked by rememberSaveable { mutableStateOf(false) }
+    var updateVersion by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(installedVersion) {
+        if (!updateChecked && installedVersion != null) {
+            updateVersion = checkForGitHubUpdate(installedVersion)
+            updateChecked = true
+        }
+    }
     var page by rememberSaveable { mutableStateOf(Page.MAPPINGS) }
     LaunchedEffect(config?.showDiagnostics) {
         if (config?.showDiagnostics == false && page == Page.DIAGNOSTICS) page = Page.MAPPINGS
@@ -194,7 +203,16 @@ private fun RemapperApp() {
                     when (page) {
                         Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
                             if (on) startRemapping() else RemapperRuntime.stop(context)
-                        }, ::startRemapping, ::launchSystem)
+                        }, ::startRemapping, ::launchSystem) {
+                            val available = updateVersion
+                            if (available != null && installedVersion != null) {
+                                UpdateNotice(
+                                    installedVersion, available,
+                                    download = { launchSystem(Intent(Intent.ACTION_VIEW, Uri.parse(releaseApkUrl(available)))) },
+                                    dismiss = { updateVersion = null }
+                                )
+                            }
+                        }
                         Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem)
                         Page.SETTINGS -> Preferences(current, status, ::change, ::launchSystem,
                             { openDocumentPicker { export.launch("xiaomi-button-config.json") } },

@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
 @Composable
 internal fun Dashboard(
     config: AppConfig, status: RuntimeStatus, edit: (GestureSlot) -> Unit, toggle: (Boolean) -> Unit,
-    resume: () -> Unit, launchSystem: (Intent) -> Unit
+    resume: () -> Unit, launchSystem: (Intent) -> Unit, updateNotice: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -56,6 +56,7 @@ internal fun Dashboard(
         IconTile(Mark.BUTTON, modifier = Modifier.size(34.dp))
         Text("Button Remapper", style = MaterialTheme.typography.titleMedium)
     }
+    updateNotice()
     Panel {
         Box(
             Modifier.fillMaxWidth().background(Color(0xFF2B100A)),
@@ -125,6 +126,20 @@ internal fun Dashboard(
                 Modifier.padding(start = 16.dp, bottom = 14.dp))
             else if (!status.starting) SecondaryButton("Test button", { RemapperRuntime.test(context) },
                 Modifier.padding(start = 16.dp, bottom = 14.dp))
+        }
+    }
+}
+
+@Composable
+internal fun UpdateNotice(installed: String, available: String, download: () -> Unit, dismiss: () -> Unit) {
+    Panel(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+        SettingRow("Update available", "Installed $installed · Available $available", icon = R.drawable.action_open_in_new)
+        FlowRow(
+            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            PrimaryButton("Download APK", download)
+            TextButton(onClick = dismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Later") }
         }
     }
 }
