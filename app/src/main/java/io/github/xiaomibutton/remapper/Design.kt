@@ -49,8 +49,8 @@ internal fun RemapperTheme(content: @Composable () -> Unit) =
 internal enum class Mark { BUTTON, PULSE, TUNE, SINGLE, DOUBLE, LONG, TRIPLE, NEXT }
 
 @Composable
-internal fun LineIcon(mark: Mark, modifier: Modifier = Modifier.size(24.dp), color: Color = LocalContentColor.current) {
-    Canvas(modifier) {
+internal fun LineIcon(mark: Mark, modifier: Modifier = Modifier, color: Color = LocalContentColor.current) {
+    Canvas(modifier.size(24.dp)) {
         scale(size.width / 24f, size.height / 24f, Offset.Zero) {
             fun line(x: Int, y: Int, xx: Int, yy: Int) =
                 drawLine(color, Offset(x.toFloat(), y.toFloat()), Offset(xx.toFloat(), yy.toFloat()), 1.8f, StrokeCap.Round)

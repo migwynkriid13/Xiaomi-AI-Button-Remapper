@@ -53,7 +53,7 @@ object RemapperRuntime {
             override fun onActivityStarted(a: Activity) { started++; visible = true }
             override fun onActivityStopped(a: Activity) { started--; visible = started > 0 }
             override fun onActivityCreated(a: Activity, b: Bundle?) {}
-            override fun onActivityResumed(a: Activity) {}
+            override fun onActivityResumed(a: Activity) { refresh() }
             override fun onActivityPaused(a: Activity) {}
             override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
             override fun onActivityDestroyed(a: Activity) {}
@@ -85,7 +85,9 @@ object RemapperRuntime {
         refresh()
         if (!status.value.available || status.value.authorized) return
         runCatching {
-            if (Shizuku.shouldShowRequestPermissionRationale()) {
+            if (Shizuku.getVersion() < 13) {
+                change { it.copy(diagnostics = "Install Shizuku v13 or later for the privileged helper.") }
+            } else if (Shizuku.shouldShowRequestPermissionRationale()) {
                 change { it.copy(diagnostics = "Permission was denied. Allow the remapper in Shizuku’s Authorized applications.") }
             } else Shizuku.requestPermission(814)
         }
