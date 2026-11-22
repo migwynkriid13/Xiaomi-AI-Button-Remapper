@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.SystemClock
 import io.github.xiaomibutton.remapper.ConfigStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,10 +19,18 @@ import rikka.shizuku.Shizuku
 
 data class ButtonEvent(val value: Int, val timeMs: Long, val wallTimeMs: Long)
 
+enum class InputMethod(val label: String) {
+    ACCESSIBILITY("Accessibility"),
+    SHIZUKU("Shizuku")
+}
+
 data class RuntimeStatus(
     val available: Boolean = false,
     val authorized: Boolean = false,
     val accessibilityConnected: Boolean = false,
+    val inputMethod: InputMethod = InputMethod.ACCESSIBILITY,
+    val activeInput: InputMethod? = null,
+    val uiActionsEnabled: Boolean = false,
     val calibrationPrompt: String = "",
     val calibrationCandidate: String? = null,
     val calibratedKey: String? = null,
@@ -33,8 +42,13 @@ data class RuntimeStatus(
     val lastAction: String = "",
     val events: List<ButtonEvent> = emptyList(),
     val androidKeyCode: Int? = null,
+    val frameworkInput: String? = null,
+    val frameworkVolumeSeen: Boolean = false,
 ) {
-    val backendReady: Boolean get() = accessibilityConnected || authorized
+    val backendReady: Boolean get() = when (inputMethod) {
+        InputMethod.ACCESSIBILITY -> accessibilityConnected
+        InputMethod.SHIZUKU -> authorized
+    }
 }
 
 object RemapperRuntime {
@@ -54,6 +68,11 @@ object RemapperRuntime {
         if (initialized) return
         initialized = true
         val app = context.applicationContext as Application
+        val settings = settings(app)
+        change {
+            it.copy(inputMethod = if (settings.getBoolean("shizuku_input", false)) InputMethod.SHIZUKU else InputMethod.ACCESSIBILITY,
+                uiActionsEnabled = settings.getBoolean("ui_actions", false))
+        }
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             private var started = 0
             override fun onActivityStarted(a: Activity) { started++; visible = true }
@@ -112,10 +131,42 @@ object RemapperRuntime {
     fun cancelCalibration() { ButtonAccessibilityService.connected?.cancelCalibration() }
     fun clearCalibration(context: Context) { initialize(context); ButtonAccessibilityService.connected?.clearCalibration() }
 
-    fun start(context: Context) = begin(context, RemapService.REMAP, false)
-    fun test(context: Context) = begin(context, RemapService.TEST, false)
-    fun startExpert(context: Context) = begin(context, RemapService.REMAP, true)
-    fun testExpert(context: Context) = begin(context, RemapService.TEST, true)
+    private fun settings(context: Context) = context.applicationContext.getSharedPreferences("device_input", Context.MODE_PRIVATE)
+
+    fun selectInput(context: Context, method: InputMethod) {
+        initialize(context)
+        if (method == status.value.inputMethod || status.value.running || status.value.helper == "Connecting" ||
+            status.value.helper == "Preparing") return
+        endTest(context)
+        cancelCalibration()
+        clearTesterEvents()
+        settings(context).edit().putBoolean("shizuku_input", method == InputMethod.SHIZUKU).apply()
+        change { it.copy(inputMethod = method, diagnostics = "Selected ${method.label}. Start the live tester to check the button.") }
+        ButtonAccessibilityService.connected?.refreshFlags()
+    }
+
+    fun enableUiActions(context: Context, enabled: Boolean) {
+        initialize(context)
+        settings(context).edit().putBoolean("ui_actions", enabled).apply()
+        change { it.copy(uiActionsEnabled = enabled) }
+        ButtonAccessibilityService.connected?.refreshFlags()
+    }
+
+    fun start(context: Context) {
+        endTest(context)
+        begin(context, RemapService.REMAP, status.value.inputMethod == InputMethod.SHIZUKU)
+    }
+
+    fun test(context: Context) {
+        initialize(context)
+        if (status.value.activeInput != null) return
+        if (status.value.inputMethod == InputMethod.SHIZUKU) begin(context, RemapService.TEST, true)
+        else {
+            val service = ButtonAccessibilityService.connected
+            if (service == null) change { it.copy(diagnostics = "Enable Xiaomi AI Button Remapper in Android Accessibility settings.") }
+            else service.startObservation()
+        }
+    }
 
     private fun begin(context: Context, action: String, expert: Boolean) {
         initialize(context)
@@ -125,6 +176,7 @@ object RemapperRuntime {
                 else "Enable Xiaomi AI Button Remapper in Android Accessibility settings.") }
             return
         }
+        clearTesterEvents()
         testRequested = action == RemapService.TEST
         runCatching {
             context.startForegroundService(Intent(context, RemapService::class.java).setAction(action).putExtra(RemapService.EXPERT, expert))
@@ -133,12 +185,15 @@ object RemapperRuntime {
 
     fun endTest(context: Context) {
         initialize(context)
+        ButtonAccessibilityService.connected?.stopObservation()
         testRequested = false
         onEndTest?.invoke()
     }
 
     fun stop(context: Context) {
         initialize(context)
+        ButtonAccessibilityService.connected?.stopObservation()
+        ButtonAccessibilityService.connected?.cancelCalibration()
         testRequested = false
         val stopSession = onStop
         if (stopSession != null) stopSession() else {
@@ -156,6 +211,15 @@ object RemapperRuntime {
     }
 
     fun recordAndroidKey(code: Int) = change { it.copy(androidKeyCode = code) }
+
+    internal fun recordEvent(value: Int, uptime: Long) {
+        val event = ButtonEvent(value, uptime, System.currentTimeMillis() - (SystemClock.uptimeMillis() - uptime))
+        change { it.copy(events = (listOf(event) + it.events).take(40)) }
+    }
+
+    internal fun clearTesterEvents() {
+        change { it.copy(events = emptyList(), androidKeyCode = null, frameworkInput = null, frameworkVolumeSeen = false) }
+    }
 
     internal fun change(update: (RuntimeStatus) -> RuntimeStatus) = mutable.update(update)
 }

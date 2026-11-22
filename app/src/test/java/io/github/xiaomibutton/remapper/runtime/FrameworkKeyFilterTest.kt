@@ -12,7 +12,9 @@ class FrameworkKeyFilterTest {
         assertFalse(ai.copy(external = true).target(null))
         assertFalse(ai.copy(virtual = true).target(null))
         assertFalse(ai.copy(name = "Virtual keyboard").target(null))
+        assertTrue(ai.copy(name = "gpio-keys.1").target(null))
         assertFalse(ai.copy(scan = 115, code = KeyEvent.KEYCODE_VOLUME_UP).target(null))
+        assertFalse(ai.copy(scan = 116, code = KeyEvent.KEYCODE_F1).target(LearnedKey(ai.descriptor, KeyEvent.KEYCODE_F1, 116)))
         assertFalse(ai.copy(code = KeyEvent.KEYCODE_POWER).target(null))
     }
 
@@ -49,5 +51,30 @@ class FrameworkKeyFilterTest {
         assertFalse(key.copy(code = 0).target(learned))
         assertNull(ai.copy(scan = 0, code = KeyEvent.KEYCODE_VOLUME_UP).candidate())
         assertNull(ai.copy(scan = 0, code = KeyEvent.KEYCODE_A).candidate())
+    }
+
+    @Test fun alternateInternalDeviceWithKnownScanNeedsExplicitLearning() {
+        val alternate = ai.copy(name = "Xiaomi AI Button")
+        val learning = TwoPressCalibration()
+        assertFalse(alternate.target(null))
+        repeat(2) {
+            val key = alternate.copy(downTime = alternate.downTime + it * 200L)
+            learning.key(key, 1, false)
+            learning.key(key, 0, false)
+        }
+        val learned = requireNotNull(learning.candidate)
+        assertTrue(alternate.target(learned))
+        assertFalse(alternate.copy(scan = 115).target(learned))
+        assertFalse(alternate.copy(virtual = true).target(learned))
+        assertFalse(alternate.copy(descriptor = "usb-macro").target(learned))
+    }
+
+    @Test fun shizukuAuthorizationDoesNotGetMistakenForAccessibility() {
+        val shizukuOnly = RuntimeStatus(authorized = true)
+        assertFalse(shizukuOnly.backendReady)
+        assertTrue(shizukuOnly.copy(inputMethod = InputMethod.SHIZUKU).backendReady)
+        val accessibilityOnly = RuntimeStatus(accessibilityConnected = true)
+        assertTrue(accessibilityOnly.backendReady)
+        assertFalse(accessibilityOnly.copy(inputMethod = InputMethod.SHIZUKU).backendReady)
     }
 }

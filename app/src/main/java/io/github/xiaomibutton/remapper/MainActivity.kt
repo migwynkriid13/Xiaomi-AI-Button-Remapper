@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
+import io.github.xiaomibutton.remapper.runtime.InputMethod
 import io.github.xiaomibutton.remapper.runtime.isDirectAiButton
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
@@ -98,36 +99,36 @@ private fun RemapperApp() {
             message("The Android document picker is unavailable on this device")
         }
     }
-    fun startRemapping(expert: Boolean) {
+    fun startRemapping() {
         scope.launch {
             runCatching {
                 store.update { it.copy(enabled = true) }
-                if (expert) RemapperRuntime.startExpert(context) else RemapperRuntime.start(context)
+                RemapperRuntime.start(context)
             }.onFailure {
                 RemapperRuntime.stop(context)
                 message("Could not start: " + it.localizedMessage)
             }
         }
     }
-    var pendingExpertMode by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var pendingStart by rememberSaveable { mutableStateOf(false) }
     val notificationRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        pendingExpertMode?.let { expert ->
-            pendingExpertMode = null
-            if (granted) startRemapping(expert) else message("Allow notifications to keep the emergency stop within reach")
+        if (pendingStart) {
+            pendingStart = false
+            if (granted) startRemapping() else message("Allow notifications to keep the emergency stop within reach")
         }
     }
-    fun enable(expert: Boolean = false) {
-        if (!expert && !status.accessibilityConnected) {
+    fun enable() {
+        if (status.inputMethod == InputMethod.ACCESSIBILITY && !status.accessibilityConnected) {
             navigate(Page.DIAGNOSTICS)
             RemapperRuntime.openAccessibility(context)
-        } else if (expert && !status.authorized) {
+        } else if (status.inputMethod == InputMethod.SHIZUKU && !status.authorized) {
             navigate(Page.DIAGNOSTICS)
-            message("Authorize Shizuku in Expert mode first")
+            message("Start Shizuku and grant access under Diagnostics")
         } else if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED) {
-            pendingExpertMode = expert
+            pendingStart = true
             notificationRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else startRemapping(expert)
+        } else startRemapping()
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val snapshot = config
@@ -167,8 +168,8 @@ private fun RemapperApp() {
                     Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
                         if (on) enable() else RemapperRuntime.stop(context)
                     }, { enable() }, { page = Page.DIAGNOSTICS })
-                    Page.DIAGNOSTICS -> Diagnostics(current, status, ::launchSystem) { enable(expert = true) }
-                    Page.SETTINGS -> Preferences(current, ::change, ::launchSystem,
+                    Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem)
+                    Page.SETTINGS -> Preferences(current, status, ::change, ::launchSystem,
                         { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
                         { openDocumentPicker { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
                         { RemapperRuntime.stop(context); message("Xiaomi default behavior restored") })

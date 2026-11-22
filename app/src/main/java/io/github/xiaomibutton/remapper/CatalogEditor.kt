@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
+import io.github.xiaomibutton.remapper.runtime.UiActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,9 +63,14 @@ private fun AccessOptions(action: CatalogAction, report: (String) -> Unit) {
     }
     if (setting != null) OutlinedButton(onClick = { system(setting.second) }) { Text(setting.first) }
     if (localNetwork) QuietText("Android 17 requires local network access for LAN devices. Public URLs work without that permission.")
-    if (requirement.contains("UI interaction service", true)) {
-        OutlinedButton(onClick = { io.github.xiaomibutton.remapper.runtime.UiActionService.openSettings(context) }) {
-            Text("Set up UI interaction service")
+    if (requirement == UiActions.REQUIREMENT) {
+        val status by RemapperRuntime.status.collectAsState()
+        QuietText("This action reads the active unlocked window when it runs.")
+        if (!status.uiActionsEnabled) {
+            OutlinedButton(onClick = { RemapperRuntime.enableUiActions(context, true) }) { Text("Enable UI interactions") }
+        }
+        if (!status.accessibilityConnected) {
+            OutlinedButton(onClick = { RemapperRuntime.openAccessibility(context) }) { Text("Open accessibility settings") }
         }
     }
     if (requirement.contains("device admin", true)) {

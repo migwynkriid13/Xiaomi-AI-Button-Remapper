@@ -1,6 +1,15 @@
 # Verification
 
-## Accessibility and the action picker
+## Single accessibility service and input selection
+
+- Upgraded an Android 17 emulator where both v0.2.12 accessibility services had been enabled. Android Settings showed only **Xiaomi AI Button Remapper** after the upgrade. Turning it off and back on displayed the new consent, then connected the combined service.
+- Revoked notification permission and used the Accessibility live tester. A synthetic internal `gpio-keys` press showed DOWN and UP with scan 689 and Android keyCode 0. The volume button still raised Android's volume and the passive tester did not start the app's foreground service.
+- Granted notifications for active remapping. A fresh fixture press launched Camera from the remapper UID with its settings screen in the background.
+- Chose **Shizuku** from Diagnostics and reopened the app. It retained the selection, prompted for authorization, and started the native helper. The helper correctly rejected the emulator's synthetic device for raw capture. The raw implementation is unchanged from the preview that could listen on the physical Xiaomi handset.
+
+The handset report for v0.2.12 says it stopped listening. Retesting both methods on the phone is required to determine whether HyperOS delivers the AI key to Accessibility.
+
+## v0.2.12 accessibility and the action picker
 
 These checks used the production app code on an Android 17 x86-64 emulator with SELinux enforcing. Shizuku was uninstalled. The service was enabled through Android's accessibility consent screen. The PC tools supplied input and collected test evidence. The app ran as its ordinary Android UID.
 

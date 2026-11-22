@@ -20,8 +20,8 @@ import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.annotation.RequiresApi
-import io.github.xiaomibutton.remapper.runtime.UiActionService
 import io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService
+import io.github.xiaomibutton.remapper.runtime.UiActions
 import java.text.BreakIterator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -62,7 +62,7 @@ internal object InteractionActions {
             hint = "Enabled keyboard service ID, e.g. com.example.keyboard/.InputService"),
         CatalogAction("keyboard.cycle", "Cycle enabled keyboards", KEYBOARD, requirement = SERVICE),
         KeyMapInterop.action("keyboard.cycle_language", "Cycle keyboard language", KEYBOARD),
-        CatalogAction("input.element", "Interact with an app element", INPUT, ActionParameter.TEXT, UiActionService.REQUIREMENT,
+        CatalogAction("input.element", "Interact with an app element", INPUT, ActionParameter.TEXT, UiActions.REQUIREMENT,
             hint = """{"package":"com.example.app","id":"com.example.app:id/next","action":"click"} · Choose id or exact text and click, long_click, focus, select, scroll_forward or scroll_backward."""),
         TalkBackActions.entry,
     )
@@ -103,7 +103,7 @@ internal object InteractionActions {
 
     fun validate(id: String, value: String) {
         when (id) {
-            "input.element" -> UiActionService.validateElement(value)
+            "input.element" -> UiActions.validateElement(value)
             "input.tap", "input.swipe", "input.pinch" -> pointArgs(id, value)
             "input.key_event", "input.key_code" -> keyPair(value)
             "keyboard.switch" -> require(android.content.ComponentName.unflattenFromString(value) != null) { "Enter an enabled keyboard service ID" }
@@ -115,7 +115,7 @@ internal object InteractionActions {
         val locked = context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != false
         val awake = context.getSystemService(PowerManager::class.java)?.isInteractive == true
         check(!locked && awake) { "Unlock the screen for this interaction" }
-        if (id == "input.element") return UiActionService.interact(value)
+        if (id == "input.element") return UiActions.interact(value)
         if (id == "input.talkback") return TalkBackActions.perform(context, value)
         if (id == "keyboard.cycle_language") return KeyMapInterop.trigger(context, value)
         val ime = checkNotNull(context.getSystemService(InputMethodManager::class.java))

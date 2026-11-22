@@ -16,6 +16,7 @@ import android.telecom.TelecomManager
 import android.telephony.SmsManager
 import android.widget.Toast
 import io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService
+import io.github.xiaomibutton.remapper.runtime.UiActions
 import io.github.xiaomibutton.remapper.runtime.IInputHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -62,8 +63,8 @@ internal object DeviceActions {
         action("nav.menu", "Open app menu", NAV, requirement = EXPERT)
         for ((id, label) in listOf("notifications" to "Expand notifications", "quick" to "Open quick settings",
             "collapse" to "Close the notification shade")) action("shade.$id", label, "Interface", requirement = ACCESS)
-        action("shade.toggle_notifications", "Toggle notification drawer", "Interface", requirement = "UI interaction service")
-        action("shade.toggle_quick", "Toggle quick settings", "Interface", requirement = "UI interaction service")
+        action("shade.toggle_notifications", "Toggle notification drawer", "Interface", requirement = UiActions.REQUIREMENT)
+        action("shade.toggle_quick", "Toggle quick settings", "Interface", requirement = UiActions.REQUIREMENT)
         action("device.screenshot", "Take screenshot", DISPLAY, requirement = ACCESS)
         action("device.lock", "Lock screen", DEVICE, requirement = ACCESS)
         action("device.power_menu", "Show power menu", DEVICE, requirement = ACCESS)
@@ -186,7 +187,7 @@ internal object DeviceActions {
         val values = context.getSharedPreferences("action_variables", Context.MODE_PRIVATE)
         fun expand(text: String) = Regex("\\{([A-Za-z][A-Za-z0-9_]*)}").replace(text) { values.getString(it.groupValues[1], "") ?: "" }.take(2048)
         return when (id) {
-            "shade.toggle_quick","shade.toggle_notifications" -> io.github.xiaomibutton.remapper.runtime.UiActionService.toggleShade(id == "shade.toggle_quick")
+            "shade.toggle_quick","shade.toggle_notifications" -> UiActions.toggleShade(id == "shade.toggle_quick")
             "device.secure_lock" -> DeviceAdminLock.apply(context)
             "intent.broadcast" -> { context.sendBroadcast(explicitIntent(value,id)); "Broadcast sent" }
             "intent.service" -> {

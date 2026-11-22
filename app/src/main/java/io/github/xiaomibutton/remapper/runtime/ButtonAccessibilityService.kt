@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -28,7 +29,7 @@ private val Context.learnedButtons by preferencesDataStore(
     corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
 )
 
-/** Processes hardware-key metadata only, on Android's accessibility main thread. */
+/** Hosts physical-button detection and user-initiated accessibility actions. */
 class ButtonAccessibilityService : AccessibilityService() {
     private val main = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -39,6 +40,10 @@ class ButtonAccessibilityService : AccessibilityService() {
     private var learning: TwoPressCalibration? = null
     private var learned: LearnedKey? = null
     private var onLost: (() -> Unit)? = null
+    private var observing = false
+    internal val canInspectWindow: Boolean get() = serviceInfo?.let {
+        (it.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_RETRIEVE_WINDOW_CONTENT) != 0
+    } == true
 
     override fun onCreate() {
         super.onCreate()
@@ -49,8 +54,10 @@ class ButtonAccessibilityService : AccessibilityService() {
             }.collect { values ->
                 val descriptor = values[DEVICE]
                 val code = values[CODE]
-                learned = if (!descriptor.isNullOrBlank() && code != null && FrameworkKey.learnable(code, KeyEvent.getMaxKeyCode()))
-                    LearnedKey(descriptor, code) else null
+                val scan = values[SCAN] ?: 0
+                learned = if (!descriptor.isNullOrBlank() && code != null &&
+                    (scan == 689 || scan == 0 && FrameworkKey.learnable(code, KeyEvent.getMaxKeyCode())))
+                    LearnedKey(descriptor, code, scan) else null
                 RemapperRuntime.change { it.copy(calibratedKey = learned?.let { k -> KeyEvent.keyCodeToString(k.code) }) }
             }
         }
@@ -58,6 +65,7 @@ class ButtonAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        RemapperRuntime.initialize(this)
         connected = this
         refreshFlags()
         RemapperRuntime.change { it.copy(accessibilityConnected = true) }
@@ -72,6 +80,26 @@ class ButtonAccessibilityService : AccessibilityService() {
         refreshFlags()
     }
 
+    internal fun startObservation() {
+        if (listener != null || connected !== this) return
+        RemapperRuntime.clearTesterEvents()
+        observing = true
+        attach(false, {}, { value, time, _ -> if (value >= 0) RemapperRuntime.recordEvent(value, time) })
+        RemapperRuntime.change { it.copy(helper = "Read-only", observing = true,
+            activeInput = InputMethod.ACCESSIBILITY, diagnostics = "Listening through Accessibility for 60 seconds.") }
+        main.postDelayed(observationTimeout, 60_000L)
+    }
+
+    private val observationTimeout = Runnable { stopObservation("Tester finished. The events remain below.") }
+
+    internal fun stopObservation(reason: String = "Read-only tester stopped") {
+        if (!observing) return
+        observing = false
+        main.removeCallbacks(observationTimeout)
+        detach()
+        RemapperRuntime.change { it.copy(helper = "Stopped", observing = false, activeInput = null, diagnostics = reason) }
+    }
+
     internal fun detach() {
         listener = null
         onLost = null
@@ -84,15 +112,20 @@ class ButtonAccessibilityService : AccessibilityService() {
     }
 
     private val clearStale = Runnable {
-        if (listener == null) { filter.reset(); refreshFlags() }
+        if (listener == null) {
+            filter.reset()
+            refreshFlags()
+        }
     }
 
-    private fun refreshFlags() {
+    internal fun refreshFlags() {
         if (connected !== this) return
         val info = serviceInfo ?: return
-        val flag = AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
-        val needKeys = listener != null || learning != null || filter.hasHeld
-        var flags = if (needKeys) info.flags or flag else info.flags and flag.inv()
+        val viewIds = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        val keys = AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+        val shouldListen = RemapperRuntime.status.value.inputMethod == InputMethod.ACCESSIBILITY || listener != null || filter.hasHeld
+        var flags = if (shouldListen) info.flags or keys else info.flags and keys.inv()
+        flags = if (RemapperRuntime.status.value.uiActionsEnabled) flags or viewIds else flags and viewIds.inv()
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             val ime = AccessibilityServiceInfo.FLAG_INPUT_METHOD_EDITOR
             flags = if (editorRequested) flags or ime else flags and ime.inv()
@@ -109,23 +142,33 @@ class ButtonAccessibilityService : AccessibilityService() {
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        val key = event.gpioIdentity() ?: return false
+        if (listener == null && learning == null && !filter.hasHeld) return false
         val value = when (event.action) {
             KeyEvent.ACTION_DOWN -> if (event.repeatCount > 0) 2 else 1
             KeyEvent.ACTION_UP -> 0
             else -> return false
         }
+        val key = event.buttonIdentity()
+        if (observing && value == 1 && event.keyCode in VOLUME_KEYS) {
+            RemapperRuntime.change { it.copy(frameworkVolumeSeen = true) }
+        }
         val learner = learning
+        val target = key?.target(learned) == true
+        if ((observing || learner != null) && !target && value == 1 &&
+            (event.scanCode == 689 || key?.candidate() != null)) {
+            val source = key?.name ?: "unidentified input"
+            RemapperRuntime.change { it.copy(frameworkInput = "$source · scan ${event.scanCode} · Android code ${event.keyCode}") }
+        }
+        if (key == null) return false
         if (learner != null) {
             learner.key(key, value, event.isCanceled)
             val candidate = learner.candidate
             if (candidate != null && RemapperRuntime.status.value.calibrationCandidate == null) {
-                val label = "${KeyEvent.keyCodeToString(candidate.code)} (${candidate.code}) on gpio-keys"
+                val label = "${KeyEvent.keyCodeToString(candidate.code)} (${candidate.code}) on ${key.name}"
                 RemapperRuntime.change { it.copy(calibrationPrompt = "Confirm the AI button you pressed twice.",
                     calibrationCandidate = label) }
             }
         }
-        val target = key.target(learned)
         val consume = filter.consume(key, value, intercept, target)
         val receive = listener
         if (receive != null && target && (!intercept || consume)) {
@@ -135,7 +178,7 @@ class ButtonAccessibilityService : AccessibilityService() {
             main.post {
                 if (listener === receive) {
                     RemapperRuntime.change { it.copy(androidKeyCode = key.code, diagnostics =
-                        "Android Accessibility · gpio-keys · scan ${key.scan} · ${KeyEvent.keyCodeToString(key.code)} (${key.code})") }
+                        "Android Accessibility · ${key.name} · scan ${key.scan} · ${KeyEvent.keyCodeToString(key.code)} (${key.code})") }
                     receive(value, time, canceled)
                 }
             }
@@ -150,7 +193,6 @@ class ButtonAccessibilityService : AccessibilityService() {
         learning = TwoPressCalibration()
         RemapperRuntime.change { it.copy(calibrationPrompt = "Press and release only the AI button twice within 20 seconds.",
             calibrationCandidate = null) }
-        refreshFlags()
         main.postDelayed(calibrationTimeout, 20_000)
     }
 
@@ -159,7 +201,11 @@ class ButtonAccessibilityService : AccessibilityService() {
         if (!RemapperRuntime.visible) return
         cancelCalibration()
         scope.launch {
-            runCatching { applicationContext.learnedButtons.edit { it[DEVICE] = choice.descriptor; it[CODE] = choice.code } }
+            runCatching { applicationContext.learnedButtons.edit {
+                it[DEVICE] = choice.descriptor
+                it[CODE] = choice.code
+                it[SCAN] = choice.scan
+            } }
                 .onFailure { error -> RemapperRuntime.change { it.copy(diagnostics = "Could not save calibration: ${error.message}") } }
         }
     }
@@ -176,23 +222,23 @@ class ButtonAccessibilityService : AccessibilityService() {
         main.removeCallbacks(calibrationTimeout)
         learning = null
         RemapperRuntime.change { it.copy(calibrationPrompt = "", calibrationCandidate = null) }
-        refreshFlags()
     }
 
     private val calibrationTimeout = Runnable {
         cancelCalibration()
-        RemapperRuntime.change { it.copy(diagnostics = "Calibration expired. Android must deliver a dedicated key from internal gpio-keys.") }
+        RemapperRuntime.change { it.copy(diagnostics = "No compatible button was learned. Try the read-only Shizuku input tester if available.") }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {
-        listener?.invoke(-1, android.os.SystemClock.uptimeMillis(), true)
+        listener?.invoke(-1, SystemClock.uptimeMillis(), true)
     }
 
     private fun disconnect() {
         if (connected !== this) return
         connected = null
         val lost = onLost
+        stopObservation("Android disconnected Accessibility. Turn the remapper service off and back on in Settings.")
         detach()
         cancelCalibration()
         filter.reset()
@@ -209,14 +255,15 @@ class ButtonAccessibilityService : AccessibilityService() {
             private set
         private val DEVICE = stringPreferencesKey("descriptor")
         private val CODE = intPreferencesKey("android_key_code")
+        private val SCAN = intPreferencesKey("scan_code")
+        private val VOLUME_KEYS = setOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN)
     }
 }
 
-private fun KeyEvent.gpioIdentity(): FrameworkKey? {
+private fun KeyEvent.buttonIdentity(): FrameworkKey? {
     val source = device ?: return null
-    if (source.name != "gpio-keys" || source.isVirtual || source.isExternal) return null
     return FrameworkKey(source.id, source.descriptor, source.name, source.isExternal, source.isVirtual,
         scanCode, keyCode, downTime, KeyEvent.getMaxKeyCode())
 }
 
-internal fun KeyEvent.isDirectAiButton(): Boolean = gpioIdentity()?.target(null) == true
+internal fun KeyEvent.isDirectAiButton(): Boolean = buttonIdentity()?.target(null) == true

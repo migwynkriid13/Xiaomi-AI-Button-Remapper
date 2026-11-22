@@ -1,14 +1,14 @@
 package io.github.xiaomibutton.remapper
 
-import io.github.xiaomibutton.remapper.runtime.UiActionService
+import io.github.xiaomibutton.remapper.runtime.UiActions
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class InteractionActionsTest {
     @Test fun selectorsAllowOneExactTargetAndAnExplicitOperation() {
-        UiActionService.validateElement("""{"package":"com.example.app","id":"com.example.app:id/next","action":"click"}""")
-        UiActionService.validateElement("""{"package":"com.example.app","text":"Next step","action":"focus"}""")
-        UiActionService.validateElement("""{"package":"com.example.app","id":"android:id/button1","action":"select"}""")
+        UiActions.validateElement("""{"package":"com.example.app","id":"com.example.app:id/next","action":"click"}""")
+        UiActions.validateElement("""{"package":"com.example.app","text":"Next step","action":"focus"}""")
+        UiActions.validateElement("""{"package":"com.example.app","id":"android:id/button1","action":"select"}""")
         for (invalid in listOf(
             """{"package":"com.example.app","id":"com.other:id/next","action":"click"}""",
             """{"package":"com.example.app","id":"com.example.app:id/*","action":"click"}""",
@@ -17,7 +17,7 @@ class InteractionActionsTest {
             """{"package":"com.example.app","text":"","action":"click"}""",
             """{"package":"com.example.app","text":"Next","action":"unrecognized"}""",
             """{"package":"com.example.app","text":"Next","action":"click"}{}"""
-        )) assertThrows(RuntimeException::class.java) { UiActionService.validateElement(invalid) }
+        )) assertThrows(RuntimeException::class.java) { UiActions.validateElement(invalid) }
     }
 
     @Test fun gestureCoordinatesAndDurationHaveFiniteBounds() {

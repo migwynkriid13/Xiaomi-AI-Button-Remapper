@@ -104,7 +104,9 @@ class RemapService : Service() {
             finish("Enable the Button remapping notification channel so Stop now is accessible.", disable = requested == REMAP)
             return START_NOT_STICKY
         }
-        RemapperRuntime.change { it.copy(helper = "Connecting", running = false, observing = false, diagnostics = if (useExpert) "Waiting for Shizuku…" else "Waiting for Android Accessibility…") }
+        RemapperRuntime.change { it.copy(helper = "Connecting", running = false, observing = false,
+            activeInput = if (useExpert) InputMethod.SHIZUKU else InputMethod.ACCESSIBILITY,
+            diagnostics = if (useExpert) "Waiting for Shizuku…" else "Waiting for Android Accessibility…") }
         val ticket = generation
         configJob = scope.launch {
             try {
@@ -123,7 +125,7 @@ class RemapService : Service() {
                     val first = configuration == null
                     if (configuration != config) configure(config)
                     if (first) {
-                        if (useExpert) bindHelper(ticket, requested == REMAP) else attachAccessibility(ticket, requested == REMAP)
+                        if (useExpert) bindHelper(ticket, requested == REMAP) else attachAccessibility(ticket)
                     }
                 }
             } catch (e: CancellationException) {
@@ -163,10 +165,7 @@ class RemapService : Service() {
     }
 
     private fun receiveKey(value: Int, time: Long, intercept: Boolean, canceled: Boolean) {
-        if (value >= 0) {
-            val event = ButtonEvent(value, time, System.currentTimeMillis() - (SystemClock.uptimeMillis() - time))
-            RemapperRuntime.change { it.copy(events = (listOf(event) + it.events).take(40)) }
-        }
+        if (value >= 0) RemapperRuntime.recordEvent(value, time)
         if (!ready || !intercept) return
         main.removeCallbacks(timer)
         if (canceled) {
@@ -182,21 +181,18 @@ class RemapService : Service() {
         engine?.nextDeadline?.let { main.postAtTime(timer, it) }
     }
 
-    private fun attachAccessibility(ticket: Int, intercept: Boolean) {
+    private fun attachAccessibility(ticket: Int) {
         val service = checkNotNull(ButtonAccessibilityService.connected) { "Accessibility service disconnected" }
         accessibility = service
-        if (intercept) startActions(null, service)
-        service.attach(intercept, { if (ticket == generation) finish("Android disconnected Accessibility. Reconnect and resume.") }) {
-            value, time, canceled -> if (ticket == generation) receiveKey(value, time, intercept, canceled)
+        startActions(null, service)
+        service.attach(true, { if (ticket == generation) finish("Android disconnected Accessibility. Reconnect and resume.") }) {
+            value, time, canceled -> if (ticket == generation) receiveKey(value, time, true, canceled)
         }
         ready = true
-        RemapperRuntime.change { it.copy(helper = "Accessibility", running = intercept, observing = !intercept,
+        RemapperRuntime.change { it.copy(helper = "Active", running = true, observing = false,
             diagnostics = "Listening for Android key events from the internal AI button. Press the button to verify delivery.") }
-        foreground(if (intercept) "Accessibility remapping active" else "Accessibility tester · stops after one minute")
+        foreground("Accessibility remapping active")
         main.postDelayed(checkAccessibleNotification, 3000)
-        if (!intercept) main.postDelayed({
-            if (ticket == generation && mode == TEST) finish("One-minute tester finished. Recent events remain available.")
-        }, 60_000)
     }
 
     private fun bindHelper(ticket: Int, intercept: Boolean) {
@@ -324,7 +320,7 @@ class RemapService : Service() {
     private fun finish(reason: String, disable: Boolean = false) {
         if (disable) RemapperRuntime.disableConfig(this)
         closeSession()
-        RemapperRuntime.change { it.copy(helper = "Stopped", running = false, observing = false, diagnostics = reason) }
+        RemapperRuntime.change { it.copy(helper = "Stopped", running = false, observing = false, activeInput = null, diagnostics = reason) }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -368,12 +364,13 @@ class RemapService : Service() {
     }
 
     override fun onDestroy() {
+        val hadSession = mode != null
         closeSession()
         notices.clearOffer()
         RemapperRuntime.onShizukuLost = null
         RemapperRuntime.onEndTest = null
         RemapperRuntime.onStop = null
-        RemapperRuntime.change { it.copy(running = false, observing = false, helper = "Stopped") }
+        if (hadSession) RemapperRuntime.change { it.copy(running = false, observing = false, helper = "Stopped", activeInput = null) }
         scope.cancel()
         super.onDestroy()
     }

@@ -4,10 +4,10 @@ Install the signed release on the stock phone. Record the model, HyperOS build, 
 
 ## Accessibility check on the phone
 
-1. Open Diagnostics, follow the link to Android accessibility settings, enable the remapper service, then return to the app. Leave Shizuku disconnected and USB/wireless debugging off.
+1. Open **Diagnostics → Accessibility**, enable **Xiaomi AI Button Remapper** in Android settings, then return to the app. If Android shows it enabled but Diagnostics still shows Off, turn it off and back on. Leave Shizuku disconnected and USB/wireless debugging off.
 2. With remapping off, start the live tester, tap the AI key and note both edges, the reported scan code and the observed Android keyCode. A normal app cannot infer that the framework delivered an event from an evdev trace. Keep the screen on for the first test.
 3. With the default single-to-camera mapping enabled, go Home, press the key, then return. Record camera launch, presence or absence of Xiaomi's action, and what the app recorded. Test power, volume, keyguard and each gesture using the matrix below. Switch off remapping and confirm the native action returns. If the screen-on test succeeds, repeat with the screen off.
-4. If the service is connected and this button produces no events, record that result and the exact firmware. If the tester sees it but the native action also opens while mapped, record both. These observations distinguish missing framework delivery from a vendor action running independently.
+4. If the AI key produces no events, press a volume button once while listening. Record whether the tester confirms that Android delivered a volume event, along with the exact firmware. If the tester sees the AI key but the native action also opens while mapped, record both. To compare against raw input, select **Diagnostics → Shizuku**, authorize it, and use the same tester. The app remembers the chosen mode.
 
 The remaining computer commands are optional engineering diagnostics for comparing Android's framework with the kernel. A trusted computer with Android platform-tools is necessary only for these commands. Keep dumps private because they can include unrelated app and device names. For an expert-mode test, record the Shizuku version and keep a working USB connection available for recovery.
 

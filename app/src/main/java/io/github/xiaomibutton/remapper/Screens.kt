@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
+import io.github.xiaomibutton.remapper.runtime.InputMethod
 import io.github.xiaomibutton.remapper.runtime.RuntimeStatus
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -88,8 +89,7 @@ internal fun Dashboard(config: AppConfig, status: RuntimeStatus, edit: (GestureS
         }
     }
     Panel {
-        val connection = if (status.accessibilityConnected) "Accessibility connected" else "Accessibility off"
-        SettingRow("Input connection", connection + " · " + status.helper, diagnose, Mark.PULSE)
+        SettingRow("Input method", status.inputMethod.label + " · " + status.helper, diagnose, Mark.PULSE)
     }
 }
 
@@ -113,38 +113,53 @@ private fun ButtonDiagram() {
 }
 
 @Composable
-internal fun Diagnostics(config: AppConfig, status: RuntimeStatus, launchSystem: (Intent) -> Unit, startExpert: () -> Unit) {
+internal fun Diagnostics(status: RuntimeStatus, launchSystem: (Intent) -> Unit) {
     val context = LocalContext.current
     val date = remember { SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()) }
     var notificationDenied by rememberSaveable { mutableStateOf(false) }
-    var expertTest by rememberSaveable { mutableStateOf(false) }
-    var showExpert by rememberSaveable { mutableStateOf(false) }
-    fun beginTest(expert: Boolean) {
-        if (expert) RemapperRuntime.testExpert(context) else RemapperRuntime.test(context)
-    }
+    val shizuku = status.inputMethod == InputMethod.SHIZUKU
     val requestNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         notificationDenied = !allowed
-        if (allowed) beginTest(expertTest)
+        if (allowed && RemapperRuntime.status.value.inputMethod == InputMethod.SHIZUKU) RemapperRuntime.test(context)
     }
-    fun listen(expert: Boolean) {
-        if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+    fun listen() {
+        if (shizuku && Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED) {
-            expertTest = expert
             requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else beginTest(expert)
+        } else RemapperRuntime.test(context)
     }
     Headline("Diagnostics")
-    GroupTitle("Accessibility")
+    GroupTitle("Input method")
     Panel {
-        SettingRow("Accessibility service", if (status.accessibilityConnected) "Connected" else "Off")
-        QuietText(if (status.accessibilityConnected) "Start the tester below to check a press, or turn on remapping from Button."
-            else "Enable Xiaomi AI Button Remapper in Android Accessibility settings, then press the physical AI button in the live tester.",
-            Modifier.padding(start = 18.dp, end = 18.dp, bottom = 6.dp))
-        TextButton(onClick = { RemapperRuntime.openAccessibility(context) }, modifier = Modifier.padding(start = 8.dp)) {
-            Text(if (status.accessibilityConnected) "Open accessibility settings" else "Enable accessibility service")
+        val canSwitch = !status.running && (status.activeInput == null || status.observing)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (method in InputMethod.entries) FilterChip(selected = status.inputMethod == method,
+                enabled = canSwitch, onClick = { RemapperRuntime.selectInput(context, method) }, label = { Text(method.label) })
+        }
+        if (shizuku) {
+            SettingRow("Shizuku", status.shizuku)
+            QuietText("Reads the physical button directly. Use this method if HyperOS does not deliver the key to Accessibility.",
+                Modifier.padding(start = 18.dp, end = 18.dp, bottom = 6.dp))
+            if (!status.available) {
+                val manager = remember { context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api") }
+                if (manager != null) TextButton(onClick = { launchSystem(manager) },
+                    modifier = Modifier.padding(start = 8.dp)) { Text("Open Shizuku") }
+                else TextButton(onClick = { launchSystem(Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/guide/setup/"))) },
+                    modifier = Modifier.padding(start = 8.dp)) { Text("Shizuku setup guide") }
+            } else if (!status.authorized) TextButton(onClick = RemapperRuntime::requestPermission,
+                modifier = Modifier.padding(start = 8.dp)) { Text("Grant Shizuku access") }
+        } else {
+            SettingRow("Accessibility service", if (status.accessibilityConnected) "Connected" else "Off")
+            QuietText(if (status.accessibilityConnected) "Start the live tester below, then press the AI button."
+                else "Enable Xiaomi AI Button Remapper in Android Accessibility settings. If it already shows On, turn it off and back on.",
+                Modifier.padding(start = 18.dp, end = 18.dp, bottom = 6.dp))
+            TextButton(onClick = { RemapperRuntime.openAccessibility(context) }, modifier = Modifier.padding(start = 8.dp)) {
+                Text(if (status.accessibilityConnected) "Open accessibility settings" else "Enable accessibility service")
+            }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        SettingRow("Input session", status.helper)
+        SettingRow("Input session", status.activeInput?.let { "${it.label} · ${status.helper}" } ?: status.helper)
         if (status.diagnostics.isNotBlank()) SelectionContainer { QuietText(status.diagnostics,
             Modifier.padding(start = 18.dp, end = 18.dp, bottom = 15.dp)) }
     }
@@ -157,14 +172,14 @@ internal fun Diagnostics(config: AppConfig, status: RuntimeStatus, launchSystem:
             Button(onClick = { RemapperRuntime.endTest(context) }, modifier = Modifier.padding(start = 15.dp, bottom = 12.dp)) {
                 Text("Stop listening")
             }
-        } else if (!config.enabled && !status.running && status.accessibilityConnected) {
+        } else if (status.activeInput == null && status.backendReady) {
             QuietText("Listen for up to 60 seconds. The phone keeps its normal button behavior during the test.",
                 Modifier.padding(start = 18.dp, end = 18.dp, bottom = 8.dp))
-            Button(onClick = { listen(false) }, modifier = Modifier.padding(start = 15.dp, bottom = 12.dp)) {
+            Button(onClick = ::listen, modifier = Modifier.padding(start = 15.dp, bottom = 12.dp)) {
                 Text("Listen without remapping")
             }
         }
-        if (notificationDenied) SettingRow("Notification permission required", "Open app info to allow notifications",
+        if (shizuku && notificationDenied) SettingRow("Notification permission required", "Open app info to allow notifications",
             { launchSystem(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName))) })
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         if (status.events.isEmpty()) QuietText(
@@ -181,15 +196,23 @@ internal fun Diagnostics(config: AppConfig, status: RuntimeStatus, launchSystem:
             }
         }
         if (status.lastAction.isNotBlank()) SettingRow("Last action", status.lastAction)
+        if (!shizuku) {
+            status.frameworkInput?.let { SettingRow("Possible button match", it) }
+            if (status.observing && status.events.isEmpty()) QuietText(
+                if (status.frameworkVolumeSeen) "Android sent a volume event. If the AI button still shows no events, try Learn alternate key or select Shizuku above."
+                else "You can press a volume key once to check event delivery. It keeps its normal behavior.",
+                Modifier.padding(18.dp))
+        }
     }
     Button(onClick = { RemapperRuntime.stop(context) }, modifier = Modifier.fillMaxWidth(),
         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error,
             contentColor = MaterialTheme.colorScheme.onError)) { Text("Emergency disable") }
     GroupTitle("Troubleshooting")
     Panel {
-        SettingRow("No button event appears", "HyperOS can reserve a key before Accessibility receives it. Another active key filter can also affect delivery. Check the service status and test again.")
-        if (status.accessibilityConnected && !status.running && !status.observing) {
-            SettingRow("Alternate Android key", status.calibratedKey ?: "If Android reports no scan code, press the AI button twice to identify a compatible key.")
+        if (!shizuku) SettingRow("No button event appears",
+            "If HyperOS keeps the AI key out of Accessibility, select Shizuku above to test the physical button directly.")
+        if (!shizuku && status.accessibilityConnected && status.activeInput == null) {
+            SettingRow("Alternate Android key", status.calibratedKey ?: "Press the AI button twice to confirm an alternate Android key or input device.")
             if (status.calibrationPrompt.isNotBlank()) {
                 QuietText(status.calibrationPrompt, Modifier.padding(horizontal = 18.dp))
                 status.calibrationCandidate?.let { candidate ->
@@ -209,36 +232,9 @@ internal fun Diagnostics(config: AppConfig, status: RuntimeStatus, launchSystem:
             }
         }
         SettingRow("An action needs attention", "Check the last action and the notification. Android may require an unlock or a tap to open an activity.")
-        SettingRow("After a restart", "Check that the Accessibility service is connected. Return to Button and resume remapping.")
+        SettingRow("After a restart", "Check that your selected input method is connected. Return to Button and resume remapping.")
         SettingRow("Device", Build.MANUFACTURER + " " + Build.MODEL + " · Android " + Build.VERSION.RELEASE +
             " (API " + Build.VERSION.SDK_INT + ")")
-    }
-    GroupTitle("Expert mode")
-    Panel {
-        SettingRow("Shizuku Expert fallback",
-            if (showExpert) "Hide Expert controls" else "Show options if Accessibility cannot receive the AI button",
-            { showExpert = !showExpert })
-        if (showExpert) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingRow("Shizuku", status.shizuku)
-            QuietText("Expert mode uses a privileged helper to filter the physical input device. Start it explicitly for this session.",
-                Modifier.padding(start = 18.dp, end = 18.dp, bottom = 8.dp))
-            if (!status.available) {
-                val manager = remember { context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api") }
-                if (manager != null) TextButton(onClick = { launchSystem(manager) }, modifier = Modifier.padding(start = 8.dp)) { Text("Open Shizuku") }
-                TextButton(onClick = { launchSystem(Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/guide/setup/"))) },
-                    modifier = Modifier.padding(start = 8.dp)) { Text("Shizuku setup guide") }
-            } else if (!status.authorized) {
-                TextButton(onClick = { RemapperRuntime.requestPermission() }, modifier = Modifier.padding(start = 8.dp)) {
-                    Text("Grant Shizuku access")
-                }
-            } else if (!status.running && !status.observing) {
-                TextButton(onClick = startExpert, modifier = Modifier.padding(start = 8.dp)) { Text("Start Expert remapping") }
-                if (!config.enabled) TextButton(onClick = { listen(true) }, modifier = Modifier.padding(start = 8.dp)) {
-                    Text("Test Expert input")
-                }
-            } else QuietText("Stop the current session before starting another.", Modifier.padding(18.dp))
-        }
     }
 }
 
@@ -260,7 +256,7 @@ private fun TimingControl(title: String, description: String, value: Int, limits
 }
 
 @Composable
-internal fun Preferences(config: AppConfig, change: ((AppConfig) -> AppConfig) -> Unit, launchSystem: (Intent) -> Unit,
+internal fun Preferences(config: AppConfig, status: RuntimeStatus, change: ((AppConfig) -> AppConfig) -> Unit, launchSystem: (Intent) -> Unit,
     export: () -> Unit, import: () -> Unit, restore: () -> Unit) {
     val context = LocalContext.current
     Headline("Settings")
@@ -281,6 +277,9 @@ internal fun Preferences(config: AppConfig, change: ((AppConfig) -> AppConfig) -
     }
     GroupTitle("Permissions and background")
     Panel {
+        SettingRow("UI interactions", "Let configured app element and shade actions read the active unlocked window",
+            { RemapperRuntime.enableUiActions(context, !status.uiActionsEnabled) }, checked = status.uiActionsEnabled,
+            trailing = { Switch(status.uiActionsEnabled, onCheckedChange = null) })
         SettingRow("Do Not Disturb access", "Required for DND and some silent-mode changes", {
             launchSystem(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         })
