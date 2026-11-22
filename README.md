@@ -4,7 +4,7 @@ Give the physical AI button on a Xiaomi 18 Pro a camera shortcut, an app launche
 
 The hardware target is the Xiaomi 18 Pro's physical `gpio-keys` button, Linux scan code `KEY_MACRO_RECORD_STOP` (689, hex `0x2B1`). The phone owner confirmed the previous release could listen to the button. Confirming HyperOS delivers it to an ordinary accessibility service, and checking whether the Xiaomi action is suppressed on a particular firmware, are separate handset tests.
 
-<img src="docs/screenshots/button-light.png" alt="The button overview with single press assigned to Open camera" width="230"> <img src="docs/screenshots/picker-dark.png" alt="The action picker in dark mode" width="230">
+<img src="docs/screenshots/button-light.png" alt="Assigned gesture actions with their icons" width="190"> <img src="docs/screenshots/picker-dark.png" alt="Global and app-specific playback actions in dark mode" width="190"> <img src="docs/screenshots/apps-light.png" alt="Installed apps with their launcher icons" width="190"> <img src="docs/screenshots/shortcuts-light.png" alt="Android shortcut creators with their icons" width="190">
 
 ## Install
 

@@ -1,4 +1,25 @@
-# Verification for the first preview
+# Verification
+
+## Accessibility and the action picker
+
+These checks used the production app code on an Android 17 x86-64 emulator with SELinux enforcing. Shizuku was uninstalled. The service was enabled through Android's accessibility consent screen. The PC tools supplied input and collected test evidence. The app ran as its ordinary Android UID.
+
+A separate virtual input fixture named `gpio-keys` supplied Linux EV_KEY 689. Android classified it as an internal input device. A separate foreground app recorded the framework events it actually received. The same driver also supplied volume and power events. The test did not change the remapper's device matching or the emulator's key layout.
+
+| Check | Observation |
+| --- | --- |
+| Read-only test | Diagnostics showed accessibility connected and both button edges. The downstream app received scan 689 with Android keyCode 0 (UNKNOWN). |
+| Actual suppression | With remapping active, the downstream app's target count stayed at 17 across the mapped press. The same source's volume-up DOWN and UP still reached the app with scan 115 and Android keyCode 24. Power still put the display to sleep and woke it. |
+| Camera with app closed | A single press launched the stock camera directly from the remapper UID while the independent app was in front. With a PIN and an awake locked display, Android launched its secure camera and kept the keyguard engaged. The AI key did not wake the fully sleeping emulator. |
+| Stop | Disabling remapping removed its foreground service. The next down/up increased the downstream target count from 17 to 19. |
+| Media | Global pause reached a playing test session. After granting Android notification access, per-app play reached the chosen session. Forward/back seeks respected the track-end and zero limits. Volume changed 5 → 6 → 5. The remapper's DND rule changed Android's interruption filter from all to priority, then back to all. |
+| Multi-action mapping | In the normal editor, a double press was set to About phone → 900 ms delay → Camera, repeated twice. With the settings UI closed, the four activities launched in order. The measured delays before Camera were 938 ms and 942 ms. |
+| Targeted UI action | With the optional UI interaction service separately enabled in Android Settings, a mapped long press clicked an exact visible button in the selected fixture app. A different case-sensitive text selector produced a no-match diagnostic. |
+| Public package artwork | Android supplied different icons for Calendar, Camera, Clock and Contacts. The Contact, Direct dial, Direct message and Settings shortcut creator rows had distinct artwork. The dashboard displayed icons for the selected Calendar app and the provider-created Internet Settings shortcut. The test account did not have shortcut-host access to enumerate other apps' private launcher shortcuts. |
+
+The phone owner observed that the old preview could listen to the real Xiaomi button. The emulator results establish Android accessibility filtering independently. HyperOS can route a vendor shortcut differently or reserve it before accessibility sees it. The on-phone procedure checks the Xiaomi action and hardware behavior directly. [Physical acceptance steps](device-testing.md)
+
+## Initial preview and optional Shizuku backend
 
 The app was built on Windows and GitHub's Linux runner using the checked-in wrapper. The APK targets API 37 and contains ARM64 and x86-64 native libraries. APK signature verification and Android's 16 KiB alignment check passed. The release page records the SHA-256 digest and originating Actions run.
 
@@ -24,4 +45,4 @@ For these checks a separate, unpublished emulator-only APK selected a marked vir
 
 ## Physical handset acceptance
 
-The supplied Xiaomi 18 Pro evidence establishes the Linux event identity and a successful Key Mapper Expert Mode remap. This project still needs a Xiaomi 18 Pro test of Xiaomi assistant suppression, secure camera behavior, power/volume propagation, and HyperOS idle and battery management. A stock emulator cannot exercise those vendor paths. Use the [handset acceptance matrix](device-testing.md) to record results. The [standalone emulator probe](emulator-testing.md) can be repeated before trying a new kernel or firmware.
+The supplied Xiaomi 18 Pro evidence establishes the Linux event identity, previous preview listening and a successful Key Mapper Expert Mode remap. This project still needs a Xiaomi 18 Pro test of Xiaomi assistant suppression, secure camera behavior, power/volume propagation, and HyperOS idle and battery management. A stock emulator cannot exercise those vendor paths. Use the [handset acceptance matrix](device-testing.md) to record results. The [standalone emulator probe](emulator-testing.md) can be repeated before trying a new kernel or firmware.
