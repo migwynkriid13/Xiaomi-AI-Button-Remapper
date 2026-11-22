@@ -1,31 +1,34 @@
 package io.github.xiaomibutton.remapper
 
 import android.content.Intent
-import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
 import io.github.xiaomibutton.remapper.backscreen.core.isRearScreenPlatform
 import io.github.xiaomibutton.remapper.backscreen.ui.Feature
 
@@ -34,43 +37,9 @@ internal fun RearScreenOverview(open: (Feature) -> Unit) {
     val context = LocalContext.current
     val model = xiaomi18ModelLabel(Build.MODEL, Build.DEVICE) ?: xiaomi17ModelLabel(Build.MODEL, Build.DEVICE)
     val supported = isRearScreenPlatform()
-    val panel by produceState<String?>(null, context, supported) {
-        if (!supported) return@produceState
-        val manager = context.getSystemService(DisplayManager::class.java)
-        fun refresh() {
-            value = BackScreen.findRearDisplay(context)?.let(BackScreen::naturalSize)?.let {
-                "${it.width} × ${it.height}"
-            }
-        }
-        val listener = object : DisplayManager.DisplayListener {
-            override fun onDisplayAdded(displayId: Int) = refresh()
-            override fun onDisplayRemoved(displayId: Int) = refresh()
-            override fun onDisplayChanged(displayId: Int) = refresh()
-        }
-        manager.registerDisplayListener(listener, BackScreen.mainHandler)
-        refresh()
-        awaitDispose { manager.unregisterDisplayListener(listener) }
-    }
-    Panel(color = MaterialTheme.colorScheme.primaryContainer) {
-        Row(
-            Modifier.fillMaxWidth().padding(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val colors = MaterialTheme.colorScheme
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                if (model != null) Text(model, style = MaterialTheme.typography.labelLarge, color = colors.onPrimaryContainer)
-                Text("Back screen", style = MaterialTheme.typography.headlineLarge, color = colors.onPrimaryContainer)
-                Text(
-                    panel?.let { "Rear display detected · $it" } ?: if (supported) "Rear display undetected" else "Requires Android 15 or later",
-                    style = MaterialTheme.typography.bodyMedium, color = colors.onPrimaryContainer
-                )
-            }
-            RearScreenIllustration()
-        }
-    }
+    BackScreenHero(model, supported)
     if (!supported) return
-    if (model == null && panel == null) {
+    if (model == null) {
         QuietText("Supported on Xiaomi 17 Pro, 17 Pro Max, 18 Pro and 18 Pro Max.", Modifier.padding(horizontal = 2.dp))
     }
     Panel {
@@ -89,18 +58,35 @@ internal fun RearScreenOverview(open: (Feature) -> Unit) {
 }
 
 @Composable
-private fun RearScreenIllustration() {
-    val colors = MaterialTheme.colorScheme
-    Canvas(Modifier.size(width = 76.dp, height = 100.dp)) {
-        val unit = size.width / 76f
-        fun point(x: Float, y: Float) = Offset(x * unit, y * unit)
-        fun dimensions(w: Float, h: Float) = Size(w * unit, h * unit)
-        drawRoundRect(colors.onPrimaryContainer, point(6f, 2f), dimensions(64f, 96f), CornerRadius(13 * unit), style = Stroke(unit))
-        drawRoundRect(colors.onPrimaryContainer, point(12f, 9f), dimensions(52f, 34f), CornerRadius(8 * unit))
-        drawRoundRect(colors.primaryContainer, point(27f, 13f), dimensions(33f, 26f), CornerRadius(5 * unit))
-        drawRoundRect(colors.primary, point(31f, 29f), dimensions(25f, 6f), CornerRadius(3 * unit))
-        drawCircle(colors.primaryContainer, 3f * unit, point(19f, 17f))
-        drawCircle(colors.primaryContainer, 3f * unit, point(19f, 27f))
+private fun BackScreenHero(model: String?, supported: Boolean) {
+    val mirrored = LocalLayoutDirection.current == LayoutDirection.Rtl
+    Panel {
+        Box(Modifier.fillMaxWidth().background(Color(0xFF2B100A)), contentAlignment = Alignment.CenterStart) {
+            Box(Modifier.matchParentSize().graphicsLayer { scaleX = if (mirrored) -1f else 1f }) {
+                Image(
+                    painter = painterResource(R.drawable.back_screen_hero),
+                    contentDescription = "A phone lying face down with a sunset wallpaper and clock on its back screen",
+                    modifier = Modifier.matchParentSize(),
+                    alignment = AbsoluteAlignment.CenterRight,
+                    contentScale = ContentScale.Crop
+                )
+                Box(Modifier.matchParentSize().background(Brush.horizontalGradient(
+                    0f to Color(0xE6230D08), 0.37f to Color(0x7A230D08), 0.60f to Color.Transparent
+                )))
+            }
+            Column(
+                Modifier.fillMaxWidth(.49f).heightIn(min = 158.dp)
+                    .padding(start = 20.dp, end = 6.dp, top = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically)
+            ) {
+                if (model != null) Text(model, style = MaterialTheme.typography.labelLarge, color = Color(0xFFFFDBCA))
+                Text("Back screen", Modifier.semantics { heading() }, color = Color(0xFFFFF8F4),
+                    style = MaterialTheme.typography.headlineLarge)
+                if (!supported) {
+                    Text("Requires Android 15 or later", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFFFDBCA))
+                }
+            }
+        }
     }
 }
 

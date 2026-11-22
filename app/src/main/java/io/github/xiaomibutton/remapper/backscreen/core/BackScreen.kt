@@ -120,8 +120,7 @@ object BackScreen {
     /** Says which display is the back screen, once each time the keeper starts. */
     fun logRearDisplay(context: Context) {
         val rear = findRearDisplay(context) ?: return log("No back screen found")
-        val size = naturalSize(rear)
-        log("The back screen is display ${rear.displayId} (${size.width} x ${size.height})")
+        log("Using back screen display ${rear.displayId}")
     }
 
     private fun rememberedRearId(context: Context) = rearPrefs(context).getInt(KEY_REAR_ID, -1).takeIf { it >= 0 }
