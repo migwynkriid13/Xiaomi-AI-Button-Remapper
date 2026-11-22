@@ -17,20 +17,23 @@ internal class SessionNotifications(private val context: Context) {
         ))
     }
 
-    fun showSession() {
-        if (!manager.areNotificationsEnabled()) return
+    fun sessionVisible(): Boolean = manager.areNotificationsEnabled() &&
+        manager.getNotificationChannel(SESSION)?.importance != NotificationManager.IMPORTANCE_NONE
+
+    fun session(detail: String, testing: Boolean): Notification {
         val stop = Intent(context, StopRemappingReceiver::class.java)
-        val notification = Notification.Builder(context, SESSION)
+        if (testing) stop.action = StopRemappingReceiver.STOP_TEST
+        val stopAction = PendingIntent.getBroadcast(context, 2, stop, FLAGS)
+        return Notification.Builder(context, SESSION)
             .setSmallIcon(android.R.drawable.ic_menu_preferences)
             .setContentTitle("Xiaomi AI Button Remapper")
-            .setContentText("Accessibility remapping enabled")
+            .setContentText(detail)
             .setContentIntent(openApp())
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .setOngoing(true)
-            .addAction(Notification.Action.Builder(null, "Stop now", PendingIntent.getBroadcast(context, 2, stop, FLAGS)).build())
+            .addAction(Notification.Action.Builder(null, if (testing) "Stop test" else "Stop now", stopAction).build())
             .build()
-        runCatching { manager.notify(SESSION_ID, notification) }
     }
 
     fun clearSession() = manager.cancel(SESSION_ID)
@@ -58,7 +61,7 @@ internal class SessionNotifications(private val context: Context) {
     }
 
     companion object {
-        private const val SESSION_ID = 689
+        const val SESSION_ID = 689
         const val FLAGS = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         private const val ACTION_ID = 690
         private const val SESSION = "remap_session"

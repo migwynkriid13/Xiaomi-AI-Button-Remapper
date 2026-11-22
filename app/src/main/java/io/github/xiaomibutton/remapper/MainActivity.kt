@@ -1,10 +1,12 @@
 package io.github.xiaomibutton.remapper
 
 import android.content.Context
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -22,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
-import io.github.xiaomibutton.remapper.runtime.isDirectAiButton
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,14 +37,14 @@ class MainActivity : ComponentActivity() {
         setContent { RemapperTheme { RemapperApp() } }
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (event.isDirectAiButton()) RemapperRuntime.recordAndroidKey(keyCode)
-        return super.onKeyDown(keyCode, event)
+    override fun onResume() {
+        super.onResume()
+        RemapperRuntime.uiResumed(this)
     }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (event.isDirectAiButton()) RemapperRuntime.recordAndroidKey(keyCode)
-        return super.onKeyUp(keyCode, event)
+    override fun onPause() {
+        RemapperRuntime.uiPaused()
+        super.onPause()
     }
 }
 
@@ -102,15 +103,21 @@ private fun RemapperApp() {
         scope.launch {
             runCatching {
                 store.update { it.copy(enabled = true) }
-                RemapperRuntime.resumeAfterUserEnable()
+                RemapperRuntime.start(context)
             }.onFailure {
                 RemapperRuntime.stop(context)
                 message("Could not start: " + it.localizedMessage)
             }
         }
     }
+    val notificationRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
+        if (allowed) startRemapping() else message("Allow notifications to keep the Stop action available during remapping.")
+    }
     fun enable() {
-        if (status.accessibilityConnected) startRemapping()
+        if (!status.shizukuAuthorized) return
+        if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED) notificationRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+        else startRemapping()
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val snapshot = config

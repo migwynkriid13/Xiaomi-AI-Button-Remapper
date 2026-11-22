@@ -1,21 +1,25 @@
 # Xiaomi AI Button Remapper
 
-Assign the physical AI button on a Xiaomi 18 Pro to Camera, Screenshot, an app shortcut, media controls, or an action sequence. Single, double, triple and long presses can have different actions. The app uses one Android accessibility service for button input and remapping. Setup takes place on the phone.
+Assign the physical AI button on a Xiaomi 18 Pro to Camera, Screenshot, an app shortcut, media controls, or an action sequence. The app reads the physical key through Shizuku on compatible HyperOS builds. Root is unnecessary.
 
 [Download the latest signed APK](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/latest/download/Xiaomi-AI-Button-Remapper.apk) · [All releases](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases)
 
-<img src="docs/screenshots/setup-light.png" alt="Two-step accessibility setup with dimmed controls" width="190"> <img src="docs/screenshots/button-light.png" alt="Button page after enabling accessibility" width="190"> <img src="docs/screenshots/picker-dark.png" alt="Searchable media actions" width="190"> <img src="docs/screenshots/shortcuts-light.png" alt="Shortcut providers with their icons" width="190">
+<img src="docs/screenshots/picker-dark.png" alt="Searchable media actions" width="190"> <img src="docs/screenshots/shortcuts-light.png" alt="Shortcut providers with their icons" width="190">
 
 ## Set up on Android 11 or later
 
-1. Install the APK and open the app. On Android 13 or later, tap **Allow restricted settings** to open **App info**, the system page with Uninstall and Permissions. Open the **⋮** menu and select **Allow restricted settings**. On some Android builds the menu appears only after the system blocks the first attempt to enable the service. [Google Android Help](https://support.google.com/android/answer/12623953)
-2. Return to the app and tap **Enable the accessibility service**. Select **Xiaomi AI Button Remapper** in Android Accessibility, turn it on and confirm the system prompt. The setup instructions disappear and the mapping controls become available.
-3. Configure a gesture, switch on **Remap button**, and try it with the screen on. To take a screenshot, open any gesture and choose **Button actions → Take screenshot**. Android's screenshot interface saves the image in the usual location.
-4. To see key events, turn on **Enable diagnostics** in the app's Settings. Open the new **Diagnostics** tab and **Listen without remapping**. Press and release the physical button and look for both edges. Try **Learn alternate key** if Diagnostics shows a possible match.
+1. Install the release APK. Start Shizuku using its in-app wireless debugging setup. If you already use Key Mapper Expert mode for the AI button, stop its Expert System Bridge before testing. [Shizuku setup guide](https://shizuku.rikka.app/guide/setup/)
+2. Open Xiaomi AI Button Remapper and tap **Grant Shizuku access**. Once you approve the request, press the AI button and look for **DOWN** and **UP** on the Button page. The test leaves Xiaomi's action available. Tap **Test button** to repeat it.
+3. Choose **Open camera** for the single press, turn on **Remap button**, and allow the **Button remapping** notification. It provides **Stop now** while remapping is active. To use screenshots, choose **Button actions → Take screenshot** for a gesture.
+4. For more troubleshooting details, turn on **Enable diagnostics** in Settings and open the Diagnostics tab.
 
-The hardware target is Linux scan 689 (`KEY_MACRO_RECORD_STOP`, `0x2B1`), normally on a physical `gpio-keys` device. The tester lists Android's separate key code when it sees the event. HyperOS may intercept the key before Android delivers it to an accessibility service. The old raw-input preview could listen on the owner's phone, which does not establish delivery through Accessibility. See the [physical test procedure](docs/device-testing.md) and [verification record](docs/verification.md).
+The helper locates a physical `gpio-keys` device advertising Linux EV_KEY 689 (`KEY_MACRO_RECORD_STOP`, `0x2B1`). It creates a virtual mirror for the other input events before grabbing the device. If setup fails, the helper closes its descriptors so Xiaomi can continue handling the button.
 
-When moving from the original `v0.1.0-preview.1` debug-signed APK, export your settings, uninstall that preview, install this release, then import. The official signed releases use the same certificate and normally update in place. If Android Settings shows the service as on while the app still shows setup, turn it off and back on.
+This app needs Shizuku running for the whole session. Key Mapper's Expert mode can continue through a separate System Bridge process after Shizuku stops. [Key Mapper System Bridge startup](https://github.com/keymapperorg/KeyMapper/blob/8073a40dd548c29f70105022224a6ed1db4a18ae/sysbridge/src/main/java/io/github/sds100/keymapper/sysbridge/starter/SystemBridgeStarter.kt#L85-L103)
+
+Camera and Screenshot can run through Shizuku. Enable the optional accessibility service if you use configured screen interactions or foreground app profiles. See the [physical test procedure](docs/device-testing.md) and [verification record](docs/verification.md).
+
+When moving from the original `v0.1.0-preview.1` debug-signed APK, export your settings, uninstall that preview, install this release, then import. The official signed releases use the same certificate and normally update in place.
 
 ## Actions and options
 
@@ -27,19 +31,19 @@ When moving from the original `v0.1.0-preview.1` debug-signed APK, export your s
 
 The app reads the active window's package for an app profile when a press begins. A configured app element or shade action inspects the active unlocked window only when it runs and **UI interactions** is on. The app does not store window contents or record typed text. Accessibility setup grants these capabilities through one Android service. No analytics or telemetry are collected. A configured HTTP action sends the request you provided when its gesture runs. Exported JSON may contain endpoint details, text, or phone numbers.
 
-Previously saved shell and privileged mappings remain visible as unavailable so the rest of an older backup can be imported. Replace these mappings with actions supported by Accessibility.
+Previously saved custom shell and retired privileged mappings appear as unavailable when importing those older backups.
 
 ## Background operation and stop controls
 
-Android manages the remapper's accessibility service. It can run with the settings screen closed, and the saved Remap button switch applies when Android reconnects the service. Device firmware controls whether the service is available before the first unlock and whether it receives a press with the screen off.
+Remapping runs in a visible foreground session with a Shizuku helper and a watchdog. You can close the settings screen. Stopping the helper or Shizuku ends remapping and releases the grab. After a restart, start Shizuku and tap **Resume remapping** on the Button page. HyperOS controls whether the key produces events before the first unlock and with the screen off.
 
-Turn off **Remap button**, use **Emergency disable** from Diagnostics, or hold the button for eight seconds while events are being delivered. If you allow notifications, the active status notification also offers **Stop now**. Notification access for per-app media is separate and is needed only for actions that use it.
+Turn off **Remap button**, use **Stop now** from the active status notification, use **Emergency disable** in Diagnostics, or hold the button for eight seconds while events are being delivered. Notification access for per-app media is needed only for actions that use it.
 
 If HyperOS stops the service in the background, check the app's **Background autostart** and battery setting in App info. [Xiaomi autostart](https://www.mi.com/uk/support/faq/details/KA-507608/) · [Xiaomi battery settings](https://www.mi.com/global/support/faq/details/KA-538010/)
 
 ## Build and release
 
-Use JDK 21, Android SDK Platform 37.0, Build Tools 36.0.0 and the included Gradle wrapper. Set `ANDROID_HOME` or configure the SDK in Android Studio.
+Use JDK 21, Android SDK Platform 37.0, Build Tools 36.0.0, NDK 28.2.13676358, CMake 3.22.1 and the included Gradle wrapper. Set `ANDROID_HOME` or configure the SDK in Android Studio.
 
 ```sh
 ./gradlew assembleDebug testDebugUnitTest lintDebug

@@ -18,7 +18,6 @@ import android.os.Process
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.provider.MediaStore
 import android.service.notification.Condition
 import io.github.xiaomibutton.remapper.validateAction
 import io.github.xiaomibutton.remapper.ActionKind
@@ -28,10 +27,13 @@ import io.github.xiaomibutton.remapper.DeviceActions
 import io.github.xiaomibutton.remapper.InteractionActions
 import io.github.xiaomibutton.remapper.KeyMapInterop
 import io.github.xiaomibutton.remapper.MediaActions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal class ActionDispatcher(
     private val context: Context,
     private val notifications: SessionNotifications,
+    private val helper: IInputHelper,
 ) : AutoCloseable {
     private val camera = context.getSystemService(CameraManager::class.java)
     private val torchStates = mutableMapOf<String, Boolean>()
@@ -65,18 +67,23 @@ internal class ActionDispatcher(
                     id.startsWith("flash.") -> flashlight(id, value)
                     id.startsWith("media.") || id.startsWith("volume.") || id.startsWith("ringer.") -> MediaActions.execute(context, id, value)
                     id.startsWith("keyboard.") || id.startsWith("input.") -> InteractionActions.execute(context, id, value)
+                    id == "device.screenshot" -> {
+                        check(!locked) { "Unlock the screen to take a screenshot." }
+                        shellAction("Screenshot requested") { helper.deviceAction(id, value) }
+                    }
+                    id in ExpertDeviceActions.navigation -> shellAction(entry.title + " requested") { helper.deviceAction(id, value) }
                     else -> DeviceActions.execute(context, id, value) { intent, label -> launch(intent, label) }
                 }
             }
             ActionKind.CAMERA -> {
                 val secure = locked
-                val intent = Intent(if (secure) MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE else MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
-                launch(intent, if (secure) "Secure camera" else "Camera", secureCamera = secure)
+                shellAction(if (secure) "Secure camera requested" else "Camera requested") { helper.openCamera(secure) }
             }
             ActionKind.APP -> {
                 val intent = context.packageManager.getLaunchIntentForPackage(action.value)
                     ?: error("No launchable activity for this app or profile")
-                launch(intent, "Application")
+                if (locked) launch(intent, "Application")
+                else shellAction("Application launch requested") { helper.openLauncherApp(action.value) }
             }
             ActionKind.FLASHLIGHT -> flashlight("flash.toggle", "")
             ActionKind.SILENT -> {
@@ -99,13 +106,15 @@ internal class ActionDispatcher(
                 val uri = Uri.parse(action.value).normalizeScheme()
                 require(uri.scheme in setOf("https", "http") && !uri.host.isNullOrBlank()) { "Choose an HTTP or HTTPS URL" }
                 val intent = Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
-                launch(intent, "Web link")
+                if (locked) launch(intent, "Web link")
+                else shellAction("Web link requested") { helper.openWeb(uri.toString()) }
             }
             ActionKind.SETTINGS -> {
                 require(action.value.startsWith("android.settings.")) { "Invalid Settings action" }
                 val intent = Intent(action.value)
                 check(intent.resolveActivity(context.packageManager) != null) { "Settings destination unavailable on this device" }
-                launch(intent, "Android Settings")
+                if (locked) launch(intent, "Android Settings")
+                else shellAction("Settings page requested") { helper.openSettings(action.value) }
             }
             ActionKind.INTENT -> launch(userIntent(action.value), "Custom intent")
             ActionKind.SHORTCUT -> {
@@ -115,7 +124,7 @@ internal class ActionDispatcher(
                     val launcher = checkNotNull(context.getSystemService(LauncherApps::class.java))
                     check(launcher.hasShortcutHostPermission()) { "Android has not granted shortcut-host access" }
                     val user = Process.myUserHandle()
-                    if (!locked) {
+                    if (!locked && canLaunchActivity) {
                         launcher.startShortcut(action.value, action.extra, null, null, user)
                         "Shortcut launch requested"
                     } else if (Build.VERSION.SDK_INT >= 31) {
@@ -125,7 +134,7 @@ internal class ActionDispatcher(
                     } else "Open the remapper to launch this shortcut on this Android version"
                 }
             }
-            ActionKind.SHELL -> error("Shell commands are unavailable through Accessibility. Choose a new action.")
+            ActionKind.SHELL -> error("This older mapping runs a shell command. Choose a supported action instead.")
         }
     }
 
@@ -163,11 +172,19 @@ internal class ActionDispatcher(
         return intent
     }
 
-    private fun launch(intent: Intent, label: String, secureCamera: Boolean = false): String {
+    private suspend fun shellAction(label: String, send: () -> String): String {
+        val result = withContext(Dispatchers.IO) { send() }
+        check(!result.startsWith("Error:")) { result }
+        return label
+    }
+
+    private val canLaunchActivity: Boolean get() = RemapperRuntime.uiVisible || ButtonAccessibilityService.connected != null
+
+    private fun launch(intent: Intent, label: String): String {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (!locked || secureCamera) {
+        if (!locked && canLaunchActivity) {
             try {
-                context.startActivity(intent)
+                (ButtonAccessibilityService.connected ?: context).startActivity(intent)
                 return "$label launch requested"
             } catch (_: SecurityException) {
                 // Firmware can require an explicit notification tap from the background.

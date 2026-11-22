@@ -7,6 +7,11 @@ import android.content.Intent
 /** Receives the private Stop action from the status notification. */
 class StopRemappingReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        RemapperRuntime.stop(context, "Remapping stopped from the notification.")
+        if (intent.action == STOP_TEST) RemapperRuntime.endTest()
+        else RemapperRuntime.stop(context, "Remapping stopped from the notification.")
+    }
+
+    companion object {
+        internal const val STOP_TEST = "io.github.xiaomibutton.remapper.STOP_TEST"
     }
 }

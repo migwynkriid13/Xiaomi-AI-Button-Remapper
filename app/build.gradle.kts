@@ -15,6 +15,7 @@ val collectLicenseAssets by tasks.registering(Sync::class) {
 android {
     namespace = "io.github.xiaomibutton.remapper"
     compileSdk = 37
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "io.github.xiaomibutton.remapper"
@@ -22,15 +23,28 @@ android {
         targetSdk = 37
         versionCode = 2 + releaseBuildNumber.get()
         versionName = "0.2.${releaseBuildNumber.get()}"
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        externalNativeBuild {
+            cmake { arguments += "-DANDROID_STL=c++_static" }
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
     sourceSets["main"].assets.directories.add(licenseAssetsDir.get().asFile.path)
     buildFeatures {
+        aidl = true
         compose = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    // Shizuku's app_process UserService loads our JNI library from nativeLibraryDir.
+    packaging { jniLibs.useLegacyPackaging = true }
 }
 tasks.named("preBuild") { dependsOn(collectLicenseAssets) }
 
@@ -41,6 +55,8 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.12.4")
     implementation("androidx.datastore:datastore-preferences:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
 }

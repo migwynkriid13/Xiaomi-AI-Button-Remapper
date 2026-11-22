@@ -1,6 +1,6 @@
 # Verification
 
-## Accessibility-only setup and actions
+## v0.2.15 accessibility-only setup and actions
 
 The app was installed from Downloads using Android 17's Files app. App info initially had no restricted-settings menu. Attempting to open the remapper in Accessibility produced Android's access-denied screen. Returning to App info revealed **⋮ → Allow restricted settings**, after which Android let us enable **Xiaomi AI Button Remapper** and displayed its consent prompt. Android listed one accessibility service for the app.
 

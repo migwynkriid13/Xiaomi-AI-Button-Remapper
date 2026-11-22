@@ -16,6 +16,7 @@ import android.telecom.TelecomManager
 import android.telephony.SmsManager
 import android.widget.Toast
 import io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService
+import io.github.xiaomibutton.remapper.runtime.ExpertDeviceActions
 import io.github.xiaomibutton.remapper.runtime.UiActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -39,7 +40,8 @@ internal object DeviceActions {
     val actions = buildList {
         fun action(id: String, title: String, group: String, parameter: ActionParameter = ActionParameter.NONE,
                    requirement: String = "", choices: List<Pair<String, String>> = emptyList(), hint: String = "") {
-            add(CatalogAction(id, title, group, parameter, requirement, choices, hint))
+            add(CatalogAction(id, title, group, parameter,
+                if (id in ExpertDeviceActions.navigation) "" else requirement, choices, hint))
         }
         fun toggles(id: String, label: String, group: String, requirement: String) {
             for ((verb, title) in slots) action("$id.$verb", "$title $label", group, requirement = requirement)
@@ -58,12 +60,11 @@ internal object DeviceActions {
         action("display.cycle", "Cycle screen orientations", DISPLAY, requirement = WRITE)
         for ((id, name) in listOf("back" to "Go back", "home" to "Go home", "recents" to "Open recents",
             "last" to "Go to last app", "split" to "Toggle split screen")) action("nav.$id", name, NAV, requirement = ACCESS)
-        action("nav.menu", "Open app menu", NAV, requirement = ACCESS, hint = "Requires Android 16 or later.")
-        action("nav.all_apps", "Open all apps", NAV, requirement = ACCESS, hint = "Requires Android 12 or later.")
-        action("nav.headset", "Press headset button", NAV, requirement = ACCESS, hint = "Requires Android 12 or later.")
+        action("nav.menu", "Open app menu", NAV)
+        action("nav.all_apps", "Open all apps", NAV)
+        action("nav.headset", "Press headset button", NAV)
         val direction = listOf("up" to "Up", "down" to "Down", "left" to "Left", "right" to "Right", "center" to "Select")
-        action("nav.dpad", "Send navigation key", NAV, ActionParameter.CHOICE, ACCESS, direction,
-            "Works outside a text field when the device supports this action. Requires Android 13 or later.")
+        action("nav.dpad", "Send navigation key", NAV, ActionParameter.CHOICE, choices = direction)
         for ((key, title) in listOf("shortcut" to "Run accessibility shortcut", "button" to "Press accessibility button",
             "choose" to "Choose an accessibility button action")) {
             action("a11y.$key", title, "Interface", requirement = ACCESS, hint = "Requires Android 12 or later.")
@@ -187,7 +188,7 @@ internal object DeviceActions {
             return launch(Intent(page), "Confirm " + action.title + " in Settings")
         }
         if (action.requirement == WRITE) return updateSetting(context, id, value)
-        if (action.requirement == ACCESS || id == "device.screenshot") return global(context, id, action.title, value)
+        if (action.requirement == ACCESS) return global(context, id, action.title)
         if (id.startsWith("maps.")) return KeyMapInterop.control(context, id, value)
         val values = context.getSharedPreferences("action_variables", Context.MODE_PRIVATE)
         fun expand(text: String) = Regex("\\{([A-Za-z][A-Za-z0-9_]*)}").replace(text) { values.getString(it.groupValues[1], "") ?: "" }.take(2048)
@@ -273,16 +274,11 @@ internal object DeviceActions {
         check(context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) { "Grant the action's permission in the picker or system app settings" }
     }
 
-    private suspend fun global(context: Context, id: String, label: String, value: String): String {
-        val service = (context as? AccessibilityService) ?: ButtonAccessibilityService.connected ?: error("Enable the accessibility service")
+    private suspend fun global(context: Context, id: String, label: String): String {
+        val service = ButtonAccessibilityService.connected ?: error("Enable the optional Accessibility service for this action.")
         val key = when (id) {
-            "nav.home" -> AccessibilityService.GLOBAL_ACTION_HOME
-            "nav.back" -> AccessibilityService.GLOBAL_ACTION_BACK
-            "nav.recents","nav.last" -> AccessibilityService.GLOBAL_ACTION_RECENTS
+            "nav.last" -> AccessibilityService.GLOBAL_ACTION_RECENTS
             "nav.split" -> AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN
-            "nav.menu" -> if (Build.VERSION.SDK_INT >= 36) AccessibilityService.GLOBAL_ACTION_MENU else error("Requires Android 16 or later")
-            "nav.all_apps" -> if (Build.VERSION.SDK_INT >= 31) AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_ALL_APPS else error("Requires Android 12 or later")
-            "nav.headset" -> if (Build.VERSION.SDK_INT >= 31) AccessibilityService.GLOBAL_ACTION_KEYCODE_HEADSETHOOK else error("Requires Android 12 or later")
             "a11y.shortcut", "a11y.button", "a11y.choose" -> {
                 if (Build.VERSION.SDK_INT < 31) error("Requires Android 12 or later")
                 when (id) {
@@ -291,23 +287,8 @@ internal object DeviceActions {
                     else -> AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_BUTTON_CHOOSER
                 }
             }
-            "nav.dpad" -> {
-                if (Build.VERSION.SDK_INT < 33) error("Requires Android 13 or later")
-                when (value) {
-                    "up" -> AccessibilityService.GLOBAL_ACTION_DPAD_UP
-                    "down" -> AccessibilityService.GLOBAL_ACTION_DPAD_DOWN
-                    "left" -> AccessibilityService.GLOBAL_ACTION_DPAD_LEFT
-                    "right" -> AccessibilityService.GLOBAL_ACTION_DPAD_RIGHT
-                    else -> AccessibilityService.GLOBAL_ACTION_DPAD_CENTER
-                }
-            }
-            "device.lock" -> AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
-            "device.screenshot" -> AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT
             "device.power_menu" -> AccessibilityService.GLOBAL_ACTION_POWER_DIALOG
             "device.controls" -> return deviceControls(context)
-            "shade.quick" -> AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
-            "shade.notifications" -> AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
-            "shade.collapse" -> { check(Build.VERSION.SDK_INT >= 31) { "Requires Android 12 or later" }; AccessibilityService.GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE }
             else -> error("Unknown navigation action")
         }
         check(service.performGlobalAction(key)) { "Android does not offer $label in the current state" }

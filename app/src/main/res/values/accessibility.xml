@@ -1,5 +1,5 @@
 <resources>
-    <string name="button_accessibility_name">Xiaomi AI Button Remapper</string>
-    <string name="button_accessibility_summary">Identify and remap the dedicated physical AI key.</string>
-    <string name="button_accessibility_description">Lets the remapper receive the AI button and run your chosen actions. Android grants screen access for optional UI actions and app profiles. UI actions inspect the unlocked window only when used. App profiles check which app is open when you press the button. The app does not record typing or store screen contents.</string>
+    <string name="button_accessibility_name">Xiaomi AI Button Remapper · optional UI actions</string>
+    <string name="button_accessibility_summary">Optional support for UI actions and foreground app profiles.</string>
+    <string name="button_accessibility_description">Optional access for app profiles, touch gestures, text editing and actions that interact with the screen. UI actions inspect the unlocked window only when used. App profiles check which app is open when you press the button. Shizuku handles button detection. The app does not record typing or store screen contents.</string>
 </resources>

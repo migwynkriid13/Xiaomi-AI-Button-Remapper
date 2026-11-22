@@ -1,5 +1,6 @@
 package io.github.xiaomibutton.remapper.runtime
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -20,14 +21,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Runs mappings inside the accessibility service that receives the key events. */
+/** Recognizes and dispatches gestures for one physical input session. */
 internal class RemapSession(
-    private val service: ButtonAccessibilityService,
+    private val service: Context,
     private val scope: CoroutineScope,
+    notifications: SessionNotifications,
+    helper: IInputHelper,
 ) : AutoCloseable {
     private val main = Handler(Looper.getMainLooper())
-    private val notifications = SessionNotifications(service).also { it.createChannels() }
-    private val dispatcher = ActionDispatcher(service, notifications)
+    private val dispatcher = ActionDispatcher(service, notifications, helper)
     private val actions = Channel<ActionSpec>(4)
     private var sequenceJob: Deferred<String>? = null
     private var configuration: AppConfig? = null
@@ -38,8 +40,6 @@ internal class RemapSession(
     private val emergencyHold = Runnable {
         RemapperRuntime.stop(service, "Emergency stop. AI button held eight seconds.")
     }
-
-    init { notifications.showSession() }
 
     private val actionJob: Job = scope.launch {
         for (action in actions) {
@@ -76,7 +76,7 @@ internal class RemapSession(
 
     private fun refreshEngine(config: AppConfig) {
         val overrides = if (config.profiles.values.any { it.isNotEmpty() }) {
-            service.activeAppForProfiles()?.let(config.profiles::get)
+            ButtonAccessibilityService.connected?.activeAppForProfiles()?.let(config.profiles::get)
         } else null
         if (engine != null && overrides == profile) return
         profile = overrides
@@ -93,14 +93,9 @@ internal class RemapSession(
         }
     }
 
-    fun receive(value: Int, time: Long, canceled: Boolean) {
-        if (value >= 0) RemapperRuntime.recordEvent(value, time)
+    fun receive(value: Int, time: Long) {
+        RemapperRuntime.recordEvent(value, time)
         main.removeCallbacks(timer)
-        if (canceled) {
-            main.removeCallbacks(emergencyHold)
-            engine?.reset()
-            return
-        }
         if (value != 2) {
             main.removeCallbacks(emergencyHold)
             if (value == 1) main.postAtTime(emergencyHold, time + 8000)
@@ -120,7 +115,5 @@ internal class RemapSession(
         actionJob.cancel()
         actions.close()
         dispatcher.close()
-        notifications.clearSession()
-        notifications.clearOffer()
     }
 }
