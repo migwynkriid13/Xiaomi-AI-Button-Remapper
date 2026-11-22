@@ -1,5 +1,19 @@
 # Verification
 
+## v0.2.17 Shizuku input
+
+The stock Android 17 emulator reported no compatible physical input device and stopped the helper. A separate emulator-only fixture build narrowed discovery to one synthetic `gpio-keys` device so the raw input path could be exercised. Shizuku ran as shell (UID 2000) and Android Accessibility was off.
+
+| Check | Observation |
+| --- | --- |
+| Grant and read-only test | Approving the Shizuku prompt started the tester. A synthetic EV_KEY 689 tap showed DOWN and UP. |
+| Single press and suppression | A single press opened Camera while a separate key observer was in front. The observer received zero AI edges with interception active. |
+| Power and volume | The observer received volume-up DOWN and UP through the mirror. Two power presses put the display to sleep and woke it again. |
+| Helper release | Force-stopping the remapper restored both AI edges to the observer. Stopping Shizuku also ended the helper, paused remapping and restored both edges. |
+| Screenshot | Selecting **Take screenshot** and pressing the mapped gesture while Android Display settings was in front saved a new PNG in `Pictures/Screenshots`. |
+
+GitHub Actions ran the Kotlin tests, native tests and lint, then published a signed APK. The release signature, alignment and asset digest were verified after download. This release still needs the [physical HyperOS acceptance checks](device-testing.md).
+
 ## v0.2.15 accessibility-only setup and actions
 
 The app was installed from Downloads using Android 17's Files app. App info initially had no restricted-settings menu. Attempting to open the remapper in Accessibility produced Android's access-denied screen. Returning to App info revealed **⋮ → Allow restricted settings**, after which Android let us enable **Xiaomi AI Button Remapper** and displayed its consent prompt. Android listed one accessibility service for the app.
