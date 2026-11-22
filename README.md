@@ -10,6 +10,9 @@
   <a href="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/latest">
     <img src="https://img.shields.io/github/v/release/migwynkriid13/Xiaomi-AI-Button-Remapper?label=release" alt="Latest release">
   </a>
+  <a href="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases">
+    <img src="https://img.shields.io/github/downloads/migwynkriid13/Xiaomi-AI-Button-Remapper/total?label=total%20downloads&amp;color=2563eb" alt="Total GitHub release downloads">
+  </a>
   <a href="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/actions/workflows/android.yml">
     <img src="https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/actions/workflows/android.yml/badge.svg?branch=main" alt="APK build and verification status">
   </a>
