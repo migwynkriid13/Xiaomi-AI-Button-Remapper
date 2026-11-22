@@ -45,6 +45,7 @@ internal class GestureEngine(
                 pressedAt = time
                 tapDeadline = null
                 held = false
+                if (longThreshold == 0L) advance(time)
             }
             0 -> {
                 if (bouncing) {
@@ -58,7 +59,7 @@ internal class GestureEngine(
                 if (held) return
                 taps++
                 val maximum = if (tripleEnabled) 3 else if (doubleEnabled) 2 else 1
-                if (taps == maximum) finishTaps() else tapDeadline = time + interval
+                if (interval == 0L || taps == maximum) finishTaps() else tapDeadline = time + interval
             }
             // Kernel repeat (2), unknown values and duplicate transitions never add a tap.
         }

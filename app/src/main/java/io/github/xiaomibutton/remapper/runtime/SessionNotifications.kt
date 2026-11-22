@@ -17,9 +17,6 @@ internal class SessionNotifications(private val context: Context) {
         ))
     }
 
-    fun sessionVisible(): Boolean = manager.areNotificationsEnabled() &&
-        manager.getNotificationChannel(SESSION)?.importance != NotificationManager.IMPORTANCE_NONE
-
     fun session(detail: String, testing: Boolean): Notification {
         val stop = Intent(context, StopRemappingReceiver::class.java)
         if (testing) stop.action = StopRemappingReceiver.STOP_TEST

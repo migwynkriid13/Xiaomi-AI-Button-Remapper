@@ -23,10 +23,16 @@ class ConfigJsonTest {
         assertFalse(ConfigJson.decode(hostile, imported = true).enabled)
     }
 
+    @Test fun zeroTimingSurvivesExportAndImport() {
+        val config = AppConfig(doubleMs = 0, longMs = 0, debounceMs = 0)
+        assertEquals(config, ConfigJson.decode(ConfigJson.encode(config, export = true), imported = true))
+    }
+
     @Test fun outOfRangeTimingAndWrongTypesAreRejected() {
         val base = ConfigJson.encode(AppConfig())
-        for ((key, value) in listOf("version" to 2, "format" to "other", "longMs" to 249,
-                "doubleMs" to 801, "debounceMs" to -1, "longMs" to "450", "doubleMs" to 220.4, "haptics" to "false")) {
+        for ((key, value) in listOf("version" to 2, "format" to "other", "longMs" to -1, "longMs" to 1801,
+                "doubleMs" to -1, "doubleMs" to 801, "debounceMs" to -1, "longMs" to "450",
+                "doubleMs" to 220.4, "haptics" to "false")) {
             assertThrows(Exception::class.java) { ConfigJson.decode(JSONObject(base).put(key, value).toString(), true) }
         }
         assertThrows(Exception::class.java) { ConfigJson.decode("garbage", true) }

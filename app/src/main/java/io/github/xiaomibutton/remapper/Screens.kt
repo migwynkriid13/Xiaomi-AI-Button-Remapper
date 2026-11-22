@@ -212,14 +212,16 @@ internal fun Preferences(config: AppConfig, status: RuntimeStatus, change: ((App
     }
     GroupTitle("Gesture timing")
     Panel {
-        TimingControl("Multi-press interval", "Maximum gap between taps. Single presses wait only when double or triple press is assigned.",
+        TimingControl("Multi-press interval", "Maximum gap between taps. At 0 ms, each tap is a single press.",
             config.doubleMs, ConfigJson.doubleRange, 10) { ms ->
             change { it.copy(doubleMs = ms) }
         }
-        TimingControl("Long press", "Hold time before the long-press action runs.", config.longMs, ConfigJson.longRange, 25) { ms ->
+        TimingControl("Long press", "Hold time before the long-press action runs. At 0 ms, a mapped long press runs on button down.",
+            config.longMs, ConfigJson.longRange, 25) { ms ->
             change { it.copy(longMs = ms) }
         }
-        TimingControl("Debounce", "Ignore contact bounce after a release.", config.debounceMs, ConfigJson.debounceRange, 5) { ms ->
+        TimingControl("Debounce", "Ignore contact bounce after a release. At 0 ms, this filter is off.",
+            config.debounceMs, ConfigJson.debounceRange, 5) { ms ->
             change { it.copy(debounceMs = ms) }
         }
         SettingRow("Haptic feedback", "Vibrate when a gesture is recognized", { change { it.copy(haptics = !it.haptics) } },
@@ -234,7 +236,7 @@ internal fun Preferences(config: AppConfig, status: RuntimeStatus, change: ((App
             launchSystem(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         })
         val allowNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-        SettingRow("Notifications", "Required for active Shizuku remapping. Also shows actions that need a tap.", {
+        SettingRow("Notifications", "Optional. Shows the Stop button and actions that need a tap.", {
             if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) allowNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
             else launchSystem(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))

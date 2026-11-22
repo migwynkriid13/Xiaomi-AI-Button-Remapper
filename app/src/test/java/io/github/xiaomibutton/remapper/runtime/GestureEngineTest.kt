@@ -84,6 +84,37 @@ class GestureEngineTest {
         assertEquals(listOf(GestureSlot.SINGLE, GestureSlot.LONG), output)
     }
 
+    @Test fun zeroIntervalFinishesEachSingleOnReleaseEvenWithMultiPressMapped() {
+        val g = GestureEngine(0, 600, 0, true, true, true, output::add)
+        g.key(1, 10)
+        g.key(0, 40)
+        assertEquals(listOf(GestureSlot.SINGLE), output)
+        assertNull(g.nextDeadline)
+        g.key(1, 40)
+        g.key(0, 70)
+        assertEquals(listOf(GestureSlot.SINGLE, GestureSlot.SINGLE), output)
+    }
+
+    @Test fun zeroLongThresholdFiresAtDownAndConsumesRelease() {
+        val g = GestureEngine(300, 0, 0, true, false, true, output::add)
+        g.key(1, 10)
+        assertEquals(listOf(GestureSlot.LONG), output)
+        assertNull(g.nextDeadline)
+        g.key(2, 11)
+        g.key(0, 12)
+        g.advance(1000)
+        assertEquals(listOf(GestureSlot.LONG), output)
+    }
+
+    @Test fun zeroDebounceAllowsNextDownAtThePreviousUpsTimestamp() {
+        val g = GestureEngine(300, 0, 0, true, false, false, output::add)
+        g.key(1, 10)
+        g.key(0, 40)
+        g.key(1, 40)
+        g.key(0, 70)
+        assertEquals(listOf(GestureSlot.DOUBLE), output)
+    }
+
     @Test fun permittedCommandsMatchWholeTokensOnly() {
         assertTrue(PermittedCommands.accepts("input keyevent KEYCODE_MEDIA_NEXT"))
         assertFalse(PermittedCommands.accepts("input keyevent KEYCODE_MEDIA_NEXT; id"))

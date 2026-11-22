@@ -85,8 +85,8 @@ class ConfigStore(context: Context) {
 object ConfigJson {
     const val MAX_BYTES = 64 * 1024
     const val MAX_PROFILES = 12
-    val doubleRange = 120..800
-    val longRange = 250..1800
+    val doubleRange = 0..800
+    val longRange = 0..1800
     val debounceRange = 0..75
 
     fun encode(config: AppConfig, export: Boolean = false): String {

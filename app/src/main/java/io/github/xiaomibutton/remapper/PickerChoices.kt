@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
+import android.content.pm.PackageManager
 import android.os.Process
 import io.github.xiaomibutton.remapper.runtime.PermittedCommands
 
@@ -39,13 +40,17 @@ internal data class Choice(val title: String, val detail: String, val action: Ac
 
 internal fun shortcutLabel(text: String?) = text.orEmpty().filterNot(Char::isISOControl).trim().take(120)
 
+internal fun PackageManager.launchableActivities(packageName: String? = null) =
+    queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(packageName), 0)
+        .filter { it.activityInfo.exported && it.activityInfo.enabled }
+
 @Suppress("DEPRECATION")
 internal fun loadChoices(context: Context, kind: ActionKind): List<Choice> {
     val pm = context.packageManager
     fun providers(intent: Intent) = pm.queryIntentActivities(intent, 0)
         .filter { it.activityInfo.exported && it.activityInfo.enabled }
     val choices = when (kind) {
-        ActionKind.APP -> providers(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER))
+        ActionKind.APP -> pm.launchableActivities()
             .distinctBy { it.activityInfo.packageName }.map {
                 val pkg = it.activityInfo.packageName
                 Choice(it.loadLabel(pm).toString(), pkg, ActionSpec(kind, pkg), icon = PickerIconSource.Activity(it))

@@ -76,10 +76,6 @@ class RemapService : Service() {
             return START_NOT_STICKY
         }
         val remapping = requested == REMAP
-        if (remapping && !notices.sessionVisible()) {
-            finish("Allow Button remapping notifications so the Stop action is visible.", disable = true)
-            return START_NOT_STICKY
-        }
         RemapperRuntime.change { it.copy(starting = true, running = false, observing = false) }
         val ticket = generation
         configJob = scope.launch {
@@ -189,10 +185,6 @@ class RemapService : Service() {
             val ticket = generation
             if (SystemClock.uptimeMillis() - lastPulse > 5500) {
                 finish("Input helper stopped responding. Stock button input was restored.", disable = mode == REMAP)
-                return
-            }
-            if (mode == REMAP && !notices.sessionVisible()) {
-                finish("The Stop notification was disabled. Stock button input was restored.", disable = true)
                 return
             }
             if (heartbeatJob?.isActive != true) heartbeatJob = scope.launch(Dispatchers.IO) {

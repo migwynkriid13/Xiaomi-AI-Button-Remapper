@@ -1,11 +1,8 @@
 package io.github.xiaomibutton.remapper
 
 import android.content.Context
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -100,6 +97,7 @@ private fun RemapperApp() {
         }
     }
     fun startRemapping() {
+        if (!status.shizukuAuthorized) return
         scope.launch {
             runCatching {
                 store.update { it.copy(enabled = true) }
@@ -109,15 +107,6 @@ private fun RemapperApp() {
                 message("Could not start: " + it.localizedMessage)
             }
         }
-    }
-    val notificationRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
-        if (allowed) startRemapping() else message("Allow notifications to keep the Stop action available during remapping.")
-    }
-    fun enable() {
-        if (!status.shizukuAuthorized) return
-        if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED) notificationRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
-        else startRemapping()
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val snapshot = config
@@ -155,8 +144,8 @@ private fun RemapperApp() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 when (page) {
                     Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
-                        if (on) enable() else RemapperRuntime.stop(context)
-                    }, ::enable, ::launchSystem)
+                        if (on) startRemapping() else RemapperRuntime.stop(context)
+                    }, ::startRemapping, ::launchSystem)
                     Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem)
                     Page.SETTINGS -> Preferences(current, status, ::change, ::launchSystem,
                         { openDocumentPicker { export.launch("xiaomi-button-config.json") } },

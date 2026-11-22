@@ -80,10 +80,11 @@ internal class ActionDispatcher(
                 shellAction(if (secure) "Secure camera requested" else "Camera requested") { helper.openCamera(secure) }
             }
             ActionKind.APP -> {
-                val intent = context.packageManager.getLaunchIntentForPackage(action.value)
-                    ?: error("No launchable activity for this app or profile")
-                if (locked) launch(intent, "Application")
-                else shellAction("Application launch requested") { helper.openLauncherApp(action.value) }
+                if (locked) {
+                    val intent = context.packageManager.getLaunchIntentForPackage(action.value)
+                        ?: error("No launchable activity for this app or profile")
+                    launch(intent, "Application")
+                } else shellAction("Application launch requested") { helper.openLauncherApp(action.value) }
             }
             ActionKind.FLASHLIGHT -> flashlight("flash.toggle", "")
             ActionKind.SILENT -> {

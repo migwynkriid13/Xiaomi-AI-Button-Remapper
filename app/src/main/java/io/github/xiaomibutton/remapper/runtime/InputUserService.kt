@@ -1,11 +1,15 @@
 package io.github.xiaomibutton.remapper.runtime
 
-import io.github.xiaomibutton.remapper.systemPages
-import android.net.Uri
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.os.Process
+import io.github.xiaomibutton.remapper.launchableActivities
+import io.github.xiaomibutton.remapper.systemPages
+import io.github.xiaomibutton.remapper.validatePackage
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
@@ -20,6 +24,7 @@ import kotlin.system.exitProcess
  */
 class InputUserService(context: Context) : IInputHelper.Stub() {
     private val ownerUid = context.applicationInfo.uid
+    private val packages = context.packageManager
     private val started = AtomicBoolean()
     private val stopping = AtomicBoolean()
     @Volatile private var clientSink: IInputClient? = null
@@ -128,9 +133,14 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
 
     override fun openLauncherApp(packageName: String): String {
         checkOwner()
-        require(packageName.length <= 255 && PACKAGE.matches(packageName)) { "Invalid package name" }
-        return command(listOf("/system/bin/am", "start", "--user", androidUser, "-a",
-            "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", packageName))
+        validatePackage(packageName)
+        val activity = packages.launchableActivities(packageName).firstOrNull()?.activityInfo
+            ?: error("No launchable activity for this app or profile")
+        val component = ComponentName(activity.packageName, activity.name)
+        // An implicit activity launch also requires CATEGORY_DEFAULT. Launchers need only CATEGORY_LAUNCHER.
+        return command(listOf("/system/bin/am", "start", "--user", androidUser,
+            "-a", Intent.ACTION_MAIN, "-c", Intent.CATEGORY_LAUNCHER,
+            "-n", component.flattenToShortString(), "--activity-reset-task-if-needed"))
     }
 
     override fun deviceAction(id: String, value: String): String {
@@ -172,9 +182,5 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
         } finally {
             commandBusy.set(false)
         }
-    }
-
-    private companion object {
-        val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)*")
     }
 }
