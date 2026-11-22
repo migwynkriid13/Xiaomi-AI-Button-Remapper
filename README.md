@@ -46,7 +46,7 @@ You can tune gesture timing, export and import your settings, and choose whether
 
 ## Get started
 
-Use a **Xiaomi 18 Pro** or **Xiaomi 18 Pro Max** with the dedicated AI Button and an up-to-date HyperOS build. The Xiaomi 17 Pro and Xiaomi 17 Pro Max lack the dedicated key this app uses.
+Use a **Xiaomi 18 Pro** or **Xiaomi 18 Pro Max** with the dedicated AI Button and an up-to-date HyperOS build.
 
 1. Install the [latest signed APK](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/latest/download/Xiaomi-AI-Button-Remapper.apk).
 2. Install Shizuku and start it through wireless debugging. [Shizuku setup guide](https://shizuku.rikka.app/guide/setup/#start-via-wireless-debugging)
