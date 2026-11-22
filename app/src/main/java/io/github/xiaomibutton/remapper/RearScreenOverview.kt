@@ -65,7 +65,7 @@ private fun BackScreenHero(model: String?, supported: Boolean) {
             Box(Modifier.matchParentSize().graphicsLayer { scaleX = if (mirrored) -1f else 1f }) {
                 Image(
                     painter = painterResource(R.drawable.back_screen_hero),
-                    contentDescription = "A phone lying face down with a sunset wallpaper and clock on its back screen",
+                    contentDescription = "A phone lying face down with the app's stacked clock and wallpaper on its back screen",
                     modifier = Modifier.matchParentSize(),
                     alignment = AbsoluteAlignment.CenterRight,
                     contentScale = ContentScale.Crop
