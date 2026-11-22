@@ -27,6 +27,7 @@ import java.net.URL
 internal object DeviceActions {
     private const val WRITE = "Modify system settings"
     private const val EXPERT = "Shizuku Expert"
+    private const val PANEL = "System panel · automatic in Shizuku Expert"
     private const val ACCESS = "Accessibility"
     private const val PER_PHONE = "Phone permissions"
     private const val MAP = "Mappings"
@@ -45,11 +46,11 @@ internal object DeviceActions {
             for ((verb, title) in slots) action("$id.$verb", "$title $label", group, requirement = requirement)
         }
         for ((key, name) in listOf("wifi" to "Wi-Fi", "bluetooth" to "Bluetooth", "data" to "mobile data",
-            "airplane" to "airplane mode", "nfc" to "NFC")) toggles("radio.$key", name, CONNECT, EXPERT)
+            "airplane" to "airplane mode", "nfc" to "NFC")) toggles("radio.$key", name, CONNECT, PANEL)
         toggles("radio.hotspot", "Wi-Fi hotspot", CONNECT, "Android 16+ · tethering permission")
         toggles("display.auto", "automatic brightness", DISPLAY, WRITE)
         toggles("display.rotate", "automatic rotation", DISPLAY, WRITE)
-        toggles("display.night", "Night Light", DISPLAY, EXPERT)
+        toggles("display.night", "Night Light", DISPLAY, PANEL)
         action("display.brighter", "Increase display brightness", DISPLAY, ActionParameter.NUMBER, WRITE, hint = "Change in percent (1–100)")
         action("display.dimmer", "Decrease display brightness", DISPLAY, ActionParameter.NUMBER, WRITE, hint = "Change in percent (1–100)")
         action("display.portrait", "Set portrait orientation", DISPLAY, requirement = WRITE)
@@ -164,7 +165,7 @@ internal object DeviceActions {
             }
             return launch(Intent("android.settings.TETHER_SETTINGS"), "Confirm hotspot change in Settings")
         }
-        if (action.requirement == EXPERT) {
+        if (action.requirement == EXPERT || action.requirement == PANEL) {
             if (helper == null && (id.startsWith("radio.") || id.startsWith("display.night."))) {
                 val page = when {
                     id.startsWith("radio.wifi.") -> Settings.Panel.ACTION_WIFI
