@@ -14,29 +14,11 @@
         android:id="@+id/rear_workspaceHeader"
         android:paddingBottom="8dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/rear_editor_battery_title"
-            android:textColor="?attr/colorOnSurface"
-            android:layout_marginTop="8dp"
-            android:textAppearance="@style/TextAppearance.Remapper.EditorHeadline"
-            android:accessibilityHeading="true" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/rear_editor_battery_detail"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:layout_marginTop="8dp"
-            android:textAppearance="?attr/textAppearanceBodyLarge" />
-
         <io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
             android:id="@+id/rear_mainSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/rear_editor_enable_battery"
-            android:layout_marginTop="20dp"
             android:layout_marginBottom="12dp" />
     </LinearLayout>
 

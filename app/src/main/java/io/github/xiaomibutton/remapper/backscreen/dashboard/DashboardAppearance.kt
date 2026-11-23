@@ -25,8 +25,13 @@ import kotlin.math.*
 import kotlinx.coroutines.*
 
 @Composable
-internal fun ClockFace(s: DashboardStore, time: Long, dim: Boolean) {
-    val col = ink(s, "Clock", if (dim) Color(0xffddb69e) else MaterialTheme.colorScheme.onSurface)
+internal fun ClockFace(
+    s: DashboardStore,
+    time: Long,
+    dim: Boolean,
+    fallback: Color = Color(0xffddb69e),
+) {
+    val col = ink(s, "Clock", fallback)
     if (s.value(if (dim) "dimFace" else "clockFace", "Digital") == "Analog") {
         val c = Calendar.getInstance().apply { timeInMillis = time }
         Canvas(Modifier.size(if (dim) 60.dp else 72.dp)) {
@@ -84,12 +89,21 @@ internal fun ClockFace(s: DashboardStore, time: Long, dim: Boolean) {
 }
 
 @Composable
-internal fun Scene(s: DashboardStore, faceDown: Boolean, tilt: Float) {
-    val kind = s.value("scene", "Warm")
+internal fun Scene(s: DashboardStore, faceDown: Boolean, tilt: Float, lit: Boolean = true) {
+    val kind = s.value("scene", DashboardStore.WALLPAPER)
+    val wanted = s.value("effect", "Off")
+    if (kind == DashboardStore.WALLPAPER &&
+        wanted == "Off" &&
+        !s.flag("CRT lines") &&
+        !(faceDown && s.flag("Table lights")))
+        return
     val bg =
-        if (kind == "Solid color") ink(s, "Background", MaterialTheme.colorScheme.surface)
-        else MaterialTheme.colorScheme.surface
-    val accent = MaterialTheme.colorScheme.primary
+        when (kind) {
+            DashboardStore.WALLPAPER -> Color.Transparent
+            "Solid color" -> ink(s, "Background", MaterialTheme.colorScheme.surface)
+            else -> MaterialTheme.colorScheme.surface
+        }
+    val accent = ink(s, "Live wallpaper color", MaterialTheme.colorScheme.primary)
     val soft = MaterialTheme.colorScheme.secondaryContainer
     val x = if (s.flag("Tilt parallax")) tilt * 16f else 0f
     Box(Modifier.fillMaxSize().background(bg).clipToBounds()) {
@@ -100,11 +114,14 @@ internal fun Scene(s: DashboardStore, faceDown: Boolean, tilt: Float) {
                     null,
                     uri,
                     kind,
+                    if (kind == "Video") lit else true,
                     s.value("playback"),
                     s.value("clipStart"),
                     s.value("clipEnd"),
                 ) {
                     if (uri.isBlank()) return@produceState
+                    // The last frame stays on the glass while the rear display is dimmed.
+                    if (kind == "Video" && !lit && value != null) return@produceState
                     withContext(Dispatchers.IO) {
                         runCatching {
                             if (kind == "Photo") value = decode(s.context, Uri.parse(uri))
@@ -164,7 +181,7 @@ internal fun Scene(s: DashboardStore, faceDown: Boolean, tilt: Float) {
                                                 (width * scale).toInt().coerceAtLeast(1),
                                                 (height * scale).toInt().coerceAtLeast(1),
                                             )
-                                        if (mode == "Once" && passed >= length) break
+                                        if (!lit || (mode == "Once" && passed >= length)) break
                                         delay(100)
                                     }
                                 } finally {
@@ -185,11 +202,9 @@ internal fun Scene(s: DashboardStore, faceDown: Boolean, tilt: Float) {
                     },
                     contentScale =
                         if (s.value("framing") == "Fit") ContentScale.Fit else ContentScale.Crop,
-                    alpha = .25f,
                 )
             }
         }
-        val wanted = s.value("effect", "Off")
         val effect =
             if (wanted == "Automatic") {
                 val w by reading(s.value("city"), 900000) { weather(s) }
@@ -204,13 +219,19 @@ internal fun Scene(s: DashboardStore, faceDown: Boolean, tilt: Float) {
                 }
             } else wanted
         val animate = kind in setOf("Silk", "Clay waves", "Soft metal") || effect != "Off"
+        val loopTime =
+            when (s.value("sceneSpeed", "Medium")) {
+                "Slow" -> 20_000
+                "Fast" -> 5_000
+                else -> 10_000
+            }
         val phase =
-            if (animate)
+            if (animate && lit)
                 rememberInfiniteTransition(label = "Weather and scene")
                     .animateFloat(
                         0f,
                         1f,
-                        infiniteRepeatable(tween(10000, easing = LinearEasing)),
+                        infiniteRepeatable(tween(loopTime, easing = LinearEasing)),
                         label = "Drift",
                     )
                     .value

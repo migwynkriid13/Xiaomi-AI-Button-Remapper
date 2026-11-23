@@ -64,7 +64,6 @@
             android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/rear_pin_paths" />
         </provider>
-        <activity android:name=".backscreen.dashboard.DashboardActivity" android:exported="false" />
         <activity android:name=".backscreen.dashboard.PinActivity" android:exported="true" android:label="Pin to back screen">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

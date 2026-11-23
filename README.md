@@ -65,9 +65,9 @@ You can tune gesture timing, export and import your settings, and choose whether
 
 ### Back screen
 
-- **Rear dashboard** adds nine configurable pages, including a rear app launcher and keyboard, media and live activities, Control Centre, notes and photos, connected cards, and a mini-game. Arrange cards, build action tiles, choose backgrounds and clock faces, and switch layouts automatically with profiles. [Dashboard setup and connections](docs/rear-dashboard.md)
+- **Rear overlays** are individually optional. Add a clock or lens rings to the wallpaper, see active media and live activities, and open Control Centre, pinned items, or an app from the compact overlay menu. Preview changes in Back screen settings. [Rear display setup and connections](docs/rear-dashboard.md)
 
-- **Wallpaper** supports still images, looping GIFs, galleries from selected photos or a folder, timed or shuffled rotation, four scaling modes, panning, and a draggable clock with five styles. Set how long the display stays lit, wake it on pickup, schedule wallpaper hours, or toggle it with a Quick Settings tile or home screen widget.
+- **Wallpaper** supports still images, looping GIFs, video clips, animated effects, and galleries from selected photos or a folder. Gallery controls include timed or shuffled rotation, four scaling modes, panning, and a draggable clock with five styles. Set how long the display stays lit, wake it on pickup, schedule wallpaper hours, or toggle it with a Quick Settings tile or home screen widget.
 - **Notifications** can display the app, sender, or message and show recent alerts with a swipe. Previews follow lock-screen privacy, work profile restrictions, and Do Not Disturb.
 - **Battery** animates wired and wireless charging with Ring, Edge glow, or Minimal styles. Use an automatic or custom color and choose when the animation wakes the display.
 - **Mirror** uses the Quick Switch tile to move the current app between displays. Adjust the rear size, orientation, and timeout, and choose whether to return apps on lock or when the back is covered.
@@ -79,7 +79,7 @@ The rear display work is adapted from [Mi Back Screen](https://github.com/totall
 
 1. Install the [latest signed APK](https://github.com/migwynkriid13/Xiaomi-AI-Button-Remapper/releases/latest/download/Xiaomi-AI-Button-Remapper.apk).
 2. Install Shizuku and start it through wireless debugging. [Shizuku setup guide](https://shizuku.rikka.app/guide/setup/#start-via-wireless-debugging)
-3. On any supported model, open **Back screen → Wallpaper**, grant Shizuku access if prompted, pick your images, and enable **Show on back screen**. Use **Setup help** in the Back screen menu for alarms, battery settings, and optional notification access.
+3. On a supported model, open **Back screen** and grant Shizuku access when prompted. Choose a background, then turn on the overlays you want. **Display timing and setup** contains the schedule and wake settings.
 4. On Xiaomi 18 Pro or 18 Pro Max, open **Button** and grant access if prompted. Press and release the AI button when the button test starts. **DOWN** and **UP** confirm the app can read it. You can also tap **Test button**. Choose a gesture action and turn on **Remap button**. [Setup screen](docs/screenshots/setup-light.png)
 
 Keep Shizuku running while remapping. After restarting your phone, start Shizuku again and tap **Resume remapping**. HyperOS determines whether the AI Button sends presses while the phone is locked or the screen is off.

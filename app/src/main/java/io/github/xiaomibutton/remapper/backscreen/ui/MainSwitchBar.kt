@@ -12,10 +12,10 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
-import io.github.xiaomibutton.remapper.R
 import com.google.android.material.R as MaterialR
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.materialswitch.MaterialSwitch
+import io.github.xiaomibutton.remapper.R
 
 /**
  * A compact activation control inside the editor's introduction. The whole surface is a single
@@ -46,8 +46,9 @@ class MainSwitchBar @JvmOverloads constructor(
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         val dp = resources.displayMetrics.density
-        minimumHeight = (76 * dp).toInt()
-        setPaddingRelative((18 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt())
+        minimumHeight = (64 * dp).toInt()
+        setPaddingRelative(
+            (14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
         LayoutInflater.from(context).inflate(R.layout.rear_view_main_switch_bar, this)
         title = findViewById(R.id.rear_mainSwitchTitle)
         summary = findViewById(R.id.rear_mainSwitchSummary)

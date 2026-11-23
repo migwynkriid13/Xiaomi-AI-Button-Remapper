@@ -247,8 +247,11 @@ private fun RemapperApp() {
                 if (page == Page.REAR_SCREEN) {
                     Column(pageModifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (rearOnly) showUpdate()
-                        RearScreenOverview(Modifier.weight(1f)) { feature ->
-                            launchSystem(RearScreenActivity.intent(context, feature))
+                                        RearScreenOverview(Modifier.weight(1f)) { feature, section
+                                            ->
+                                            launchSystem(
+                                                RearScreenActivity.intent(
+                                                    context, feature, section))
                         }
                     }
                 } else Column(
@@ -258,23 +261,67 @@ private fun RemapperApp() {
                     when (page) {
                         Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
                             if (on) startRemapping() else RemapperRuntime.stop(context)
-                        }, ::startRemapping, { RemapperRuntime.start(context, runAlongsideXiaomi = true) }, ::launchSystem, showUpdate)
-                        Page.REAR_SCREEN -> Unit
-                        Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem, showsButton = !rearOnly)
-                        Page.SETTINGS -> if (rearOnly) RearOnlyPreferences(
-                            current, ::change, ::launchSystem, startOnBoot,
-                            { startOnBoot = it; StartupSettings.setStartOnBoot(context, it) },
-                            { confirmReset = true },
-                        )
-                        else Preferences(current, status, ::change, ::launchSystem,
-                            { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
-                            { openDocumentPicker { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
-                            { RemapperRuntime.stop(context); message("Xiaomi default behavior restored") },
-                            startOnBoot,
-                            { startOnBoot = it; StartupSettings.setStartOnBoot(context, it) },
-                            { confirmReset = true },
-                        )
-                    }
+                                                    },
+                                                    ::startRemapping,
+                                                    {
+                                                        RemapperRuntime.start(
+                                                            context, runAlongsideXiaomi = true)
+                                                    },
+                                                    ::launchSystem,
+                                                    showUpdate)
+                                            Page.REAR_SCREEN -> Unit
+                                            Page.DIAGNOSTICS ->
+                                                Diagnostics(
+                                                    status, ::launchSystem, showsButton = !rearOnly)
+                                            Page.SETTINGS ->
+                                                if (rearOnly)
+                                                    RearOnlyPreferences(
+                                                        current,
+                                                        ::change,
+                                                        ::launchSystem,
+                                                        startOnBoot,
+                                                        {
+                                                            startOnBoot = it
+                                                            StartupSettings.setStartOnBoot(
+                                                                context, it)
+                                                        },
+                                                        { confirmReset = true },
+                                                    )
+                                                else
+                                                    Preferences(
+                                                        current,
+                                                        status,
+                                                        ::change,
+                                                        ::launchSystem,
+                                                        {
+                                                            openDocumentPicker {
+                                                                export.launch(
+                                                                    "xiaomi-button-config.json")
+                                                            }
+                                                        },
+                                                        {
+                                                            openDocumentPicker {
+                                                                import.launch(
+                                                                    arrayOf(
+                                                                        "application/json",
+                                                                        "text/plain",
+                                                                        "application/octet-stream"))
+                                                            }
+                                                        },
+                                                        {
+                                                            RemapperRuntime.stop(context)
+                                                            message(
+                                                                "Xiaomi default behavior restored")
+                                                        },
+                                                        startOnBoot,
+                                                        {
+                                                            startOnBoot = it
+                                                            StartupSettings.setStartOnBoot(
+                                                                context, it)
+                                                        },
+                                                        { confirmReset = true },
+                                                    )
+                                        }
                 }
             }
         }

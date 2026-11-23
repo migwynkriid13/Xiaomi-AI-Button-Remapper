@@ -12,20 +12,25 @@ import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
 import java.util.concurrent.Executors
 
 /**
- * What a tab's preview of something on the back screen (the charging animation, a notification)
- * is drawn over: the wallpaper's image now, decoded as the back screen does and held where a pan
- * starts, with its clock; or black while the wallpaper is off (as a pop-over is) or has no
- * images. Decoding takes a moment, so it's done off the main thread, which the back screen
- * shares. With a [glow], it also shows the Edge glow's faint glow while the phone charges, as
- * the back screen does.
+ * What a tab's preview of something on the back screen (the charging animation, a notification) is
+ * drawn over: the wallpaper's image now, decoded as the back screen does and held where a pan
+ * starts, with its clock; or black while the wallpaper is off (as a pop-over is) or has no images.
+ * Decoding takes a moment, so it's done off the main thread, which the back screen shares. With a
+ * [glow], it also shows the Edge glow's faint glow while the phone charges, as the back screen
+ * does.
  */
 class PreviewBackdrop(
     private val frame: RearPreviewLayout,
     private val image: WallpaperView,
     private val clock: ClockLayer,
-    /** The clock's colours, or the image's [colour], may have changed; what's drawn over it takes them. */
+    /**
+     * The clock's colours, or the image's [colour], may have changed; what's drawn over it takes
+     * them.
+     */
     private val onColorsChanged: () -> Unit,
     private val glow: ChargingLayer? = null,
+    private val previewWhileOff: Boolean = false,
+    private val showLegacyClock: () -> Boolean = { true },
 ) {
     private val context get() = frame.context
     private val loader = Executors.newSingleThreadExecutor()
@@ -62,15 +67,21 @@ class PreviewBackdrop(
 
     /** Catches up with the wallpaper's switch, image and clock, and charging. The tab calls this every second. */
     fun refresh() {
-        val wallpaperOn = WallpaperSettings.isEnabled(context)
+        val wallpaperOn = previewWhileOff || WallpaperSettings.isEnabled(context)
         if (wallpaperOn != loadedFor || (wallpaperOn && Gallery.shown(context) != asked)) load(wallpaperOn)
         showClock(wallpaperOn)
         showGlow(wallpaperOn)
     }
 
     fun release() {
+        setMoving(false)
         released = true
         loader.shutdownNow()
+    }
+
+    fun setMoving(moving: Boolean) {
+        image.onPanned = if (moving) clock::backdropMoved else null
+        image.moving = moving
     }
 
     private fun load(wallpaperOn: Boolean) {
@@ -106,7 +117,10 @@ class PreviewBackdrop(
 
     /** The clock, as the back screen shows it: only with the wallpaper, which a pop-over doesn't have. */
     private fun showClock(wallpaperOn: Boolean) {
-        val visibility = if (wallpaperOn && WallpaperSettings.showClock(context)) View.VISIBLE else View.GONE
+        val visibility =
+            if (wallpaperOn && showLegacyClock() && WallpaperSettings.showClock(context))
+                View.VISIBLE
+            else View.GONE
         if (clock.visibility != visibility) {
             clock.visibility = visibility
             matchGlow()

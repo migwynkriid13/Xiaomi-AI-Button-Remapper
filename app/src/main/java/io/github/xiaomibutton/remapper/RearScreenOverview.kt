@@ -4,25 +4,18 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.AbsoluteAlignment
@@ -40,77 +33,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.backscreen.core.isRearScreenPlatform
+import io.github.xiaomibutton.remapper.backscreen.dashboard.DashboardEditor
 import io.github.xiaomibutton.remapper.backscreen.ui.Feature
 
 @Composable
-internal fun RearScreenOverview(modifier: Modifier = Modifier, open: (Feature) -> Unit) {
+internal fun RearScreenOverview(modifier: Modifier = Modifier, open: (Feature, Int) -> Unit) {
     val model = xiaomi18ModelLabel(Build.MODEL, Build.DEVICE) ?: xiaomi17ModelLabel(Build.MODEL, Build.DEVICE)
-    val supported = isRearScreenPlatform()
-    Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            BackScreenHero(model, supported)
-            if (!supported) return@Column
-            if (model == null) SupportedModelsNote()
-            val context = LocalContext.current
-            Panel {
-                SettingRow(
-                    "Rear dashboard",
-                    "Music, live cards, controls and pinned apps",
-                    {
-                        context.startActivity(
-                            Intent(
-                                context,
-                                io.github.xiaomibutton.remapper.backscreen.dashboard
-                                        .DashboardActivity::class
-                                    .java))
-                    },
-                    icon = R.drawable.action_view_carousel)
-        }
-            Feature.entries.forEach { feature ->
-                RearFeatureCard(feature, open, Modifier.heightIn(min = 72.dp))
-        }
-    }
+    if (isRearScreenPlatform()) DashboardEditor(modifier, model, open)
+    else Column(modifier.fillMaxSize()) { BackScreenHero(model) }
 }
 
 @Composable
-private fun SupportedModelsNote() {
-    QuietText("Supported on Xiaomi 17 Pro, 17 Pro Max, 18 Pro and 18 Pro Max.", Modifier.padding(horizontal = 2.dp))
-}
-
-@Composable
-private fun RearFeatureCard(feature: Feature, open: (Feature) -> Unit, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val (description, icon) = when (feature) {
-        Feature.WALLPAPER -> "Build the backdrop, clock and schedule" to R.drawable.rear_ic_image
-        Feature.NOTIFICATIONS -> "Choose what appears and when the display wakes" to R.drawable.rear_ic_notifications
-        Feature.BATTERY -> "Shape the charging animation and its color" to R.drawable.rear_ic_battery_charging
-        Feature.MIRROR -> "Move the current app with Quick Switch" to R.drawable.rear_ic_swap
-        Feature.CAMERA -> "Set up the rear-display camera gesture" to R.drawable.rear_ic_camera
-    }
-    Surface(
-        modifier = modifier.fillMaxWidth().clickable { open(feature) },
-        shape = PanelShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Row(
-            Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ActionGlyph(icon)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(context.getString(feature.label), style = MaterialTheme.typography.titleSmall)
-                QuietText(description)
-            }
-            LineIcon(Mark.NEXT, Modifier.size(16.dp), MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun BackScreenHero(model: String?, supported: Boolean) {
+private fun BackScreenHero(model: String?) {
     val mirrored = LocalLayoutDirection.current == LayoutDirection.Rtl
     Panel {
         Box(Modifier.fillMaxWidth().background(Color(0xFF2B100A)), contentAlignment = Alignment.CenterStart) {
@@ -135,9 +69,10 @@ private fun BackScreenHero(model: String?, supported: Boolean) {
                 if (model != null) Text(model, style = MaterialTheme.typography.labelLarge, color = Color(0xFFFFDBCA))
                 Text("Back screen", Modifier.semantics { heading() }, color = Color(0xFFFFF8F4),
                     style = MaterialTheme.typography.headlineLarge)
-                if (!supported) {
-                    Text("Requires Android 15 or later", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFFFDBCA))
-                }
+                        Text(
+                            "Requires Android 15 or later",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFFFDBCA))
             }
         }
     }

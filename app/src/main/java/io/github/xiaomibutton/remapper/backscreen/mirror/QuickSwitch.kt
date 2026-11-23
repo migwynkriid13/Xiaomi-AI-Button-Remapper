@@ -136,7 +136,6 @@ class QuickSwitch(private val keeper: KeeperService) {
         val appDpi =
             lend
                 ?.packageName
-                ?.takeIf { dashboard.getBoolean("enabled", false) }
                 ?.let { pkg ->
                     dashboard.getString("dpi.$pkg", null)?.toIntOrNull()?.takeIf { it in 120..480 }
                 }

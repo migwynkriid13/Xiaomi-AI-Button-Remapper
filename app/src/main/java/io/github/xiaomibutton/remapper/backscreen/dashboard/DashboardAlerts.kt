@@ -29,8 +29,6 @@ internal object DashboardAlerts {
     }
 
     fun posted(listener: MediaSessionListener, n: StatusBarNotification) {
-        if (!listener.getSharedPreferences(DashboardStore.FILE, 0).getBoolean("enabled", false))
-            return
         val s = DashboardStore(listener.applicationContext)
         if (n.user != Process.myUserHandle() || n.packageName == listener.packageName) return
         val urgentNote =

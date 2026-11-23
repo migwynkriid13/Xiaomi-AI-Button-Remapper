@@ -14,7 +14,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
@@ -22,14 +25,186 @@ import io.github.xiaomibutton.remapper.*
 import io.github.xiaomibutton.remapper.R
 import kotlinx.coroutines.*
 
+/** The same sheet is drawn over the wallpaper on the device and in the front preview. */
+@Composable
+internal fun RearOverlaySheet(
+    title: String,
+    close: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        val sheetHeight = maxHeight * .88f
+        Box(
+            Modifier.matchParentSize()
+                .clickable(
+                    interactionSource = null,
+                    indication = null,
+                    onClick = close,
+                )
+                .clearAndSetSemantics {},
+        )
+        Surface(
+            modifier =
+                Modifier.widthIn(max = 440.dp)
+                    .fillMaxWidth()
+                    .heightIn(max = sheetHeight)
+                    .padding(horizontal = 8.dp),
+            shape = PanelShape,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        ) {
+            Column {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        title,
+                        Modifier.weight(1f).semantics { heading() },
+                        style = MaterialTheme.typography.titleMedium)
+                    IconButton(close, Modifier.semantics { contentDescription = "Close overlay" }) {
+                        LineIcon(Mark.CLOSE, Modifier.size(18.dp))
+                    }
+                }
+                Column(
+                    Modifier.weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    content = content,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun OverlayShortcut(open: () -> Unit, modifier: Modifier = Modifier) {
+    FilledIconButton(
+        open,
+        modifier.size(48.dp).semantics { contentDescription = "Open overlays" },
+        colors =
+            IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+    ) {
+        Icon(
+            painterResource(R.drawable.action_tune),
+            contentDescription = null,
+            Modifier.size(20.dp))
+    }
+}
+
+@Composable
+internal fun OverlayTray(
+    s: DashboardStore,
+    locked: Boolean,
+    open: (Page) -> Unit,
+    close: () -> Unit
+) {
+    RearOverlaySheet("Overlays", close) {
+        val shortcuts = s.pages().filter { !locked || it.availableWhenLocked(s) }
+        if (shortcuts.isEmpty()) Text("No overlays available.")
+        shortcuts.forEach { page ->
+            Surface(
+                onClick = { open(page) },
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = TileShape,
+            ) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    Icon(
+                        painterResource(page.icon),
+                        null,
+                        Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        page.title,
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleSmall)
+                    LineIcon(Mark.NEXT, Modifier.size(14.dp))
+                }
+            }
+        }
+    }
+}
+
+internal fun Page.availableWhenLocked(s: DashboardStore) =
+    when (this) {
+        Page.HOME,
+        Page.CONTROLS,
+        Page.GAME -> true
+        Page.LIVE -> s.flag("lockCalls")
+        else -> false
+    }
+
+@Composable
+internal fun GlanceFace(s: DashboardStore, modifier: Modifier = Modifier) {
+    val now by
+        produceState(System.currentTimeMillis(), s.flag("Seconds")) {
+            while (true) {
+                value = System.currentTimeMillis()
+                val interval = if (s.flag("Seconds")) 1_000L else 60_000L
+                delay(interval - value % interval)
+            }
+        }
+    Surface(
+        modifier,
+        shape = PanelShape,
+        color = Color(0xB5251B17),
+        contentColor = Color(0xFFFFF1E6),
+    ) {
+        Column(
+            Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            ClockFace(s, now, false, LocalContentColor.current)
+            val details = buildList {
+                if (s.flag("Show date", true))
+                    add(android.text.format.DateFormat.format("EEE, d MMM", now).toString())
+                if (s.flag("Battery percentage", true)) add("${battery(s.context)}%")
+            }
+            if (details.isNotEmpty())
+                Text(details.joinToString(" · "), style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+@Composable
+internal fun NowPlayingGlance(s: DashboardStore, open: () -> Unit, modifier: Modifier = Modifier) {
+    if (Page.MUSIC !in s.pages()) return
+    val controller = player(s)
+    val title by
+        reading(controller, 2_000) {
+            controller
+                ?.takeIf { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+                ?.metadata
+                ?.getString(MediaMetadata.METADATA_KEY_TITLE)
+        }
+    val track = title?.getOrNull()?.takeIf(String::isNotBlank) ?: return
+    FilledTonalButton(
+        open, modifier.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 10.dp)) {
+            Icon(painterResource(Page.MUSIC.icon), contentDescription = null, Modifier.size(17.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                track,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        }
+}
+
 @Composable
 internal fun RearDashboard(
     a: Activity,
     s: DashboardStore,
     page: Page,
     locked: Boolean,
-    faceDown: Boolean,
-    tilt: Float,
     open: (Page) -> Unit,
     close: () -> Unit,
     unlock: () -> Unit,
@@ -49,73 +224,32 @@ internal fun RearDashboard(
             status = ""
         }
     }
-    val rows = remember(now / 2000, locked) { if (locked) emptyList() else notices(s) }
-    val pages = s.pages()
-    val effective = if (page in pages) page else pages.firstOrNull()
-    val secure = effective !in setOf(Page.HOME, Page.CONTROLS, Page.GAME)
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-        Scene(s, faceDown, tilt)
-        Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(pages, key = { it.name }) { p ->
-                        FilterChip(
-                            selected = p == effective,
-                            onClick = { open(p) },
-                            leadingIcon =
-                                if (p == effective)
-                                    ({
-                                        Icon(
-                                            androidx.compose.ui.res.painterResource(p.icon),
-                                            null,
-                                            Modifier.size(16.dp),
-                                        )
-                                    })
-                                else null,
-                            label = { Text(p.title, maxLines = 1) },
-                        )
-                    }
-                }
-                IconButton(
-                    close,
-                    modifier = Modifier.semantics { contentDescription = "Close dashboard" },
-                ) {
-                    LineIcon(Mark.CLOSE)
-                }
-            }
-            key(effective) {
-                Column(
-                    Modifier.fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    if (status.isNotEmpty())
-                        Text(status, style = MaterialTheme.typography.labelLarge)
-                    if (locked && effective == Page.LIVE && s.flag("lockCalls"))
-                        LockedCallCards(s, now, unlock)
-                    else if (secure && locked) {
-                        Text("Unlock to view ${effective?.title.orEmpty()}")
-                        Button(unlock) { Text("Unlock phone") }
-                    } else
-                        when (effective) {
-                            null -> Text("Choose the pages to show in the front editor.")
-                            Page.HOME ->
-                                HomeCards(s, now, locked, open) { id ->
-                                    scope.launch { status = resultMessage { runTile(s, id) } }
-                                }
-                            Page.MUSIC -> MusicPage(s, now)
-                            Page.LIVE,
-                            Page.INBOX ->
-                                LivePage(s, rows, effective == Page.LIVE, now) { status = it }
-                            Page.CONTROLS -> ControlsPage(a, s, locked, now) { status = it }
-                            Page.APPS -> AppsPage(a, s) { status = it }
-                            Page.SHARED -> SharedPage(s)
-                            Page.CONNECTIONS -> ConnectionPage(s)
-                            Page.GAME -> Garden(s)
+    val rows =
+        remember(now / 2000, locked, page) {
+            if (!locked && (page == Page.LIVE || page == Page.INBOX)) notices(s) else emptyList()
+        }
+    key(page) {
+        RearOverlaySheet(page.title, close) {
+            if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.labelLarge)
+            if (locked && page == Page.LIVE && s.flag("lockCalls")) LockedCallCards(s, now, unlock)
+            else if (locked && !page.availableWhenLocked(s)) {
+                Text("Unlock to view ${page.title.lowercase()}")
+                Button(unlock) { Text("Unlock phone") }
+            } else
+                when (page) {
+                    Page.HOME ->
+                        HomeCards(s, locked, open) { id ->
+                            scope.launch { status = resultMessage { runTile(s, id) } }
                         }
+                    Page.MUSIC -> MusicPage(s, now)
+                    Page.LIVE,
+                    Page.INBOX -> LivePage(s, rows, page == Page.LIVE, now) { status = it }
+                    Page.CONTROLS -> ControlsPage(a, s, locked, now) { status = it }
+                    Page.APPS -> AppsPage(a, s, close) { status = it }
+                    Page.SHARED -> SharedPage(s)
+                    Page.CONNECTIONS -> ConnectionPage(s)
+                    Page.GAME -> Garden(s)
                 }
-            }
         }
     }
 }
@@ -140,31 +274,15 @@ internal fun <T> reading(key: Any?, refresh: Long = 60000, work: () -> T): State
     }
 
 @Composable
-internal fun HomeCards(
+private fun HomeCards(
     s: DashboardStore,
-    now: Long,
     locked: Boolean,
     open: (Page) -> Unit,
     run: (String) -> Unit,
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column {
-            ClockFace(s, now, false)
-            if (s.flag("Show date", true))
-                Text(
-                    android.text.format.DateFormat.format("EEEE, d MMMM", now).toString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-        }
-        if (s.flag("Battery percentage", true) && "Battery" !in s.cards())
-            Text("${battery(s.context)}% charged", style = MaterialTheme.typography.labelLarge)
-    }
     val compact = s.value("size", "Compact") == "Compact"
     val cards = s.cards().filter { !locked || it in setOf("Battery", "Weather", "Next alarm") }
+    if (cards.isEmpty()) Text("No glance cards to show.")
     for (row in cards.chunked(if (compact) 2 else 1)) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -274,11 +392,11 @@ private fun AccessoryBattery(s: DashboardStore): String {
 }
 
 @Composable
-internal fun AppsPage(a: Activity, s: DashboardStore, message: (String) -> Unit) {
+private fun AppsPage(a: Activity, s: DashboardStore, close: () -> Unit, message: (String) -> Unit) {
     val apps = s.strings("apps")
     val scope = rememberCoroutineScope()
     if (apps.isEmpty()) {
-        Text("Pin apps in Launcher and keyboard on the front.")
+        Text("Pin apps under Back screen → App handoff.")
         return
     }
     val columns = s.value("columns", "3").toIntOrNull()?.coerceIn(2, 4) ?: 3
@@ -302,7 +420,7 @@ internal fun AppsPage(a: Activity, s: DashboardStore, message: (String) -> Unit)
                         openRearApp(a, s, pkg)
                         ""
                     }
-                    if (result.isNotEmpty()) message(result)
+                    if (result.isNotEmpty()) message(result) else close()
                 }
             },
             shape = TileShape,

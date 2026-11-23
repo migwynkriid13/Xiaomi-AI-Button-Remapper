@@ -199,7 +199,15 @@ class RearHostActivity : androidx.activity.ComponentActivity() {
         if (!popover) addNotifications(root, display)
         if (!popover)
             dashboard =
-                io.github.xiaomibutton.remapper.backscreen.dashboard.DashboardOverlay(this).also {
+                io.github.xiaomibutton.remapper.backscreen.dashboard
+                    .DashboardOverlay(this) {
+                        updateGestures()
+                        fadeClock()
+                    }
+                    .also {
+                        // The scene is a backdrop, underneath the clock, charging and notification
+                        // layers.
+                        root.addView(it.backdrop, 1, FrameLayout.LayoutParams(-1, -1))
                     root.addView(it)
                 }
         gestures = RearGestures(this, swipes)
@@ -332,7 +340,9 @@ class RearHostActivity : androidx.activity.ComponentActivity() {
 
     /** The clock fades out while the charging animation or the notification list shows over it. */
     private fun fadeClock() {
-        clock?.alpha = (1f - chargingShown) * (1f - shadeShown)
+        val visibility = (1f - chargingShown) * (1f - shadeShown)
+        clock?.alpha = if (dashboard?.usesGlanceClock == true) 0f else visibility
+        dashboard?.interrupted = 1f - visibility
     }
 
     override fun onStart() {
