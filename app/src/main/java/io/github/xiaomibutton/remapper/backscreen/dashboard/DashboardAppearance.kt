@@ -215,10 +215,8 @@ internal fun Scene(s: DashboardStore, faceDown: Boolean, tilt: Float) {
                     )
                     .value
             else 0f
-        if (
-            kind in setOf("Silk", "Clay waves", "Soft metal") &&
-                android.os.Build.VERSION.SDK_INT >= 33
-        )
+        if (kind in setOf("Silk", "Clay waves", "Soft metal") &&
+            android.os.Build.VERSION.SDK_INT >= 33)
             AnimatedBackdrop(kind, bg, accent, phase, x)
         Canvas(Modifier.fillMaxSize()) {
             if (kind == "Warm")
@@ -264,12 +262,10 @@ internal fun AmbientFace(s: DashboardStore, locked: Boolean, wake: () -> Unit) {
         }
     val waiting =
         remember(now, locked) {
-            if (
-                locked &&
-                    !io.github.xiaomibutton.remapper.backscreen.notifications.NotificationAccess
-                        .lockScreen(s.context)
-                        .showNotifications
-            )
+            if (locked &&
+                !io.github.xiaomibutton.remapper.backscreen.notifications.NotificationAccess
+                    .lockScreen(s.context)
+                    .showNotifications)
                 emptyList()
             else notices(s).distinctBy { it.packageName }.take(4)
         }

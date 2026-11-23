@@ -125,11 +125,9 @@ internal fun weather(s: DashboardStore): Weather {
     val place = s.value("city")
     val c = s.context
     val known =
-        if (
-            s.flag("deviceWeather") &&
-                c.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
+        if (s.flag("deviceWeather") &&
+            c.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED) {
             val manager = c.getSystemService(android.location.LocationManager::class.java)
             manager
                 .getProviders(true)

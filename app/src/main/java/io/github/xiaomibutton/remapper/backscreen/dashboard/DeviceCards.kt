@@ -34,16 +34,14 @@ internal fun activeProfile(s: DashboardStore, locked: Boolean): String? {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     return listOf("Night", "Headphones", "Desk").firstOrNull { name ->
         s.flag("profile.$name") &&
-            when (
-                s.value(
-                    "trigger.$name",
-                    when (name) {
-                        "Night" -> "Night hours"
-                        "Desk" -> "Charging"
-                        else -> "Headphones"
-                    },
-                )
-            ) {
+            when (s.value(
+                "trigger.$name",
+                when (name) {
+                    "Night" -> "Night hours"
+                    "Desk" -> "Charging"
+                    else -> "Headphones"
+                },
+            )) {
                 "Night hours" -> hour >= 22 || hour < 7
                 "Charging" -> s.context.getSystemService(BatteryManager::class.java).isCharging
                 "Locked" -> locked
@@ -64,10 +62,8 @@ internal fun nextAlarm(c: Context): String {
 
 internal fun nextEvent(s: DashboardStore): String {
     val c = s.context
-    if (
-        c.checkSelfPermission(Manifest.permission.READ_CALENDAR) !=
-            PackageManager.PERMISSION_GRANTED
-    )
+    if (c.checkSelfPermission(Manifest.permission.READ_CALENDAR) !=
+        PackageManager.PERMISSION_GRANTED)
         return "Calendar access is off"
     val now = System.currentTimeMillis()
     val uri =

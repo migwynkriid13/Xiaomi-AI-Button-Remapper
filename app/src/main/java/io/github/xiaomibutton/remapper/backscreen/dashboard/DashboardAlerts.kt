@@ -44,11 +44,9 @@ internal object DashboardAlerts {
         if (!permitted(listener, n)) return
         if (urgentNote && s.flag("Calls and alarms", true) && Page.LIVE in s.pages()) {
             BackSensor.check(listener) { covered ->
-                if (
-                    !covered &&
-                        runCatching { listener.getActiveNotifications(arrayOf(n.key)).isNotEmpty() }
-                            .getOrDefault(false)
-                ) {
+                if (!covered &&
+                    runCatching { listener.getActiveNotifications(arrayOf(n.key)).isNotEmpty() }
+                        .getOrDefault(false)) {
                     urgent?.invoke(n.key)
                     KeeperService.instance?.wakeDashboardAlert()
                 }

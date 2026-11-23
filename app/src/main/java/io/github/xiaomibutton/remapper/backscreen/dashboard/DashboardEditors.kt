@@ -29,11 +29,9 @@ internal fun LauncherSettings(s: DashboardStore) {
         DashToggle("Open keyboard on the back", s.flag("rearIme", true)) { s.set("rearIme", it) }
         DashToggle("Compact rear keyboard", s.flag("compactKeyboard")) { on ->
             s.set("compactKeyboard", on)
-            if (
-                on &&
-                    io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService.connected ==
-                        null
-            )
+            if (on &&
+                io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService.connected ==
+                    null)
                 s.context.startActivity(
                     Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS),
                 )

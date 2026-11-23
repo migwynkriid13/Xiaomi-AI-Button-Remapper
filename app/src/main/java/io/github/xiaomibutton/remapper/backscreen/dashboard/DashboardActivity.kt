@@ -399,11 +399,9 @@ private fun Editor(s: DashboardStore, done: () -> Unit) {
                                     ),
                                 ) {
                                     s.set(key, it)
-                                    if (
-                                        it &&
-                                            key == "Banners over rear apps" &&
-                                            !Settings.canDrawOverlays(context)
-                                    )
+                                    if (it &&
+                                        key == "Banners over rear apps" &&
+                                        !Settings.canDrawOverlays(context))
                                         context.startActivity(
                                             Intent(
                                                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -462,12 +460,10 @@ private fun Editor(s: DashboardStore, done: () -> Unit) {
                                         .ButtonAccessibilityService
                                         .connected
                                         ?.refreshFlags()
-                                    if (
-                                        it &&
-                                            io.github.xiaomibutton.remapper.runtime
-                                                .ButtonAccessibilityService
-                                                .connected == null
-                                    )
+                                    if (it &&
+                                        io.github.xiaomibutton.remapper.runtime
+                                            .ButtonAccessibilityService
+                                            .connected == null)
                                         context.startActivity(
                                             Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
                                         )

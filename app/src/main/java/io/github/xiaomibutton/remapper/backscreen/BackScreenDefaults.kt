@@ -26,13 +26,14 @@ fun resetBackScreenDefaults(context: Context) {
         .onFailure { BackScreen.log("Couldn't apply reset back screen settings: ${it.message}") }
 }
 
-private val USER_SETTING_FILES = listOf(
-    "backscreen",
-    "notifications",
-    "battery",
-    "mirror",
-    "camera",
-    "display",
-    "schedules",
-    "rear_dashboard",
-)
+private val USER_SETTING_FILES =
+    listOf(
+        "backscreen",
+        "notifications",
+        "battery",
+        "mirror",
+        "camera",
+        "display",
+        "schedules",
+        "rear_dashboard",
+    )

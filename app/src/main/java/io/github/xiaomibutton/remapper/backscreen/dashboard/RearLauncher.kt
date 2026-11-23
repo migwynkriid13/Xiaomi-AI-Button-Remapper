@@ -99,10 +99,8 @@ internal fun restoreRearIme(context: android.content.Context) {
     CoroutineScope(Dispatchers.Main.immediate).launch {
         runCatching {
             withDashboardHelper(context) { helper ->
-                if (
-                    RearState.lendFor(context, LendReason.QUICK_SWITCH) == null &&
-                        prefs.getInt("display", -1) == rear
-                ) {
+                if (RearState.lendFor(context, LendReason.QUICK_SWITCH) == null &&
+                    prefs.getInt("display", -1) == rear) {
                     if (helper.imePolicy(rear, -1) == 0)
                         check(helper.imePolicy(rear, original) == original)
                     prefs.edit().clear().apply()

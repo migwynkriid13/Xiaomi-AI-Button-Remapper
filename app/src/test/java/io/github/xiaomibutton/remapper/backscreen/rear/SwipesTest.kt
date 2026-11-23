@@ -12,8 +12,14 @@ class SwipesTest {
     private val w = 976
     private val h = 596
 
-    private fun swipe(x0: Number, y0: Number, x1: Number, y1: Number, ms: Long = 150, launcher: Boolean = false) =
-        Swipes.classify(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), ms, w, h, launcher)
+    private fun swipe(
+        x0: Number,
+        y0: Number,
+        x1: Number,
+        y1: Number,
+        ms: Long = 150,
+        launcher: Boolean = false
+    ) = Swipes.classify(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), ms, w, h, launcher)
 
     @Test
     fun launcherSwipeStartsAboveTheSystemHomeStrip() {

@@ -373,12 +373,10 @@ private fun ConnectionPage(s: DashboardStore) {
             }
         }
     }
-    for (i in 1..2) if (
-        s.value("ring$i", "Session") != "Hidden" &&
-            (s.value("usageFile$i").isNotBlank() ||
-                s.value("usageUrl$i").isNotBlank() ||
-                s.value("ring$i") == "Battery")
-    ) {
+    for (i in 1..2) if (s.value("ring$i", "Session") != "Hidden" &&
+        (s.value("usageFile$i").isNotBlank() ||
+            s.value("usageUrl$i").isNotBlank() ||
+            s.value("ring$i") == "Battery")) {
         val reading by
             reading(version to i) {
                 if (s.value("ring$i") == "Battery") RingReading(battery(s.context).toFloat(), null)
@@ -418,15 +416,13 @@ private fun ConnectionPage(s: DashboardStore) {
             }
         }
     }
-    if (
-        s.value("haBase").isBlank() &&
-            s.value("feed").isBlank() &&
-            (1..2).none {
-                s.value("usageFile$it").isNotBlank() ||
-                    s.value("usageUrl$it").isNotBlank() ||
-                    s.value("ring$it") == "Battery"
-            }
-    )
+    if (s.value("haBase").isBlank() &&
+        s.value("feed").isBlank() &&
+        (1..2).none {
+            s.value("usageFile$it").isNotBlank() ||
+                s.value("usageUrl$it").isNotBlank() ||
+                s.value("ring$it") == "Battery"
+        })
         Text("Add a Home Assistant entity, JSON feed or usage source in Connections.")
     if (result.isNotBlank()) Text(result)
     TextButton({ version++ }) { Text("Refresh") }

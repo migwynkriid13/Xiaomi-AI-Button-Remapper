@@ -63,12 +63,10 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
     init {
         rings.setContent {
             RemapperTheme {
-                if (
-                    running &&
-                        store.flag("enabled") &&
-                        !covered &&
-                        (dim || page != null || store.flag("wallpaperRings", true))
-                )
+                if (running &&
+                    store.flag("enabled") &&
+                    !covered &&
+                    (dim || page != null || store.flag("wallpaperRings", true)))
                     LensRings(store, locked, ambient = dim)
             }
         }
@@ -201,14 +199,12 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
             store.flag("Always-on") &&
                 !liveAwake &&
                 SystemClock.elapsedRealtime() - lastTouch > (idle.toLongOrNull() ?: 30) * 1000
-        if (
-            !dim &&
-                !liveAwake &&
-                active != null &&
-                !store.flag("Always-on") &&
-                SystemClock.elapsedRealtime() - lastTouch > (idle.toLongOrNull() ?: 30) * 1000 &&
-                page != null
-        )
+        if (!dim &&
+            !liveAwake &&
+            active != null &&
+            !store.flag("Always-on") &&
+            SystemClock.elapsedRealtime() - lastTouch > (idle.toLongOrNull() ?: 30) * 1000 &&
+            page != null)
             close()
         val brightness =
             when {
@@ -224,11 +220,9 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
     }
 
     private fun applyWindow(awake: Boolean, brightness: Float) {
-        if (
-            awake &&
-                !ownedAwake &&
-                a.window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON == 0
-        ) {
+        if (awake &&
+            !ownedAwake &&
+            a.window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON == 0) {
             ownedAwake = true
             a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else if (!awake && ownedAwake) {

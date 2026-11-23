@@ -8,8 +8,8 @@ import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.os.Process
-import io.github.xiaomibutton.remapper.launchableActivities
 import io.github.xiaomibutton.remapper.QuickSettingsTiles
+import io.github.xiaomibutton.remapper.launchableActivities
 import io.github.xiaomibutton.remapper.systemPages
 import io.github.xiaomibutton.remapper.validatePackage
 import java.util.concurrent.ArrayBlockingQueue
@@ -90,12 +90,18 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
     override fun imePolicy(displayId: Int, policy: Int): Int {
         checkOwner()
         require(displayId > 0 && policy in -1..2 && actionsAllowed)
-        val binder = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java)
-            .invoke(null, "window") as IBinder
+        val binder =
+            Class.forName("android.os.ServiceManager")
+                .getMethod("getService", String::class.java)
+                .invoke(null, "window") as IBinder
         val api = Class.forName("android.view.IWindowManager")
-        val service = Class.forName("android.view.IWindowManager\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, binder)
+        val service =
+            Class.forName("android.view.IWindowManager\$Stub")
+                .getMethod("asInterface", IBinder::class.java)
+                .invoke(null, binder)
         val int = Int::class.javaPrimitiveType
-        if (policy >= 0) api.getMethod("setDisplayImePolicy", int, int).invoke(service, displayId, policy)
+        if (policy >= 0)
+            api.getMethod("setDisplayImePolicy", int, int).invoke(service, displayId, policy)
         return api.getMethod("getDisplayImePolicy", int).invoke(service, displayId) as Int
     }
 

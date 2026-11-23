@@ -152,10 +152,8 @@ internal fun LivePage(
                                     .onFailure { message("This action expired") }
                             Unit
                         }
-                        if (
-                            note.category in
-                                setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_ALARM)
-                        )
+                        if (note.category in
+                            setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_ALARM))
                             ConfirmAction(action.title.toString(), n.key, send)
                         else TextButton(send) { Text(action.title.toString()) }
                     }

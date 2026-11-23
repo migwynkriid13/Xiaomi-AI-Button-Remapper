@@ -95,11 +95,9 @@ internal fun ControlsPage(
                                         .getSystemService(WifiManager::class.java)
                                         .isWifiEnabled
                                 "bluetooth" ->
-                                    if (
-                                        a.checkSelfPermission(
-                                            android.Manifest.permission.BLUETOOTH_CONNECT,
-                                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                    )
+                                    if (a.checkSelfPermission(
+                                        android.Manifest.permission.BLUETOOTH_CONNECT,
+                                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED)
                                         a.getSystemService(BluetoothManager::class.java)
                                             .adapter
                                             ?.isEnabled

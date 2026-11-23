@@ -38,11 +38,9 @@ internal class CompactKeyboard(private val service: ButtonAccessibilityService) 
 
     private fun activePackage(): String? {
         val prefs = service.getSharedPreferences(DashboardStore.FILE, 0)
-        if (
-            !prefs.getBoolean("enabled", false) ||
-                !prefs.getBoolean("compactKeyboard", false) ||
-                PhoneLock.isLocked(service)
-        )
+        if (!prefs.getBoolean("enabled", false) ||
+            !prefs.getBoolean("compactKeyboard", false) ||
+            PhoneLock.isLocked(service))
             return null
         return RearState.lendFor(service, LendReason.QUICK_SWITCH)?.packageName
     }

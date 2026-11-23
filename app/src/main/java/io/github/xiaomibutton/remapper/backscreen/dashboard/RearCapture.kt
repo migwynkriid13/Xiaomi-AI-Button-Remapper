@@ -126,11 +126,9 @@ internal object RearCapture {
                         continue
                     }
                     if (i >= 0) {
-                        if (
-                            track >= 0 &&
-                                info.size > 0 &&
-                                info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0
-                        ) {
+                        if (track >= 0 &&
+                            info.size > 0 &&
+                            info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0) {
                             mux.writeSampleData(
                                 track,
                                 checkNotNull(encoder.getOutputBuffer(i)),
@@ -159,10 +157,8 @@ internal object RearCapture {
                 encoder.start()
                 started = true
                 val start = SystemClock.elapsedRealtime()
-                while (
-                    SystemClock.elapsedRealtime() - start < 60000 &&
-                        currentCoroutineContext().isActive
-                ) {
+                while (SystemClock.elapsedRealtime() - start < 60000 &&
+                    currentCoroutineContext().isActive) {
                     val bitmap = frame(a, width, height)
                     try {
                         val index = encoder.dequeueInputBuffer(50000)

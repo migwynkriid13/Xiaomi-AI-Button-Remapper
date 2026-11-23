@@ -19,11 +19,9 @@ internal fun LensRings(s: DashboardStore, locked: Boolean, ambient: Boolean = fa
         val window = s.value("ring$i", "Session")
         val metric = s.value("metric$i", "Usage")
         if (window == "Hidden" || locked && window != "Battery") continue
-        if (
-            window != "Battery" &&
-                s.value("usageFile$i").isBlank() &&
-                s.value("usageUrl$i").isBlank()
-        )
+        if (window != "Battery" &&
+            s.value("usageFile$i").isBlank() &&
+            s.value("usageUrl$i").isBlank())
             continue
         val ring by
             reading(listOf(window, metric, s.value("usageUrl$i"), s.value("usageFile$i")), 60000) {
