@@ -1,816 +1,370 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    The Wallpaper tab: its main switch, pinned, then everything about the wallpaper. Unlike the
-    other tabs, its options stay usable while it's off: you choose images first, and schedules
-    turn it on.
--->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<io.github.xiaomibutton.remapper.backscreen.ui.CategoryWorkspace
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rear_workspace"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    app:previewSections="0,1">
 
-    <io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
-        android:id="@+id/rear_mainSwitch"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="20dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="8dp"
-        android:text="@string/rear_show_on_back_screen" />
+        android:orientation="vertical"
+        android:id="@+id/rear_workspaceHeader"
+        android:paddingBottom="8dp">
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/rear_scroll"
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_wallpaper_title"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.Remapper.EditorHeadline"
+            android:accessibilityHeading="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_wallpaper_detail"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="8dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+        <io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
+            android:id="@+id/rear_mainSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_enable_wallpaper"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:id="@+id/rear_workspacePreview"
+        android:background="@drawable/rear_editor_canvas"
+        android:padding="16dp"
+        android:layout_marginBottom="6dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_canvas"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="0dp"
+            android:textAppearance="@style/TextAppearance.Remapper.EditorEyebrow" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/rear_previewCard"
+            style="@style/Widget.Material3.CardView.Filled"
+            android:layout_width="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:contentDescription="@string/rear_wallpaper_preview"
+            android:focusable="true"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+            app:cardCornerRadius="28dp"
+            android:minHeight="56dp"
+            android:layout_marginTop="14dp">
+
+            <io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout
+                android:id="@+id/rear_previewFrame"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperView
+                    android:id="@+id/rear_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no" />
+
+                <LinearLayout
+                    android:id="@+id/rear_emptyState"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/rear_ic_image"
+                        app:tint="@color/rear_on_rear_preview_variant" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/rear_no_wallpaper"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textColor="@color/rear_on_rear_preview" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rear_no_wallpaper_summary"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/rear_on_rear_preview_variant" />
+                </LinearLayout>
+
+                <io.github.xiaomibutton.remapper.backscreen.wallpaper.ClockLayer
+                    android:id="@+id/rear_clock"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
+            </io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/rear_emptyCaption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:text="@string/rear_no_wallpaper_caption"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:tag="@string/rear_edit_images">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="24dp">
+            style="@style/Widget.Remapper.EditorSurface">
 
-            <!-- Preview, same shape as the rear display, with its camera area shown. -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/rear_previewCard"
-                style="@style/Widget.Material3.CardView.Filled"
-                android:layout_width="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_height="wrap_content"
-                android:clickable="true"
-                android:contentDescription="@string/rear_wallpaper_preview"
-                android:focusable="true"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
-                app:cardCornerRadius="28dp">
-
-                <io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout
-                    android:id="@+id/rear_previewFrame"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperView
-                        android:id="@+id/rear_preview"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:importantForAccessibility="no" />
-
-                    <!-- No images: the back screen is black. Under the clock, which still shows. Centred beside the camera. -->
-                    <LinearLayout
-                        android:id="@+id/rear_emptyState"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical">
-
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/rear_ic_image"
-                            app:tint="@color/rear_on_rear_preview_variant" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:text="@string/rear_no_wallpaper"
-                            android:textAppearance="?attr/textAppearanceTitleSmall"
-                            android:textColor="@color/rear_on_rear_preview" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/rear_no_wallpaper_summary"
-                            android:textAppearance="?attr/textAppearanceBodySmall"
-                            android:textColor="@color/rear_on_rear_preview_variant" />
-
-                    </LinearLayout>
-
-                    <io.github.xiaomibutton.remapper.backscreen.wallpaper.ClockLayer
-                        android:id="@+id/rear_clock"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:visibility="gone" />
-                </io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- With no images and the clock on, the preview shows just the clock; this says why. -->
             <TextView
-                android:id="@+id/rear_emptyCaption"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="8dp"
-                android:text="@string/rear_no_wallpaper_caption"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:visibility="gone" />
-
-            <!-- Only shown while a schedule or the clock needs something allowed to run on time. -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/rear_setupCard"
-                style="@style/Widget.Remapper.RearCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="@string/rear_editor_photo_sources"
+                android:textColor="?attr/colorOnSurface"
                 android:layout_marginTop="8dp"
-                android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorErrorContainer">
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:accessibilityHeading="true" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/rear_setupTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/rear_setup_title"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textColor="?attr/colorOnErrorContainer" />
-
-                    <LinearLayout
-                        android:id="@+id/rear_alarmWarning"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:orientation="vertical"
-                        android:visibility="gone">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/rear_alarms_needed"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnErrorContainer" />
-
-                        <Button
-                            android:id="@+id/rear_alarmButton"
-                            style="@style/Widget.Material3.Button.TextButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="-12dp"
-                            android:text="@string/rear_allow_alarms"
-                            android:textColor="?attr/colorOnErrorContainer" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/rear_batteryWarning"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:orientation="vertical"
-                        android:visibility="gone">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/rear_battery_needed"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnErrorContainer" />
-
-                        <Button
-                            android:id="@+id/rear_batteryButton"
-                            style="@style/Widget.Material3.Button.TextButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="-12dp"
-                            android:text="@string/rear_open_app_settings"
-                            android:textColor="?attr/colorOnErrorContainer" />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_photo_sources_detail"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal">
+                android:layout_marginTop="8dp"
+                android:orientation="vertical">
 
                 <Button
                     android:id="@+id/rear_chooseButton"
                     style="@style/Widget.Material3.Button.TonalButton.Icon"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
                     android:text="@string/rear_choose_images"
-                    app:icon="@drawable/rear_ic_image" />
+                    app:icon="@drawable/rear_ic_image"
+                    app:cornerRadius="24dp"
+                    android:minHeight="52dp" />
 
                 <Button
                     android:id="@+id/rear_folderButton"
                     style="@style/Widget.Material3.Button.OutlinedButton.Icon"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/rear_choose_folder"
-                    app:icon="@drawable/rear_ic_folder" />
+                    app:icon="@drawable/rear_ic_folder"
+                    app:cornerRadius="24dp"
+                    android:minHeight="52dp" />
             </LinearLayout>
+        </LinearLayout>
 
-            <!-- Only shown once there are images. -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/rear_galleryCard"
-                style="@style/Widget.Remapper.RearCard"
+        <LinearLayout
+            android:id="@+id/rear_galleryCard"
+            style="@style/Widget.Remapper.EditorSurface"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            android:orientation="vertical">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorSurfaceContainer">
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rear_gallery_title"
+                    android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:id="@+id/rear_gallerySummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <LinearLayout
+                    android:id="@+id/rear_galleryRotation"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/rear_gallery_title"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textColor="?attr/colorOnSurface" />
-
-                    <TextView
-                        android:id="@+id/rear_gallerySummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                    <!-- Only with more than one image to go through, or a folder. -->
                     <LinearLayout
-                        android:id="@+id/rear_galleryRotation"
+                        android:id="@+id/rear_intervalRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:layout_marginTop="8dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:orientation="horizontal">
 
-                        <LinearLayout
-                            android:id="@+id/rear_intervalRow"
-                            android:layout_width="match_parent"
+                        <TextView
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:minHeight="56dp"
-                            android:orientation="horizontal">
+                            android:layout_weight="1"
+                            android:text="@string/rear_change_every"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface" />
 
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_change_every"
-                                android:textAppearance="?attr/textAppearanceBodyLarge"
-                                android:textColor="?attr/colorOnSurface" />
-
-                            <TextView
-                                android:id="@+id/rear_intervalValue"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textAppearance="?attr/textAppearanceLabelLarge"
-                                android:textColor="?attr/colorPrimary" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:id="@+id/rear_shuffleRow"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:minHeight="56dp"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="16dp"
-                                android:layout_weight="1"
-                                android:text="@string/rear_shuffle"
-                                android:textAppearance="?attr/textAppearanceBodyLarge"
-                                android:textColor="?attr/colorOnSurface" />
-
-                            <com.google.android.material.materialswitch.MaterialSwitch
-                                android:id="@+id/rear_shuffleSwitch"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-                        </LinearLayout>
-
-                        <Button
-                            android:id="@+id/rear_nextButton"
-                            style="@style/Widget.Material3.Button.TextButton.Icon"
+                        <TextView
+                            android:id="@+id/rear_intervalValue"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="-12dp"
-                            android:text="@string/rear_next_image"
-                            app:icon="@drawable/rear_ic_skip" />
+                            android:textAppearance="?attr/textAppearanceLabelLarge"
+                            android:textColor="?attr/colorPrimary" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/rear_shuffleRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="16dp"
+                            android:layout_weight="1"
+                            android:text="@string/rear_shuffle"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/rear_shuffleSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
                     </LinearLayout>
 
                     <Button
-                        android:id="@+id/rear_removeButton"
+                        android:id="@+id/rear_nextButton"
                         style="@style/Widget.Material3.Button.TextButton.Icon"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="-12dp"
-                        android:text="@string/rear_remove_images"
-                        app:icon="@drawable/rear_ic_delete" />
+                        android:text="@string/rear_next_image"
+                        app:icon="@drawable/rear_ic_skip"
+                        app:cornerRadius="24dp"
+                        android:minHeight="52dp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <!-- How long the back screen stays bright, and when it lights. -->
-            <include layout="@layout/rear_card_back_screen_display" />
+                <Button
+                    android:id="@+id/rear_removeButton"
+                    style="@style/Widget.Material3.Button.TextButton.Icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="-12dp"
+                    android:text="@string/rear_remove_images"
+                    app:icon="@drawable/rear_ic_delete"
+                    app:cornerRadius="24dp"
+                    android:minHeight="52dp" />
+            </LinearLayout>
+        </LinearLayout>
 
-            <!-- How images fit the back screen, and panning across them. Only shown once there are images. -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/rear_fitCard"
-                style="@style/Widget.Remapper.RearCard"
+        <LinearLayout
+            android:id="@+id/rear_fitCard"
+            style="@style/Widget.Remapper.EditorSurface"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            android:orientation="vertical">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorSurfaceContainer">
+                android:orientation="vertical">
 
-                <LinearLayout
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rear_scaling_title"
+                    android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/rear_scaling_summary"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/rear_scalingChips"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_marginTop="8dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/rear_scaling_title"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textColor="?attr/colorOnSurface" />
+                <TextView
+                    android:id="@+id/rear_scalingPanNote"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rear_pan_fills"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/rear_scaling_summary"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                    <com.google.android.material.chip.ChipGroup
-                        android:id="@+id/rear_scalingChips"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:selectionRequired="true"
-                        app:singleSelection="true" />
-
-                    <!-- Only while panning, which always fills the screen. -->
-                    <TextView
-                        android:id="@+id/rear_scalingPanNote"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/rear_pan_fills"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:visibility="gone" />
-
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginVertical="16dp" />
-
-                    <LinearLayout
-                        android:id="@+id/rear_panRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="?attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/rear_pan_title"
-                                android:textAppearance="?attr/textAppearanceTitleMedium"
-                                android:textColor="?attr/colorOnSurface" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="@string/rear_pan_summary"
-                                android:textAppearance="?attr/textAppearanceBodyMedium"
-                                android:textColor="?attr/colorOnSurfaceVariant" />
-                        </LinearLayout>
-
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/rear_panSwitch"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <!-- Only shown while panning is on. -->
-                    <LinearLayout
-                        android:id="@+id/rear_panOptions"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:visibility="gone">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:text="@string/rear_pan_speed"
-                            android:textAppearance="?attr/textAppearanceLabelLarge"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <com.google.android.material.chip.ChipGroup
-                            android:id="@+id/rear_panSpeeds"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            app:selectionRequired="true"
-                            app:singleSelection="true" />
-
-                        <LinearLayout
-                            android:id="@+id/rear_skipShortRow"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:minHeight="56dp"
-                            android:orientation="horizontal">
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="16dp"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/rear_pan_skip_short"
-                                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                                    android:textColor="?attr/colorOnSurface" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/rear_pan_skip_short_summary"
-                                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                                    android:textColor="?attr/colorOnSurfaceVariant" />
-                            </LinearLayout>
-
-                            <com.google.android.material.materialswitch.MaterialSwitch
-                                android:id="@+id/rear_skipShortSwitch"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-                        </LinearLayout>
-
-                        <!-- Only while Skip short pans is on. -->
-                        <LinearLayout
-                            android:id="@+id/rear_skipShortOptions"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:visibility="gone">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="@string/rear_pan_min_label"
-                                android:textAppearance="?attr/textAppearanceLabelLarge"
-                                android:textColor="?attr/colorOnSurfaceVariant" />
-
-                            <com.google.android.material.chip.ChipGroup
-                                android:id="@+id/rear_panMinChips"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                app:selectionRequired="true"
-                                app:singleSelection="true" />
-                        </LinearLayout>
-
-                        <!-- What panning does with the image in the preview. -->
-                        <TextView
-                            android:id="@+id/rear_panImageNote"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:accessibilityLiveRegion="polite"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Time and date over the image. -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Remapper.RearCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                app:cardBackgroundColor="?attr/colorSurfaceContainer">
-
-                <LinearLayout
+                <com.google.android.material.divider.MaterialDivider
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_marginVertical="16dp" />
 
-                    <LinearLayout
-                        android:id="@+id/rear_clockRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="?attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/rear_clock_title"
-                                android:textAppearance="?attr/textAppearanceTitleMedium"
-                                android:textColor="?attr/colorOnSurface" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="@string/rear_clock_summary"
-                                android:textAppearance="?attr/textAppearanceBodyMedium"
-                                android:textColor="?attr/colorOnSurfaceVariant" />
-                        </LinearLayout>
-
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/rear_clockSwitch"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <!-- Only shown while the clock is on. -->
-                    <LinearLayout
-                        android:id="@+id/rear_clockOptions"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:visibility="gone">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:text="@string/rear_clock_style"
-                            android:textAppearance="?attr/textAppearanceLabelLarge"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <com.google.android.material.chip.ChipGroup
-                            android:id="@+id/rear_clockStyles"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            app:selectionRequired="true"
-                            app:singleSelection="true" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:text="@string/rear_clock_position"
-                            android:textAppearance="?attr/textAppearanceLabelLarge"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <com.google.android.material.button.MaterialButtonToggleGroup
-                            android:id="@+id/rear_alignX"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            app:selectionRequired="true"
-                            app:singleSelection="true">
-
-                            <Button
-                                android:id="@+id/rear_alignLeft"
-                                android:saveEnabled="false"
-                                style="?attr/materialButtonOutlinedStyle"
-                                android:paddingHorizontal="4dp"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_align_left" />
-
-                            <Button
-                                android:id="@+id/rear_alignCentre"
-                                android:saveEnabled="false"
-                                style="?attr/materialButtonOutlinedStyle"
-                                android:paddingHorizontal="4dp"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_align_centre" />
-
-                            <Button
-                                android:id="@+id/rear_alignRight"
-                                android:saveEnabled="false"
-                                style="?attr/materialButtonOutlinedStyle"
-                                android:paddingHorizontal="4dp"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_align_right" />
-                        </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                        <com.google.android.material.button.MaterialButtonToggleGroup
-                            android:id="@+id/rear_alignY"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            app:selectionRequired="true"
-                            app:singleSelection="true">
-
-                            <Button
-                                android:id="@+id/rear_alignTop"
-                                android:saveEnabled="false"
-                                style="?attr/materialButtonOutlinedStyle"
-                                android:paddingHorizontal="4dp"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_align_top" />
-
-                            <Button
-                                android:id="@+id/rear_alignMiddle"
-                                android:saveEnabled="false"
-                                style="?attr/materialButtonOutlinedStyle"
-                                android:paddingHorizontal="4dp"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_align_middle" />
-
-                            <Button
-                                android:id="@+id/rear_alignBottom"
-                                android:saveEnabled="false"
-                                style="?attr/materialButtonOutlinedStyle"
-                                android:paddingHorizontal="4dp"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_align_bottom" />
-                        </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="@string/rear_clock_drag_hint"
-                            android:textAppearance="?attr/textAppearanceBodySmall"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <LinearLayout
-                            android:id="@+id/rear_clockColorRow"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:minHeight="56dp"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_clock_colour"
-                                android:textAppearance="?attr/textAppearanceBodyLarge"
-                                android:textColor="?attr/colorOnSurface" />
-
-                            <TextView
-                                android:id="@+id/rear_clockColorValue"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="12dp"
-                                android:textAppearance="?attr/textAppearanceLabelLarge"
-                                android:textColor="?attr/colorPrimary" />
-
-                            <View
-                                android:id="@+id/rear_clockColorSwatch"
-                                android:layout_width="28dp"
-                                android:layout_height="28dp" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:id="@+id/rear_clockBgRow"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:minHeight="56dp"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_clock_background"
-                                android:textAppearance="?attr/textAppearanceBodyLarge"
-                                android:textColor="?attr/colorOnSurface" />
-
-                            <TextView
-                                android:id="@+id/rear_clockBgValue"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="12dp"
-                                android:textAppearance="?attr/textAppearanceLabelLarge"
-                                android:textColor="?attr/colorPrimary" />
-
-                            <View
-                                android:id="@+id/rear_clockBgSwatch"
-                                android:layout_width="28dp"
-                                android:layout_height="28dp" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/rear_clock_bg_opacity"
-                                android:textAppearance="?attr/textAppearanceBodyLarge"
-                                android:textColor="?attr/colorOnSurface" />
-
-                            <TextView
-                                android:id="@+id/rear_clockOpacityValue"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textAppearance="?attr/textAppearanceLabelLarge"
-                                android:textColor="?attr/colorPrimary" />
-                        </LinearLayout>
-
-                        <com.google.android.material.slider.Slider
-                            android:id="@+id/rear_clockOpacity"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:contentDescription="@string/rear_clock_bg_opacity"
-                            android:stepSize="5"
-                            app:tickVisibilityMode="hidden"
-                            android:valueFrom="0"
-                            android:valueTo="100" />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Only shown when the rear display reports a camera cutout. -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/rear_cameraCard"
-                style="@style/Widget.Remapper.RearCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:clipToOutline="true"
-                android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorSurfaceContainer"
-                app:contentPadding="0dp">
-
-                <!-- The row, not the card, is the switch: the card would tell screen readers it's a card. -->
                 <LinearLayout
-                    android:id="@+id/rear_cameraRow"
+                    android:id="@+id/rear_panRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:padding="20dp">
+                    android:minHeight="56dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -822,96 +376,638 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/rear_avoid_camera_title"
-                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:text="@string/rear_pan_title"
+                            android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle"
                             android:textColor="?attr/colorOnSurface" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="@string/rear_avoid_camera_summary"
+                            android:text="@string/rear_pan_summary"
                             android:textAppearance="?attr/textAppearanceBodyMedium"
                             android:textColor="?attr/colorOnSurfaceVariant" />
                     </LinearLayout>
 
                     <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/rear_cameraSwitch"
+                        android:id="@+id/rear_panSwitch"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Times to turn on and off automatically. -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Remapper.RearCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                app:cardBackgroundColor="?attr/colorSurfaceContainer">
 
                 <LinearLayout
+                    android:id="@+id/rear_panOptions"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/rear_schedule_title"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textColor="?attr/colorOnSurface" />
-
-                    <TextView
-                        android:id="@+id/rear_scheduleSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/rear_pan_speed"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textColor="?attr/colorOnSurfaceVariant" />
 
-                    <!-- While a schedule is on and the Setup needed card at the top shows. -->
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/rear_panSpeeds"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true" />
+
                     <LinearLayout
-                        android:id="@+id/rear_scheduleSetupNote"
+                        android:id="@+id/rear_skipShortRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="16dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/rear_pan_skip_short"
+                                android:textAppearance="?attr/textAppearanceBodyLarge"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/rear_pan_skip_short_summary"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/rear_skipShortSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/rear_skipShortOptions"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:visibility="gone">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/rear_schedule_setup_note"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorError" />
+                            android:layout_marginTop="4dp"
+                            android:text="@string/rear_pan_min_label"
+                            android:textAppearance="?attr/textAppearanceLabelLarge"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
 
-                        <Button
-                            android:id="@+id/rear_showSetupButton"
-                            style="@style/Widget.Material3.Button.TextButton"
-                            android:layout_width="wrap_content"
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/rear_panMinChips"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="-12dp"
-                            android:text="@string/rear_show_setup" />
+                            android:layout_marginTop="4dp"
+                            app:selectionRequired="true"
+                            app:singleSelection="true" />
                     </LinearLayout>
 
+                    <TextView
+                        android:id="@+id/rear_panImageNote"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:accessibilityLiveRegion="polite"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rear_cameraCard"
+            style="@style/Widget.Remapper.EditorSurface"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:clipToOutline="true"
+            android:visibility="gone"
+            android:orientation="vertical"
+            android:padding="0dp">
+
+            <LinearLayout
+                android:id="@+id/rear_cameraRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="20dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rear_avoid_camera_title"
+                        android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/rear_avoid_camera_summary"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/rear_cameraSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:tag="@string/rear_edit_clock">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_clock_detail"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="8dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+        <LinearLayout
+            style="@style/Widget.Remapper.EditorSurface"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@+id/rear_clockRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:minHeight="56dp">
+
                     <LinearLayout
-                        android:id="@+id/rear_scheduleList"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="16dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/rear_clock_title"
+                            android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/rear_clock_summary"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/rear_clockSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/rear_clockOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/rear_clock_style"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/rear_clockStyles"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/rear_clock_position"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/rear_alignX"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:orientation="vertical" />
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <Button
+                            android:id="@+id/rear_alignLeft"
+                            android:saveEnabled="false"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:paddingHorizontal="4dp"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_align_left"
+                            app:cornerRadius="24dp"
+                            android:minHeight="52dp" />
+
+                        <Button
+                            android:id="@+id/rear_alignCentre"
+                            android:saveEnabled="false"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:paddingHorizontal="4dp"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_align_centre"
+                            app:cornerRadius="24dp"
+                            android:minHeight="52dp" />
+
+                        <Button
+                            android:id="@+id/rear_alignRight"
+                            android:saveEnabled="false"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:paddingHorizontal="4dp"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_align_right"
+                            app:cornerRadius="24dp"
+                            android:minHeight="52dp" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/rear_alignY"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <Button
+                            android:id="@+id/rear_alignTop"
+                            android:saveEnabled="false"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:paddingHorizontal="4dp"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_align_top"
+                            app:cornerRadius="24dp"
+                            android:minHeight="52dp" />
+
+                        <Button
+                            android:id="@+id/rear_alignMiddle"
+                            android:saveEnabled="false"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:paddingHorizontal="4dp"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_align_middle"
+                            app:cornerRadius="24dp"
+                            android:minHeight="52dp" />
+
+                        <Button
+                            android:id="@+id/rear_alignBottom"
+                            android:saveEnabled="false"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:paddingHorizontal="4dp"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_align_bottom"
+                            app:cornerRadius="24dp"
+                            android:minHeight="52dp" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/rear_clock_drag_hint"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <LinearLayout
+                        android:id="@+id/rear_clockColorRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_clock_colour"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:id="@+id/rear_clockColorValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="12dp"
+                            android:textAppearance="?attr/textAppearanceLabelLarge"
+                            android:textColor="?attr/colorPrimary" />
+
+                        <View
+                            android:id="@+id/rear_clockColorSwatch"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/rear_clockBgRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_clock_background"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:id="@+id/rear_clockBgValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="12dp"
+                            android:textAppearance="?attr/textAppearanceLabelLarge"
+                            android:textColor="?attr/colorPrimary" />
+
+                        <View
+                            android:id="@+id/rear_clockBgSwatch"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/rear_clock_bg_opacity"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:id="@+id/rear_clockOpacityValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceLabelLarge"
+                            android:textColor="?attr/colorPrimary" />
+                    </LinearLayout>
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/rear_clockOpacity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/rear_clock_bg_opacity"
+                        android:stepSize="5"
+                        app:tickVisibilityMode="hidden"
+                        android:valueFrom="0"
+                        android:valueTo="100" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:tag="@string/rear_edit_routine">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_routine_detail"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="8dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+        <LinearLayout
+            android:id="@+id/rear_setupCard"
+            style="@style/Widget.Remapper.EditorSurface"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:visibility="gone"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/rear_setupTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rear_setup_title"
+                    android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle"
+                    android:textColor="?attr/colorOnErrorContainer" />
+
+                <LinearLayout
+                    android:id="@+id/rear_alarmWarning"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rear_alarms_needed"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnErrorContainer" />
 
                     <Button
-                        android:id="@+id/rear_addScheduleButton"
-                        style="@style/Widget.Material3.Button.TextButton.Icon"
+                        android:id="@+id/rear_alarmButton"
+                        style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="-12dp"
-                        android:text="@string/rear_add_schedule"
-                        app:icon="@drawable/rear_ic_add" />
+                        android:text="@string/rear_allow_alarms"
+                        android:textColor="?attr/colorOnErrorContainer"
+                        app:cornerRadius="24dp"
+                        android:minHeight="52dp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:id="@+id/rear_batteryWarning"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rear_battery_needed"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnErrorContainer" />
+
+                    <Button
+                        android:id="@+id/rear_batteryButton"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="-12dp"
+                        android:text="@string/rear_open_app_settings"
+                        android:textColor="?attr/colorOnErrorContainer"
+                        app:cornerRadius="24dp"
+                        android:minHeight="52dp" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-</LinearLayout>
+
+        <LinearLayout
+            style="@style/Widget.Remapper.EditorSurface"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rear_schedule_title"
+                    android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:id="@+id/rear_scheduleSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <LinearLayout
+                    android:id="@+id/rear_scheduleSetupNote"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rear_schedule_setup_note"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorError" />
+
+                    <Button
+                        android:id="@+id/rear_showSetupButton"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="-12dp"
+                        android:text="@string/rear_show_setup"
+                        app:cornerRadius="24dp"
+                        android:minHeight="52dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/rear_scheduleList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical" />
+
+                <Button
+                    android:id="@+id/rear_addScheduleButton"
+                    style="@style/Widget.Material3.Button.TextButton.Icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="-12dp"
+                    android:text="@string/rear_add_schedule"
+                    app:icon="@drawable/rear_ic_add"
+                    app:cornerRadius="24dp"
+                    android:minHeight="52dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <include
+            layout="@layout/rear_card_back_screen_display" />
+    </LinearLayout>
+</io.github.xiaomibutton.remapper.backscreen.ui.CategoryWorkspace>

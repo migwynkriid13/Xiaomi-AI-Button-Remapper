@@ -22,7 +22,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
-import androidx.core.widget.NestedScrollView
 import androidx.fragment.app.Fragment
 import io.github.xiaomibutton.remapper.R
 import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
@@ -34,6 +33,7 @@ import io.github.xiaomibutton.remapper.backscreen.core.ScheduleEditor
 import io.github.xiaomibutton.remapper.backscreen.core.Schedules
 import io.github.xiaomibutton.remapper.backscreen.rear.RearHostActivity
 import io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
+import io.github.xiaomibutton.remapper.backscreen.ui.CategoryWorkspace
 import io.github.xiaomibutton.remapper.backscreen.ui.Refreshable
 import io.github.xiaomibutton.remapper.backscreen.ui.SwitchRow
 import io.github.xiaomibutton.remapper.backscreen.ui.addChoiceChips
@@ -52,9 +52,8 @@ import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
 /**
- * The Wallpaper tab: the switch, a preview shaped like the back screen, the images and gallery,
- * the back screen's display ([DisplayCard]), scaling and panning, the clock, keeping clear of the
- * camera, and schedules.
+ * Wallpaper's Images, Clock and Routine editors share one display-shaped canvas. Images owns
+ * the gallery, fit, motion and camera clearance; Routine owns schedules and [DisplayCard].
  */
 @TargetApi(35)
 class WallpaperFragment : Fragment(R.layout.rear_fragment_wallpaper), Refreshable {
@@ -340,8 +339,7 @@ class WallpaperFragment : Fragment(R.layout.rear_fragment_wallpaper), Refreshabl
      */
     @SuppressLint("AccessibilityFocus")
     private fun showSetup() {
-        val margin = (8 * resources.displayMetrics.density).toInt()
-        requireView().findViewById<NestedScrollView>(R.id.rear_scroll).smoothScrollTo(0, (setupCard.top - margin).coerceAtLeast(0))
+        requireView().findViewById<CategoryWorkspace>(R.id.rear_workspace).reveal(setupCard)
         setupCard.findViewById<View>(R.id.rear_setupTitle).performAccessibilityAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null)
     }
 

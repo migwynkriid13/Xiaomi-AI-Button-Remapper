@@ -24,10 +24,8 @@ import io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperSettings
 import com.google.android.material.snackbar.Snackbar
 
 /**
- * The Camera tab: the switch for swipe left, a preview of the swipe over your wallpaper, Open
- * camera on back screen (Close camera while it's up), and a note while the wallpaper is off; the
- * ways out are in its help. There are no options. Open camera works while the switch is off,
- * like Battery's Play.
+ * Gesture teaches the swipe over a display-shaped preview. Try it groups direct camera access,
+ * wallpaper recovery and exit instructions. Direct access also works with the gesture off.
  */
 class CameraFragment : Fragment(R.layout.rear_fragment_camera), Refreshable {
 

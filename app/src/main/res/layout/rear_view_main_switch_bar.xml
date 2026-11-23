@@ -15,7 +15,7 @@
             android:id="@+id/rear_mainSwitchTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceTitleLarge" />
+            android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle" />
 
         <TextView
             android:id="@+id/rear_mainSwitchSummary"

@@ -16,7 +16,6 @@ import io.github.xiaomibutton.remapper.backscreen.core.RearCommands
 import io.github.xiaomibutton.remapper.backscreen.core.RearOwner
 import io.github.xiaomibutton.remapper.backscreen.core.RearState
 import io.github.xiaomibutton.remapper.backscreen.rear.RearHostActivity
-import io.github.xiaomibutton.remapper.backscreen.ui.DISABLED_ALPHA
 import io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
 import io.github.xiaomibutton.remapper.backscreen.ui.Refreshable
 import io.github.xiaomibutton.remapper.backscreen.ui.SwitchRow
@@ -37,9 +36,8 @@ import com.google.android.material.snackbar.Snackbar
 import java.util.Locale
 
 /**
- * The Battery tab: the charging animation's switch, a preview shaped like the back screen with
- * Play under it, its style and colour, and the options. The style, colour and options grey out
- * while it's off.
+ * Animation pairs the charging canvas with playback, style and colour. Behavior contains wake
+ * and overlay rules. Editing controls disable while off; their labels remain readable.
  *
  * The preview shows what you'd see when you plug in: the chosen style over the wallpaper and its
  * clock, or over black while the wallpaper is off (a pop-over is black). At rest it holds the
@@ -53,13 +51,11 @@ class BatteryFragment : Fragment(R.layout.rear_fragment_battery), Refreshable {
     private lateinit var clock: ClockLayer
     private lateinit var charging: ChargingLayer
     private lateinit var playButton: Button
-    private lateinit var styleCard: View
     private lateinit var styleChips: ChipGroup
     private lateinit var styleDetail: TextView
     private lateinit var colorRow: View
     private lateinit var colorValue: TextView
     private lateinit var colorSwatch: View
-    private lateinit var optionsCard: View
     private lateinit var lightUpRow: View
     private lateinit var lightUpSwitch: MaterialSwitch
     private lateinit var overXiaomiRow: View
@@ -81,13 +77,11 @@ class BatteryFragment : Fragment(R.layout.rear_fragment_battery), Refreshable {
         clock = view.findViewById(R.id.rear_clock)
         charging = view.findViewById(R.id.rear_charging)
         playButton = view.findViewById(R.id.rear_playButton)
-        styleCard = view.findViewById(R.id.rear_styleCard)
         styleChips = view.findViewById(R.id.rear_styleChips)
         styleDetail = view.findViewById(R.id.rear_styleDetail)
         colorRow = view.findViewById(R.id.rear_colorRow)
         colorValue = view.findViewById(R.id.rear_colorValue)
         colorSwatch = view.findViewById(R.id.rear_colorSwatch)
-        optionsCard = view.findViewById(R.id.rear_optionsCard)
         lightUpRow = view.findViewById(R.id.rear_lightUpRow)
         lightUpSwitch = view.findViewById(R.id.rear_lightUpSwitch)
         overXiaomiRow = view.findViewById(R.id.rear_overXiaomiRow)
@@ -188,7 +182,6 @@ class BatteryFragment : Fragment(R.layout.rear_fragment_battery), Refreshable {
             }
         )
         // The style and options are for while it's on.
-        for (card in listOf(styleCard, optionsCard)) card.alpha = if (on) 1f else DISABLED_ALPHA
         styleChips.setChipsEnabled(on)
         for (v in listOf(colorRow, lightUpRow, lightUpSwitch, overXiaomiRow, overXiaomiSwitch)) v.isEnabled = on
 

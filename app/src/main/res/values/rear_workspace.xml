@@ -1,0 +1,77 @@
+<resources>
+    <item type="id" name="rear_scroll" />
+    <declare-styleable name="CategoryWorkspace">
+        <attr name="previewSections" format="string" />
+    </declare-styleable>
+
+    <style name="Widget.Remapper.EditorSurface" parent="">
+        <item name="android:background">@drawable/rear_editor_surface</item>
+        <item name="android:padding">20dp</item>
+        <item name="android:layout_marginTop">14dp</item>
+    </style>
+    <style name="TextAppearance.Remapper.EditorHeadline" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:textSize">32sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">-0.025</item>
+        <item name="android:textColor">@color/remapper_on_surface</item>
+    </style>
+    <style name="TextAppearance.Remapper.EditorEyebrow" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:textColor">@color/window_accent</item>
+    </style>
+    <style name="TextAppearance.Remapper.EditorControlTitle" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textSize">16sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <string name="rear_edit_images">Images</string>
+    <string name="rear_edit_clock">Clock</string>
+    <string name="rear_edit_routine">Routine</string>
+    <string name="rear_edit_appearance">Appearance</string>
+    <string name="rear_edit_delivery">Delivery</string>
+    <string name="rear_edit_animation">Animation</string>
+    <string name="rear_editor_animation_style">Animation style</string>
+    <string name="rear_edit_behavior">Behavior</string>
+    <string name="rear_edit_handoff">Handoff</string>
+    <string name="rear_edit_layout">App layout</string>
+    <string name="rear_edit_gesture">Gesture</string>
+    <string name="rear_edit_try_camera">Try it</string>
+    <string name="rear_editor_canvas">YOUR CANVAS</string>
+    <string name="rear_editor_wallpaper_title">Make it yours.</string>
+    <string name="rear_editor_wallpaper_detail">A favorite photo, a quiet clock, a rhythm that fits your day.</string>
+    <string name="rear_editor_notifications_title">A glance is enough.</string>
+    <string name="rear_editor_notifications_detail">Choose how alerts look, then decide when they can interrupt.</string>
+    <string name="rear_editor_battery_title">A little energy.</string>
+    <string name="rear_editor_battery_detail">Give plugging in its own moment. Shape it, color it, try it.</string>
+    <string name="rear_editor_mirror_title">Take it around.</string>
+    <string name="rear_editor_mirror_detail">Move your current app to the small display and bring it home when you’re done.</string>
+    <string name="rear_editor_camera_title">Ready for your close-up.</string>
+    <string name="rear_editor_camera_detail">Use the main cameras with a preview facing you.</string>
+    <string name="rear_editor_live_preview">PREVIEW</string>
+    <string name="rear_editor_photo_sources">Start with an image</string>
+    <string name="rear_editor_photo_sources_detail">Pick individual favorites or let a folder keep the collection fresh.</string>
+    <string name="rear_editor_clock_detail">Turn the clock on, choose a face, then drag it into place on the canvas.</string>
+    <string name="rear_editor_routine_detail">Set the hours and wake behavior once. Your wallpaper follows along.</string>
+    <string name="rear_editor_delivery_detail">Access and wake behavior, together in one place. Preview styles in Appearance.</string>
+    <string name="rear_editor_behavior_detail">Decide what happens when a charger connects, even with custom wallpaper off.</string>
+    <string name="rear_editor_handoff_title">One tile. Both sides.</string>
+    <string name="rear_editor_handoff_detail">Open an app → tap Quick Switch → turn your phone over.</string>
+    <string name="rear_editor_return_title">An easy way home</string>
+    <string name="rear_editor_return_detail">Tap Quick Switch again to bring the app back. Enable the options above to return it when you cover the small display or lock the phone.</string>
+    <string name="rear_editor_layout_detail">Adjust the space your app uses. Changes apply to the app that is already there.</string>
+    <string name="rear_editor_camera_step_one">01   Turn your phone over</string>
+    <string name="rear_editor_camera_step_one_detail">Wake the small display with your custom wallpaper showing.</string>
+    <string name="rear_editor_camera_step_two">02   Swipe to the left</string>
+    <string name="rear_editor_camera_step_two_detail">Start inside the wallpaper, away from Xiaomi’s edge strip.</string>
+    <string name="rear_editor_camera_step_three">03   Frame the moment</string>
+    <string name="rear_editor_camera_step_three_detail">Xiaomi Camera opens with the main cameras facing you.</string>
+    <string name="rear_editor_camera_test_title">Try the camera now</string>
+    <string name="rear_editor_camera_test_detail">Open it directly to check your framing. This also works with the swipe gesture off.</string>
+    <string name="rear_editor_camera_exit_title">Finished shooting?</string>
+    <string name="rear_editor_camera_exit_detail">Come back here and choose Close camera, or use Xiaomi’s back strip to leave the camera.</string>
+    <string name="rear_editor_enable_wallpaper">Use custom wallpaper</string>
+    <string name="rear_editor_enable_notifications">Show notifications</string>
+    <string name="rear_editor_enable_battery">Charging animation</string>
+    <string name="rear_editor_enable_mirror">Enable Quick Switch</string>
+    <string name="rear_editor_enable_camera">Swipe left for camera</string>
+</resources>

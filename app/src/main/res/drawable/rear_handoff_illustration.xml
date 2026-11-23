@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp" android:height="93dp" android:viewportWidth="320" android:viewportHeight="148">
+    <path android:fillColor="@color/remapper_surface_container" android:pathData="M54,7 L108,7 Q120,7 120,20 L120,127 Q120,140 108,140 L54,140 Q42,140 42,127 L42,20 Q42,7 54,7 Z" />
+    <path android:fillColor="@color/remapper_secondary_container" android:pathData="M56,15 L106,15 Q112,15 112,22 L112,125 Q112,132 105,132 L56,132 Q50,132 50,125 L50,22 Q50,15 56,15 Z" />
+    <path android:fillColor="@color/window_accent" android:pathData="M121,46 L124,46 L124,67 L121,67 Z M62,44 L100,44 L100,49 L62,49 Z M62,58 L95,58 L95,62 L62,62 Z M62,72 L88,72 L88,76 L62,76 Z" />
+    <path android:fillColor="@color/remapper_primary_container" android:pathData="M215,7 L269,7 Q281,7 281,20 L281,127 Q281,140 269,140 L215,140 Q203,140 203,127 L203,20 Q203,7 215,7 Z" />
+    <path android:fillColor="@color/remapper_on_surface" android:pathData="M214,21 L270,21 Q274,21 274,26 L274,69 Q274,74 270,74 L214,74 Q210,74 210,69 L210,26 Q210,21 214,21 Z" />
+    <path android:fillColor="@color/remapper_secondary" android:pathData="M222,31 A7,7 0,1 0,222 45 A7,7 0,1 0,222 31 M222,51 A7,7 0,1 0,222 65 A7,7 0,1 0,222 51" />
+    <path android:fillColor="@color/remapper_primary_container" android:pathData="M237,31 L266,31 L266,63 L237,63 Z" />
+    <path android:fillColor="@color/window_accent" android:pathData="M242,38 L261,38 L261,41 L242,41 Z M242,46 L259,46 L259,49 L242,49 Z M242,54 L255,54 L255,57 L242,57 Z M199,46 L202,46 L202,67 L199,67 Z" />
+    <path android:strokeColor="@color/window_accent" android:strokeWidth="2.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="@android:color/transparent" android:pathData="M140,63 L184,63 M177,56 L184,63 L177,70 M184,85 L140,85 M147,78 L140,85 L147,92" />
+</vector>

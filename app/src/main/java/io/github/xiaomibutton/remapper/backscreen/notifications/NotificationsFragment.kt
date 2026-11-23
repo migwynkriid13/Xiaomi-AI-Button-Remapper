@@ -16,7 +16,6 @@ import io.github.xiaomibutton.remapper.backscreen.core.RearCommands
 import io.github.xiaomibutton.remapper.backscreen.core.RearOwner
 import io.github.xiaomibutton.remapper.backscreen.core.RearState
 import io.github.xiaomibutton.remapper.backscreen.rear.RearHostActivity
-import io.github.xiaomibutton.remapper.backscreen.ui.DISABLED_ALPHA
 import io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
 import io.github.xiaomibutton.remapper.backscreen.ui.Refreshable
 import io.github.xiaomibutton.remapper.backscreen.ui.SwitchRow
@@ -35,9 +34,8 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.snackbar.Snackbar
 
 /**
- * The Notifications tab: the switch, Notification access, a preview shaped like the back screen
- * with a sample notification in the chosen style and Try on back screen under it, the style,
- * and the options. The style and options grey out while it's off; access can be allowed first.
+ * Appearance pairs a sample alert with its style and test action. Delivery groups notification
+ * access and wake/swipe behavior. Access remains available while the feature is off.
  */
 class NotificationsFragment : Fragment(R.layout.rear_fragment_notifications), Refreshable {
 
@@ -49,10 +47,8 @@ class NotificationsFragment : Fragment(R.layout.rear_fragment_notifications), Re
     private lateinit var clock: ClockLayer
     private lateinit var notifications: NotificationLayer
     private lateinit var tryButton: Button
-    private lateinit var styleCard: View
     private lateinit var styleChips: ChipGroup
     private lateinit var styleDetail: TextView
-    private lateinit var optionsCard: View
     private lateinit var swipeDownRow: View
     private lateinit var swipeDownSwitch: MaterialSwitch
     private lateinit var lightUpRow: View
@@ -71,10 +67,8 @@ class NotificationsFragment : Fragment(R.layout.rear_fragment_notifications), Re
         clock = view.findViewById(R.id.rear_clock)
         notifications = view.findViewById(R.id.rear_notifications)
         tryButton = view.findViewById(R.id.rear_tryButton)
-        styleCard = view.findViewById(R.id.rear_styleCard)
         styleChips = view.findViewById(R.id.rear_styleChips)
         styleDetail = view.findViewById(R.id.rear_styleDetail)
-        optionsCard = view.findViewById(R.id.rear_optionsCard)
         swipeDownRow = view.findViewById(R.id.rear_swipeDownRow)
         swipeDownSwitch = view.findViewById(R.id.rear_swipeDownSwitch)
         lightUpRow = view.findViewById(R.id.rear_lightUpRow)
@@ -141,7 +135,6 @@ class NotificationsFragment : Fragment(R.layout.rear_fragment_notifications), Re
         )
         showAccess(allowed)
         // The style and options are for while it's on.
-        for (card in listOf(styleCard, optionsCard)) card.alpha = if (on) 1f else DISABLED_ALPHA
         styleChips.setChipsEnabled(on)
         for (v in listOf(swipeDownRow, swipeDownSwitch, lightUpRow, lightUpSwitch)) v.isEnabled = on
         backdrop.refresh()

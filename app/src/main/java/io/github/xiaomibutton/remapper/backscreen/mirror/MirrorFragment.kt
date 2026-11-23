@@ -16,7 +16,6 @@ import io.github.xiaomibutton.remapper.backscreen.core.KeeperService
 import io.github.xiaomibutton.remapper.backscreen.core.LendReason
 import io.github.xiaomibutton.remapper.backscreen.core.RearState
 import io.github.xiaomibutton.remapper.backscreen.ui.AskNotificationsOnce
-import io.github.xiaomibutton.remapper.backscreen.ui.DISABLED_ALPHA
 import io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
 import io.github.xiaomibutton.remapper.backscreen.ui.Refreshable
 import io.github.xiaomibutton.remapper.backscreen.ui.SwitchRow
@@ -29,9 +28,8 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.snackbar.Snackbar
 
 /**
- * The Mirror tab: Quick Switch's switch, what it does with a button that adds its tile to Quick
- * Settings, the app that's on the back screen with Bring back, and the options, which grey out
- * while it's off.
+ * Handoff explains Quick Switch, installs its tile and keeps return controls beside the current
+ * app. App layout owns size and orientation. Both sets of options follow the activation state.
  */
 @TargetApi(35)
 class MirrorFragment : Fragment(R.layout.rear_fragment_mirror), Refreshable {
@@ -41,7 +39,6 @@ class MirrorFragment : Fragment(R.layout.rear_fragment_mirror), Refreshable {
     private lateinit var tileAddedRow: View
     private lateinit var lentCard: View
     private lateinit var lentText: TextView
-    private lateinit var optionsCard: View
     private lateinit var keepLitChips: ChipGroup
     private lateinit var coverRow: View
     private lateinit var coverSwitch: MaterialSwitch
@@ -61,7 +58,6 @@ class MirrorFragment : Fragment(R.layout.rear_fragment_mirror), Refreshable {
         tileAddedRow = view.findViewById(R.id.rear_tileAddedRow)
         lentCard = view.findViewById(R.id.rear_lentCard)
         lentText = view.findViewById(R.id.rear_lentText)
-        optionsCard = view.findViewById(R.id.rear_optionsCard)
         keepLitChips = view.findViewById(R.id.rear_keepLitChips)
         coverRow = view.findViewById(R.id.rear_coverRow)
         coverSwitch = view.findViewById(R.id.rear_coverSwitch)
@@ -131,7 +127,6 @@ class MirrorFragment : Fragment(R.layout.rear_fragment_mirror), Refreshable {
         lentCard.visibility = if (name != null) View.VISIBLE else View.GONE
         if (name != null) lentText.text = getString(R.string.rear_lent_now, name)
         // The options are for while it's on.
-        optionsCard.alpha = if (on) 1f else DISABLED_ALPHA
         for (group in listOf(keepLitChips, sizeChips, orientationChips)) group.setChipsEnabled(on)
         coverRow.isEnabled = on
         coverSwitch.isEnabled = on

@@ -1,139 +1,284 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    The Camera tab: its main switch, pinned, then a preview of the swipe over your wallpaper,
-    Open camera (or Close camera), and a note while the wallpaper is off. The ways out and the
-    known limits are in its help, behind the top bar's ?.
--->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<io.github.xiaomibutton.remapper.backscreen.ui.CategoryWorkspace
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rear_workspace"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    app:previewSections="0">
 
-    <io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
-        android:id="@+id/rear_mainSwitch"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="20dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="8dp"
-        android:text="@string/rear_camera_switch" />
+        android:orientation="vertical"
+        android:id="@+id/rear_workspaceHeader"
+        android:paddingBottom="8dp">
 
-    <androidx.core.widget.NestedScrollView
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_camera_title"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.Remapper.EditorHeadline"
+            android:accessibilityHeading="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_camera_detail"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="8dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+        <io.github.xiaomibutton.remapper.backscreen.ui.MainSwitchBar
+            android:id="@+id/rear_mainSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_enable_camera"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:id="@+id/rear_workspacePreview"
+        android:background="@drawable/rear_editor_canvas"
+        android:padding="16dp"
+        android:layout_marginBottom="6dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rear_editor_live_preview"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="0dp"
+            android:textAppearance="@style/TextAppearance.Remapper.EditorEyebrow" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/rear_previewCard"
+            style="@style/Widget.Material3.CardView.Filled"
+            android:layout_width="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/rear_camera_preview"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+            app:cardCornerRadius="28dp"
+            android:layout_marginTop="14dp">
+
+            <io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout
+                android:id="@+id/rear_previewFrame"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:importantForAccessibility="noHideDescendants">
+
+                <io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperView
+                    android:id="@+id/rear_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <io.github.xiaomibutton.remapper.backscreen.wallpaper.ClockLayer
+                    android:id="@+id/rear_clock"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
+
+                <io.github.xiaomibutton.remapper.backscreen.battery.ChargingLayer
+                    android:id="@+id/rear_glow"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <io.github.xiaomibutton.remapper.backscreen.camera.SwipeHint
+                    android:id="@+id/rear_swipeHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/rear_camera_caption"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:tag="@string/rear_edit_gesture">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="24dp">
-
-            <!-- The swipe, over what the back screen shows. -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/rear_previewCard"
-                style="@style/Widget.Material3.CardView.Filled"
-                android:layout_width="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/rear_camera_preview"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
-                app:cardCornerRadius="28dp">
-
-                <io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout
-                    android:id="@+id/rear_previewFrame"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:importantForAccessibility="noHideDescendants">
-
-                    <io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperView
-                        android:id="@+id/rear_preview"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
-
-                    <io.github.xiaomibutton.remapper.backscreen.wallpaper.ClockLayer
-                        android:id="@+id/rear_clock"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:visibility="gone" />
-
-                    <!-- The Edge glow's faint glow while charging, as on the back screen. -->
-                    <io.github.xiaomibutton.remapper.backscreen.battery.ChargingLayer
-                        android:id="@+id/rear_glow"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
-
-                    <io.github.xiaomibutton.remapper.backscreen.camera.SwipeHint
-                        android:id="@+id/rear_swipeHint"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
-                </io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout>
-            </com.google.android.material.card.MaterialCardView>
+            style="@style/Widget.Remapper.EditorSurface">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
+                android:text="@string/rear_editor_camera_step_one"
+                android:textColor="?attr/colorOnSurface"
                 android:layout_marginTop="8dp"
-                android:gravity="center"
-                android:text="@string/rear_camera_caption"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:accessibilityHeading="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_step_one_detail"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_step_two"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:accessibilityHeading="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_step_two_detail"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_step_three"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:accessibilityHeading="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_step_three_detail"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:tag="@string/rear_edit_try_camera">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            style="@style/Widget.Remapper.EditorSurface">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_test_title"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:accessibilityHeading="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_test_detail"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
 
             <Button
                 android:id="@+id/rear_openButton"
-                style="@style/Widget.Material3.Button.TonalButton.Icon"
-                android:layout_width="wrap_content"
+                style="@style/Widget.Material3.Button.Icon"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="12dp"
                 android:text="@string/rear_open_camera"
-                app:icon="@drawable/rear_ic_camera" />
+                app:icon="@drawable/rear_ic_camera"
+                app:cornerRadius="24dp"
+                android:minHeight="52dp" />
+        </LinearLayout>
 
-            <!-- Swiping needs the wallpaper: shown while it's off. -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/rear_wallpaperCard"
-                style="@style/Widget.Remapper.RearCard"
+        <LinearLayout
+            android:id="@+id/rear_wallpaperCard"
+            style="@style/Widget.Remapper.EditorSurface"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            android:orientation="vertical">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorSecondaryContainer">
+                android:orientation="vertical">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:text="@string/rear_camera_wallpaper_off_title"
+                    android:textAppearance="@style/TextAppearance.Remapper.EditorControlTitle"
+                    android:textColor="?attr/colorOnSecondaryContainer" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/rear_camera_wallpaper_off_title"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textColor="?attr/colorOnSecondaryContainer" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/rear_camera_wallpaper_off"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSecondaryContainer" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/rear_camera_wallpaper_off"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSecondaryContainer" />
-
-                    <Button
-                        android:id="@+id/rear_wallpaperButton"
-                        style="@style/Widget.Material3.Button.Icon"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:text="@string/rear_turn_on_wallpaper"
-                        app:icon="@drawable/rear_ic_image" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                <Button
+                    android:id="@+id/rear_wallpaperButton"
+                    style="@style/Widget.Material3.Button.Icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/rear_turn_on_wallpaper"
+                    app:icon="@drawable/rear_ic_image"
+                    app:cornerRadius="24dp"
+                    android:minHeight="52dp" />
+            </LinearLayout>
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-</LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            style="@style/Widget.Remapper.EditorSurface">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_exit_title"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:accessibilityHeading="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rear_editor_camera_exit_detail"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+        </LinearLayout>
+    </LinearLayout>
+</io.github.xiaomibutton.remapper.backscreen.ui.CategoryWorkspace>
