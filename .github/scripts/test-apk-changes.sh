@@ -2,7 +2,8 @@
 set -euo pipefail
 filter="$(cd "$(dirname "$0")" && pwd)/apk-changes.sh"
 fixture=$(mktemp -d)
-trap 'rm -rf -- "$fixture"' EXIT
+# Git Bash on Windows cannot remove the current working directory.
+trap 'cd / && rm -rf -- "$fixture"' EXIT
 cd "$fixture"
 git init -q
 git config user.name "Release filter test"
