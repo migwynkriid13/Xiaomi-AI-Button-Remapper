@@ -56,6 +56,7 @@ Assign different actions to a **single press, double press, triple press, or lon
 | --- | --- |
 | **Apps and shortcuts** | Open an [installed app](docs/screenshots/apps-light.png), a [supported app shortcut](docs/screenshots/shortcuts-light.png), a Settings page, or a link. |
 | **Device controls** | Take a screenshot, lock the screen, go Back or Home, or open Quick Settings. |
+| **Control Centre tiles** | Trigger an installed app tile that is already in Control Centre, or run the remapper's Quick Switch and back-screen wallpaper controls directly. |
 | **Media and sound** | Play or pause, skip or seek, adjust volume, or change the ringer or Do Not Disturb mode. |
 | **App profiles and conditions** | Give a gesture a different action in a specific app, or run it only when a condition is met, such as headphones being connected. |
 | **Action sequences** | Run up to 12 steps from one gesture, with optional delays and repeats. |
