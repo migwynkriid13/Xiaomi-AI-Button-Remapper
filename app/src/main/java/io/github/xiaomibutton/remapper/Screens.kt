@@ -54,13 +54,6 @@ internal fun Dashboard(
     val ready = status.shizukuAuthorized
     val mirrored = LocalLayoutDirection.current == LayoutDirection.Rtl
     val modelName = remember { xiaomi18ModelLabel(Build.MODEL, Build.DEVICE) }
-    Row(
-        Modifier.fillMaxWidth().padding(start = 1.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        IconTile(Mark.BUTTON, modifier = Modifier.size(34.dp))
-        Text("Button Remapper", style = MaterialTheme.typography.titleMedium)
-    }
     updateNotice()
     Panel {
         Box(
@@ -83,8 +76,10 @@ internal fun Dashboard(
                 if (modelName != null) {
                     Text(modelName, style = MaterialTheme.typography.labelLarge, color = Color(0xFFFFDBCA))
                 }
-                Text("AI button", Modifier.semantics { heading() }, color = Color(0xFFFFF8F4),
-                    style = MaterialTheme.typography.headlineLarge)
+                Column(Modifier.semantics { heading() }, verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text("Turn your AI button", color = Color(0xFFFFDBCA), style = MaterialTheme.typography.titleMedium)
+                    Text("into an Action button", color = Color(0xFFFFF8F4), style = MaterialTheme.typography.headlineSmall)
+                }
             }
         }
         val checked = config.enabled || status.startingRemap
