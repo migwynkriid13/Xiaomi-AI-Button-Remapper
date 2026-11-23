@@ -37,10 +37,15 @@ bool equalFields(const Fields& a, const Fields& b, std::initializer_list<const c
     return true;
 }
 
+Route rejected(std::string problem) {
+    return {"", "", std::move(problem)};
+}
+
 } // namespace
 
 Route compareRoutes(const std::string& dump, const std::string& sourcePath,
                     const std::string& mirrorLocation) {
+    if (dump.empty()) return rejected("Android input diagnostics did not respond");
     std::vector<Hub> hubs;
     std::vector<Reader> readers;
     enum class Section { None, EventHub, Reader };
@@ -81,14 +86,19 @@ Route compareRoutes(const std::string& dump, const std::string& sourcePath,
     for (auto& hub : hubs) {
         if (hub.fields["Path"] == sourcePath) physical = &hub;
         if (hub.fields["Location"] == mirrorLocation) {
-            if (mirror != nullptr) return {};
+            if (mirror != nullptr) return rejected("more than one mirror matched");
             mirror = &hub;
         }
     }
-    if (!physical || !mirror || physical == mirror || physical->fields["Enabled"] != "true" ||
-        physical->fields["KeyLayoutFile"].empty() ||
-        !equalFields(physical->fields, mirror->fields,
-                     {"Classes", "Enabled", "Identifier", "KeyLayoutFile", "KeyCharacterMapFile", "ConfigurationFile"})) return {};
+    if (!physical) return rejected("Android did not list the physical button device");
+    if (!mirror || physical == mirror) return rejected("Android did not register a separate forwarding device");
+    if (physical->fields["Enabled"] != "true" || mirror->fields["Enabled"] != "true")
+        return rejected("Android disabled one of the input routes");
+    if (physical->fields["KeyLayoutFile"].empty() ||
+        !equalFields(physical->fields, mirror->fields, {"KeyLayoutFile", "KeyCharacterMapFile", "ConfigurationFile"}))
+        return rejected("the physical device and its mirror use different key layouts");
+    if (!equalFields(physical->fields, mirror->fields, {"Classes", "Identifier"}))
+        return rejected("Android classified the physical device and its mirror differently");
     auto readerFor = [&](int id) -> const Reader* {
         for (auto& reader : readers) {
             if (std::find(reader.hubs.begin(), reader.hubs.end(), id) != reader.hubs.end()) return &reader;
@@ -97,16 +107,18 @@ Route compareRoutes(const std::string& dump, const std::string& sourcePath,
     };
     const Reader* a = readerFor(physical->id);
     const Reader* b = readerFor(mirror->id);
-    if (!a || !b || !equalFields(a->fields, b->fields,
-          {"IsExternal", "Sources", "KeyboardType", "AssociatedDisplayPort"})) return {};
+    if (!a || !b) return rejected("Android did not attach both devices to InputReader");
+    if (!equalFields(a->fields, b->fields, {"IsExternal", "Sources", "KeyboardType", "AssociatedDisplayPort"}))
+        return rejected("the mirror's input source or display routing differs");
     // Some releases don't expose IsWaking or display binding. If present on one
     // side they must be present on both, with identical values.
     for (auto field : {"IsWaking", "IsVirtualDevice", "AssociatedDisplayUniqueIdByPort",
                        "AssociatedDisplayUniqueIdByDescriptor"}) {
         if ((a->fields.count(field) || b->fields.count(field)) &&
-            !equalFields(a->fields, b->fields, {field})) return {};
+            !equalFields(a->fields, b->fields, {field})) return rejected(std::string("the mirror's ") + field + " differs");
     }
-    return {mirror->fields["Path"], physical->fields["KeyLayoutFile"]};
+    if (mirror->fields["Path"].empty()) return rejected("Android did not report the mirror's device path");
+    return {mirror->fields["Path"], physical->fields["KeyLayoutFile"], ""};
 }
 
 std::string describeMapping(const std::string& layoutText) {

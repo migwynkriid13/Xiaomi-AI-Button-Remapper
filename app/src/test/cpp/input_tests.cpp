@@ -116,6 +116,10 @@ void testRoutes() {
     check(route(h + dest + readers + reader(30,"false","false")).empty(), "wake mismatch accepted");
     check(route(h + hub(30,virtualNode,"remap","/system/Generic.kl") + readers + r).empty(), "wrong layout accepted");
     check(route(h + dest + hub(31,"/dev/input/event31","remap",layout) + readers + r).empty(), "ambiguous mirror accepted");
+    check(compareRoutes(h + dest + readers, physical, "remap").problem.find("InputReader") != std::string::npos,
+          "missing InputReader route was not explained");
+    check(compareRoutes("", physical, "remap").problem.find("did not respond") != std::string::npos,
+          "missing system response was not explained");
     check(describeMapping("# key 689 NO\nkey usage 689 A\nkey 0x2b1 AI WAKE\n") == "AI", "layout label lookup failed");
     check(describeMapping("key 688 B\n").empty(), "invented Android mapping");
 }

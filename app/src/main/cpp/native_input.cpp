@@ -402,7 +402,9 @@ void monitor(bool intercept, const Callbacks& callbacks) {
     callbacks.status("Preparing gpio-keys mirror for " + source.path);
     Mirror mirror(fd);
     Route route;
-    const int64_t deadline = nowMs() + 6000;
+    // After boot InputReader can take a few seconds to publish all properties.
+    // Verify the same route before grabbing it, even on the last attempt.
+    const int64_t deadline = nowMs() + 10000;
     do {
         checkLease();
         route = compareRoutes(inputDump(), source.path, kMarker);
@@ -410,7 +412,8 @@ void monitor(bool intercept, const Callbacks& callbacks) {
         std::this_thread::sleep_for(200ms);
     } while (nowMs() < deadline);
     if (route.mirrorPath.empty())
-        throw std::runtime_error("Android did not confirm an enabled mirror with matching key layout and input routing. Original device left active.");
+        throw std::runtime_error("Android could not verify safe button forwarding: " + route.problem +
+                                 ". The original button is still available.");
 
     // Record the layout selected by Android. The Linux code is never passed
     // to Android as a KeyEvent keyCode.

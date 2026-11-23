@@ -7,6 +7,7 @@ namespace remap {
 struct Route {
     std::string mirrorPath;
     std::string layout;
+    std::string problem;
 };
 
 // Returns empty paths if the input service cannot confirm both devices and

@@ -43,6 +43,7 @@
         <intent><action android:name="android.settings.WIRELESS_SETTINGS" /></intent>
     </queries>
     <application
+        android:name=".RemapperApplication"
         android:allowBackup="false"
         android:networkSecurityConfig="@xml/request_network_security"
         android:fullBackupContent="false"

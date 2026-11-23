@@ -6,14 +6,17 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
+import io.github.xiaomibutton.remapper.AppLog
 import io.github.xiaomibutton.remapper.ConfigStore
+import io.github.xiaomibutton.remapper.LogArea
 import io.github.xiaomibutton.remapper.xiaomi17ModelLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 
@@ -27,10 +30,12 @@ data class RuntimeStatus(
     val accessibilityConnected: Boolean = false,
     val uiActionsEnabled: Boolean = false,
     val starting: Boolean = false,
+    val startingRemap: Boolean = false,
     val running: Boolean = false,
     val observing: Boolean = false,
     val diagnostics: String = "Start the button test to check the physical AI button.",
     val lastAction: String = "",
+    val remapIssue: String? = null,
     val events: List<ButtonEvent> = emptyList(),
 )
 
@@ -42,6 +47,7 @@ object RemapperRuntime {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var initialized = false
     private var testAfterGrant = false
+    private var requestGeneration = 0
     internal var uiVisible = false
         private set
     internal var inputService: RemapService? = null
@@ -53,13 +59,18 @@ object RemapperRuntime {
         initialized = true
         val app = context.applicationContext
         change { it.copy(uiActionsEnabled = settings(app).getBoolean("ui_actions", false)) }
-        Shizuku.addBinderReceivedListenerSticky { scope.launch { refresh(app) } }
+        Shizuku.addBinderReceivedListenerSticky { scope.launch {
+            refresh(app)
+            restoreConfigured(app)
+        } }
         Shizuku.addBinderDeadListener {
             scope.launch {
                 refresh(app)
+                requestGeneration++
                 pendingAction = null
                 testAfterGrant = false
-                change { it.copy(shizukuPermissionPending = false, starting = false) }
+                change { it.copy(shizukuPermissionPending = false, starting = false, startingRemap = false,
+                    remapIssue = if (it.startingRemap) "Shizuku disconnected while remapping was starting." else it.remapIssue) }
                 inputService?.shizukuDisconnected()
             }
         }
@@ -71,7 +82,10 @@ object RemapperRuntime {
                     if (authorized) "Shizuku access granted. Starting the button test…"
                     else "Shizuku access was declined. Allow access to read the AI button.") }
                 testAfterGrant = authorized
-                if (uiVisible) startPendingTest(app)
+                if (uiVisible) {
+                    startPendingTest(app)
+                    restoreConfigured(app)
+                }
             }
         }
         refresh(app)
@@ -83,6 +97,16 @@ object RemapperRuntime {
         val authorized = running && runCatching {
             Shizuku.getVersion() >= 13 && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
         }.getOrDefault(false)
+        val previous = status.value
+        if (previous.shizukuInstalled != installed || previous.shizukuRunning != running ||
+            previous.shizukuAuthorized != authorized) {
+            AppLog.add(LogArea.SHIZUKU, when {
+                authorized -> "Connected and authorized"
+                running -> "Connected · authorization required"
+                installed -> "Installed and disconnected"
+                else -> "Disconnected"
+            })
+        }
         change { it.copy(shizukuInstalled = installed, shizukuRunning = running, shizukuAuthorized = authorized) }
     }
 
@@ -90,6 +114,7 @@ object RemapperRuntime {
         uiVisible = true
         refresh(context)
         startPendingTest(context)
+        scope.launch { restoreConfigured(context.applicationContext) }
     }
 
     fun uiPaused() { uiVisible = false }
@@ -98,6 +123,14 @@ object RemapperRuntime {
         if (!testAfterGrant) return
         testAfterGrant = false
         test(context)
+    }
+
+    /** Restore a saved remap once Shizuku is ready; rear-display features have their own keeper. */
+    private suspend fun restoreConfigured(context: Context) {
+        if (!status.value.shizukuAuthorized || status.value.running || status.value.startingRemap) return
+        if (!ConfigStore(context).config.first().enabled) return
+        AppLog.add(LogArea.BUTTON, "Restoring saved remapping")
+        start(context)
     }
 
     fun requestShizuku(context: Context) {
@@ -114,6 +147,7 @@ object RemapperRuntime {
                 Shizuku.shouldShowRequestPermissionRationale() ->
                     change { it.copy(diagnostics = "Open Authorized applications in Shizuku and allow Xiaomi AI Button Remapper.") }
                 else -> {
+                    AppLog.add(LogArea.SHIZUKU, "Requesting authorization")
                     change { it.copy(shizukuPermissionPending = true) }
                     Shizuku.requestPermission(PERMISSION_REQUEST)
                 }
@@ -138,7 +172,32 @@ object RemapperRuntime {
         ButtonAccessibilityService.connected?.refreshFlags()
     }
 
-    fun start(context: Context) = begin(context, RemapService.REMAP)
+    fun start(context: Context, runAlongsideXiaomi: Boolean = false) {
+        if (xiaomi17ModelLabel(Build.MODEL, Build.DEVICE) != null) return
+        val app = context.applicationContext
+        initialize(app)
+        refresh(app)
+        if (status.value.running || status.value.startingRemap) return
+        if (!status.value.shizukuAuthorized) {
+            remapFailed("Start Shizuku and grant it access before enabling remapping.")
+            return
+        }
+        testAfterGrant = false
+        val ticket = ++requestGeneration
+        change { it.copy(starting = true, startingRemap = true, remapIssue = null,
+            diagnostics = "Starting remapping…") }
+        scope.launch {
+            val failure = runCatching {
+                ConfigStore(app).update { config ->
+                    config.copy(enabled = true, keepOriginalAction = runAlongsideXiaomi || config.keepOriginalAction)
+                }
+            }.exceptionOrNull()
+            if (ticket != requestGeneration) return@launch
+            if (failure == null) begin(app, RemapService.REMAP)
+            else remapFailed("Could not save remapping settings (${failure.javaClass.simpleName}).")
+        }
+    }
+
     fun test(context: Context) {
         if (!status.value.running && !status.value.starting && !status.value.observing) begin(context, RemapService.TEST)
     }
@@ -148,7 +207,8 @@ object RemapperRuntime {
         initialize(context)
         refresh(context)
         if (!status.value.shizukuAuthorized) {
-            change { it.copy(diagnostics = "Start Shizuku and grant it access first.") }
+            if (action == RemapService.REMAP) remapFailed("Shizuku disconnected while remapping was starting.")
+            else change { it.copy(diagnostics = "Start Shizuku and grant it access first.") }
             return
         }
         pendingAction = action
@@ -157,7 +217,9 @@ object RemapperRuntime {
             context.startForegroundService(Intent(context, RemapService::class.java).setAction(action))
         }.onFailure { error ->
             pendingAction = null
-            change { it.copy(starting = false, diagnostics = "Could not start listening. Return to the remapper and tap Test button. ${error.message.orEmpty()}") }
+            val message = "Android refused to start the input service: ${error.message ?: error.javaClass.simpleName}"
+            if (action == RemapService.REMAP) remapFailed(message)
+            else change { it.copy(starting = false, diagnostics = message) }
         }
     }
 
@@ -171,15 +233,16 @@ object RemapperRuntime {
         // Let a queued foreground start satisfy Android's foreground deadline, then discard it.
         if (pendingAction == RemapService.TEST) {
             pendingAction = null
-            change { it.copy(starting = false) }
+            change { it.copy(starting = it.startingRemap) }
         }
         inputService?.endTest()
     }
 
     fun stop(context: Context, reason: String = "Remapping off. The original Xiaomi button action is available.") {
+        requestGeneration++
         pendingAction = null
         inputService?.stopSession(reason)
-        change { it.copy(starting = false, diagnostics = reason) }
+        change { it.copy(starting = false, startingRemap = false, remapIssue = null, diagnostics = reason) }
         disableConfig(context)
     }
 
@@ -194,7 +257,16 @@ object RemapperRuntime {
     internal fun recordEvent(value: Int, uptime: Long) {
         val event = ButtonEvent(value, uptime, System.currentTimeMillis() - (SystemClock.uptimeMillis() - uptime))
         change { it.copy(events = (listOf(event) + it.events).take(40)) }
+        if (value != 2) AppLog.add(LogArea.BUTTON, "Physical button ${if (value == 1) "down" else "up"}")
     }
 
-    internal fun change(update: (RuntimeStatus) -> RuntimeStatus) = mutable.update(update)
+    private fun remapFailed(message: String) {
+        change { it.copy(starting = false, startingRemap = false, diagnostics = message, remapIssue = message) }
+    }
+
+    internal fun change(update: (RuntimeStatus) -> RuntimeStatus) {
+        val before = mutable.getAndUpdate(update)
+        val after = mutable.value
+        if (before.diagnostics != after.diagnostics) AppLog.add(LogArea.BUTTON, after.diagnostics)
+    }
 }

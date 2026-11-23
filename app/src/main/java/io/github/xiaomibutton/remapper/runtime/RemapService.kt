@@ -12,7 +12,9 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import io.github.xiaomibutton.remapper.AppConfig
+import io.github.xiaomibutton.remapper.AppLog
 import io.github.xiaomibutton.remapper.ConfigStore
+import io.github.xiaomibutton.remapper.LogArea
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -65,18 +67,20 @@ class RemapService : Service() {
             return START_NOT_STICKY
         }
         try { foreground("Connecting to the AI button…", testing = requested == TEST) } catch (e: RuntimeException) {
-            finish("Android refused to start the input service: ${e.message}")
+            finish("Android refused to start the input service: ${e.message}", remapError = requested == REMAP)
             return START_NOT_STICKY
         }
 
         closeSession()
         mode = requested
+        AppLog.add(LogArea.BUTTON, if (requested == REMAP) "Remap service started" else "Read-only test service started")
+        RemapperRuntime.refresh(this)
         if (!RemapperRuntime.status.value.shizukuAuthorized) {
             shizukuDisconnected()
             return START_NOT_STICKY
         }
         val remapping = requested == REMAP
-        RemapperRuntime.change { it.copy(starting = true, running = false, observing = false) }
+        RemapperRuntime.change { it.copy(starting = true, startingRemap = remapping, running = false, observing = false) }
         val ticket = generation
         configJob = scope.launch {
             try {
@@ -102,19 +106,25 @@ class RemapService : Service() {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (generation == ticket) finish("Could not start the input session: ${e.message}", disable = remapping)
+                if (generation == ticket) finish("Could not start the input session: ${e.message}", remapError = remapping)
             }
         }
         return START_NOT_STICKY
     }
 
     private fun bindHelper(ticket: Int, remapping: Boolean, intercept: Boolean) {
+        AppLog.add(LogArea.BUTTON, when {
+            intercept -> "Binding input helper for safe interception"
+            remapping -> "Binding input helper to run alongside Xiaomi"
+            else -> "Binding input helper for the physical button test"
+        })
         val stopped = exited
         val client = object : IInputClient.Stub() {
             private fun deliver(block: () -> Unit) { main.post { if (ticket == generation) block() } }
             override fun status(message: String) = deliver {
                 ready = message.startsWith(if (intercept) "Active:" else "Observing:")
-                RemapperRuntime.change { it.copy(starting = !ready, running = remapping && ready,
+                RemapperRuntime.change { it.copy(starting = !ready,
+                    startingRemap = if (remapping) !ready else it.startingRemap, running = remapping && ready,
                     observing = !remapping && ready, diagnostics = message) }
                 if (ready) {
                     foreground(if (remapping) {
@@ -134,7 +144,7 @@ class RemapService : Service() {
 
             override fun ended(reason: String) {
                 stopped.countDown()
-                deliver { finish(reason, disable = remapping) }
+                deliver { finish(reason, remapError = remapping) }
             }
         }
         val options = Shizuku.UserServiceArgs(ComponentName(this, InputUserService::class.java))
@@ -145,6 +155,7 @@ class RemapService : Service() {
                     if (ticket != generation || binder == null) return@post
                     val remote = IInputHelper.Stub.asInterface(binder)
                     helper = remote
+                    AppLog.add(LogArea.BUTTON, "Input helper connected")
                     try { binder.linkToDeath({ main.post { helperDied(ticket) } }, 0) }
                     catch (_: Exception) { helperDied(ticket); return@post }
                     if (remapping) session = RemapSession(this@RemapService, scope, notices, remote).also {
@@ -158,7 +169,7 @@ class RemapService : Service() {
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
-                            if (ticket == generation) finish("Input helper could not start: ${e.message}", disable = remapping)
+                            if (ticket == generation) finish("Input helper could not start: ${e.message}", remapError = remapping)
                         }
                     }
                 }
@@ -171,11 +182,11 @@ class RemapService : Service() {
         control.execute {
             try { Shizuku.bindUserService(options, conn) }
             catch (e: Exception) {
-                main.post { if (generation == ticket) finish("Shizuku could not connect to the input helper: ${e.message}", disable = remapping) }
+                main.post { if (generation == ticket) finish("Shizuku could not connect to the input helper: ${e.message}", remapError = remapping) }
             }
         }
         main.postDelayed({
-            if (ticket == generation && !ready) finish("The input helper did not start. Check Shizuku and try again.", disable = remapping)
+            if (ticket == generation && !ready) finish("The input helper did not start. Check Shizuku and try again.", remapError = remapping)
         }, 20_000)
     }
 
@@ -184,7 +195,7 @@ class RemapService : Service() {
             val remote = helper ?: return
             val ticket = generation
             if (SystemClock.uptimeMillis() - lastPulse > 5500) {
-                finish("Input helper stopped responding. Stock button input was restored.", disable = mode == REMAP)
+                finish("Input helper stopped responding. Stock button input was restored.", remapError = mode == REMAP)
                 return
             }
             if (heartbeatJob?.isActive != true) heartbeatJob = scope.launch(Dispatchers.IO) {
@@ -204,11 +215,11 @@ class RemapService : Service() {
     }
 
     private fun helperDied(ticket: Int) {
-        if (ticket == generation) finish("Input helper disconnected. Check Shizuku and try again.")
+        if (ticket == generation) finish("Input helper disconnected. Check Shizuku and try again.", remapError = mode == REMAP)
     }
 
     internal fun shizukuDisconnected() {
-        if (mode != null) finish("Shizuku disconnected. Restart it and resume from the Button page.")
+        if (mode != null) finish("Shizuku disconnected. Restart it and resume from the Button page.", remapError = mode == REMAP)
     }
 
     internal fun endTest() {
@@ -224,10 +235,12 @@ class RemapService : Service() {
         else startForeground(SessionNotifications.SESSION_ID, notification)
     }
 
-    private fun finish(reason: String, disable: Boolean = false) {
+    private fun finish(reason: String, remapError: Boolean = false) {
+        val wasRemapping = mode == REMAP || remapError
         closeSession()
-        if (disable) RemapperRuntime.disableConfig(this)
-        RemapperRuntime.change { it.copy(starting = false, running = false, observing = false, diagnostics = reason) }
+        RemapperRuntime.change { it.copy(starting = !wasRemapping && it.startingRemap, running = false, observing = false,
+            startingRemap = !wasRemapping && it.startingRemap, diagnostics = reason,
+            remapIssue = if (remapError) reason else it.remapIssue) }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -265,11 +278,15 @@ class RemapService : Service() {
         closeSession()
         if (RemapperRuntime.inputService === this) {
             RemapperRuntime.inputService = null
-            if (hadSession) RemapperRuntime.change { it.copy(starting = false, running = false, observing = false) }
+            if (hadSession) RemapperRuntime.change {
+                it.copy(starting = pendingRemap(), startingRemap = pendingRemap(), running = false, observing = false)
+            }
         }
         scope.cancel()
         super.onDestroy()
     }
+
+    private fun pendingRemap() = RemapperRuntime.pendingAction == REMAP
 
     companion object {
         internal const val REMAP = "remap"
