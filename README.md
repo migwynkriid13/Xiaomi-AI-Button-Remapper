@@ -65,6 +65,8 @@ You can tune gesture timing, export and import your settings, and choose whether
 
 ### Back screen
 
+- **Rear dashboard** adds nine configurable pages, including a rear app launcher and keyboard, media and live activities, Control Centre, notes and photos, connected cards, and a mini-game. Arrange cards, build action tiles, choose backgrounds and clock faces, and switch layouts automatically with profiles. [Dashboard setup and connections](docs/rear-dashboard.md)
+
 - **Wallpaper** supports still images, looping GIFs, galleries from selected photos or a folder, timed or shuffled rotation, four scaling modes, panning, and a draggable clock with five styles. Set how long the display stays lit, wake it on pickup, schedule wallpaper hours, or toggle it with a Quick Settings tile or home screen widget.
 - **Notifications** can display the app, sender, or message and show recent alerts with a swipe. Previews follow lock-screen privacy, work profile restrictions, and Do Not Disturb.
 - **Battery** animates wired and wireless charging with Ring, Edge glow, or Minimal styles. Use an automatic or custom color and choose when the animation wakes the display.
@@ -92,7 +94,7 @@ Shizuku gives the app access to the physical button. The remapper recognizes you
 
 App profiles and configured screen interactions use optional Accessibility access. Per-app media controls require notification access. The action picker shows which actions need extra permissions. The remapper's own notifications are optional.
 
-The app collects no analytics or telemetry. Settings stay on your device. A configured HTTP action sends its request when you trigger the assigned gesture.
+The app collects no analytics or telemetry. It checks GitHub Releases for updates. Optional weather and lyric lookups send the selected location or track details to their respective providers. Connected cards read the files or HTTPS endpoints you choose. Configured Home Assistant and HTTP actions run when you activate them. [Dashboard permissions and data sources](docs/rear-dashboard.md#connections)
 
 ## Project links
 
