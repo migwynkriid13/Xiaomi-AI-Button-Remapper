@@ -12,5 +12,6 @@ interface IInputHelper {
     String openSettings(String action) = 6;
     String openWeb(String url) = 7;
     String deviceAction(String id, String value) = 8;
+    String clickQuickTile(String component) = 9;
     void destroy() = 16777114;
 }

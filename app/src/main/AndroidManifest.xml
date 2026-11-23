@@ -26,6 +26,7 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
         <intent><action android:name="android.intent.action.CREATE_SHORTCUT" /></intent>
+        <intent><action android:name="android.service.quicksettings.action.QS_TILE" /></intent>
         <intent><action android:name="android.media.action.STILL_IMAGE_CAMERA" /></intent>
         <intent><action android:name="android.media.action.STILL_IMAGE_CAMERA_SECURE" /></intent>
         <intent><action android:name="android.settings.SETTINGS" /></intent>

@@ -16,6 +16,16 @@ internal fun actionLabel(action: ActionSpec, context: Context, detail: Boolean =
     ActionKind.SHORTCUT -> if (detail) {
         if (action.extra.isEmpty()) action.value else action.value + " / " + action.extra
     } else action.label.ifEmpty { action.extra.ifEmpty { "App shortcut" } }
+    ActionKind.QUICK_TILE -> {
+        val id = runCatching { QuickSettingsTiles.parse(action.value) }.getOrNull()
+        val installed = id?.let { tile -> runCatching {
+            @Suppress("DEPRECATION")
+            shortcutLabel(context.packageManager.getServiceInfo(tile.component, 0)
+                .loadLabel(context.packageManager).toString())
+        }.getOrNull() }
+        val title = action.label.ifBlank { installed ?: "Control Centre tile" }
+        if (detail) "$title · ${action.value}" else title
+    }
     ActionKind.CATALOG -> if (ActionLibrary.isRetired(action.value)) "Unavailable · ${ActionLibrary.find(action.value)?.title}"
         else if (detail) listOfNotNull(ActionLibrary.find(action.value)?.title ?: action.value,
         action.extra.takeIf { it.isNotBlank() }).joinToString(" · ") else action.label.ifBlank { ActionLibrary.find(action.value)?.title ?: action.value }
@@ -74,6 +84,21 @@ internal fun loadChoices(context: Context, kind: ActionKind): List<Choice> {
                 }
             }
         }
+        ActionKind.QUICK_TILE -> pm.queryIntentServices(Intent(QuickSettingsTiles.ACTION), 0)
+            .filter {
+                val service = it.serviceInfo
+                service != null && service.exported && service.enabled &&
+                    service.permission == QuickSettingsTiles.BIND_PERMISSION
+            }
+            .distinctBy { ComponentName(it.serviceInfo.packageName, it.serviceInfo.name) }
+            .map {
+                val service = it.serviceInfo
+                val id = QuickTileId(service.packageName, service.name)
+                val app = shortcutLabel(service.applicationInfo.loadLabel(pm).toString())
+                val title = shortcutLabel(it.loadLabel(pm).toString()).ifBlank { service.name.substringAfterLast('.') }
+                Choice(title, "$app · Add to Control Centre first if it is not already there",
+                    ActionSpec(kind, id.encoded, label = title), icon = PickerIconSource.Service(it))
+            }
         ActionKind.SETTINGS -> systemPages.filterKeys { Intent(it).resolveActivity(pm) != null }
             .map { (id, label) -> Choice(label, id, ActionSpec(kind, id)) }
         else -> emptyList()

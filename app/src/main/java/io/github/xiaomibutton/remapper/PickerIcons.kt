@@ -44,6 +44,16 @@ internal sealed interface PickerIconSource {
         override val key: String get() = "activity/" + packageName + "/" + activity.activityInfo.name
     }
 
+    data class Service(val service: ResolveInfo) : PickerIconSource {
+        override val packageName: String get() = service.serviceInfo.packageName
+        override val key: String get() = "service/" + packageName + "/" + service.serviceInfo.name
+    }
+
+    data class ServiceComponent(val component: ComponentName) : PickerIconSource {
+        override val packageName: String get() = component.packageName
+        override val key: String get() = "service-component/" + component.flattenToShortString()
+    }
+
     data class Shortcut(val shortcut: ShortcutInfo) : PickerIconSource {
         override val packageName: String get() = shortcut.`package`
         override val key: String get() = "shortcut/" + shortcut.userHandle + "/" + packageName + "/" + shortcut.id
@@ -130,6 +140,11 @@ private fun loadIcon(context: Context, source: PickerIconSource, dpi: Int, pixel
     val icon = try {
         val drawable = when (source) {
             is PickerIconSource.Activity -> source.activity.loadIcon(pm)
+            is PickerIconSource.Service -> source.service.loadIcon(pm)
+            is PickerIconSource.ServiceComponent -> {
+                @Suppress("DEPRECATION")
+                pm.getServiceInfo(source.component, 0).loadIcon(pm)
+            }
             is PickerIconSource.Shortcut -> context.getSystemService(LauncherApps::class.java)
                 .getShortcutBadgedIconDrawable(source.shortcut, dpi)
             is PickerIconSource.Package -> pm.getLaunchIntentForPackage(source.packageName)?.resolveActivityInfo(pm, 0)

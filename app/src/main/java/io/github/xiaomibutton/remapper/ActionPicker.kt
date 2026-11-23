@@ -104,7 +104,7 @@ internal fun ActionPicker(slot: GestureSlot, current: ActionSpec, dismiss: () ->
             category == null -> browserState.SaveableStateProvider("actions") {
                 ActionBrowser(slot, icons, allowSequence, ::basic, ::openCatalog, ::pick)
             }
-            category in setOf(ActionKind.APP, ActionKind.SHORTCUT, ActionKind.SETTINGS) ->
+            category in setOf(ActionKind.APP, ActionKind.SHORTCUT, ActionKind.SETTINGS, ActionKind.QUICK_TILE) ->
                 ChoiceList(category, icons, ::pick)
             else -> key(category) {
                 var value by rememberSaveable { mutableStateOf(if (category == current.kind) current.value else "") }

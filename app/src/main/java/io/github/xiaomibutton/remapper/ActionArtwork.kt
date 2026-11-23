@@ -72,6 +72,8 @@ private fun catalogIcon(id: String): Int? {
         "device.lock", "device.secure_lock" -> R.drawable.action_lock
         "device.power", "device.power_menu" -> R.drawable.action_power_settings_new
         "device.controls" -> R.drawable.action_tune
+        "backscreen.quick_switch" -> R.drawable.rear_ic_swap
+        "backscreen.wallpaper.toggle" -> R.drawable.action_smartphone
         "apps.details" -> R.drawable.action_info
         "apps.stop" -> R.drawable.action_dangerous
         "apps.clear_recent" -> R.drawable.action_clear_all
@@ -120,6 +122,7 @@ internal fun glyphFor(kind: ActionKind?, catalog: CatalogAction? = null): Int = 
     ActionKind.FLASHLIGHT -> R.drawable.action_flash_on
     ActionKind.APP -> R.drawable.action_apps
     ActionKind.SHORTCUT -> R.drawable.action_open_in_new
+    ActionKind.QUICK_TILE -> R.drawable.action_tune
     ActionKind.SILENT -> R.drawable.action_volume_off
     ActionKind.DND -> R.drawable.action_do_not_disturb_on
     ActionKind.URL -> R.drawable.action_link
@@ -153,6 +156,9 @@ internal fun MappedActionIcon(action: ActionSpec, cache: PickerIconCache) {
         action.kind == ActionKind.APP -> PickerIconSource.Package(action.value)
         action.kind == ActionKind.SHORTCUT && action.extra.isEmpty() -> PickerIconSource.Legacy(action.value)
         action.kind == ActionKind.SHORTCUT -> PickerIconSource.Hosted(action.value, action.extra)
+        action.kind == ActionKind.QUICK_TILE -> runCatching {
+            PickerIconSource.ServiceComponent(QuickSettingsTiles.parse(action.value).component)
+        }.getOrNull()
         catalog?.parameter == ActionParameter.APP || catalog?.parameter == ActionParameter.APP_NUMBER ->
             PickerIconSource.Package(action.extra.substringBefore('|'))
         else -> null

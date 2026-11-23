@@ -18,6 +18,8 @@ import android.widget.Toast
 import io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService
 import io.github.xiaomibutton.remapper.runtime.ExpertDeviceActions
 import io.github.xiaomibutton.remapper.runtime.UiActions
+import io.github.xiaomibutton.remapper.backscreen.core.KeeperService
+import io.github.xiaomibutton.remapper.backscreen.mirror.MirrorSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -35,6 +37,7 @@ internal object DeviceActions {
     private const val NAV = "Navigation"
     private const val DEVICE = "Device"
     private const val CONNECT = "Connectivity"
+    private const val BACK_SCREEN = "Back screen"
     private val slots = listOf("toggle" to "Toggle", "on" to "Enable", "off" to "Disable")
     private val rotationChoices = listOf("0" to "0°", "1" to "90°", "2" to "180°", "3" to "270°")
     val actions = buildList {
@@ -78,6 +81,8 @@ internal object DeviceActions {
         action("device.power_menu", "Show power menu", DEVICE, requirement = ACCESS)
         action("device.controls", "Open device controls", DEVICE, requirement = ACCESS)
         action("device.secure_lock", "Securely lock device", DEVICE, requirement = "Device admin (lock only)")
+        action("backscreen.quick_switch", "Quick Switch", BACK_SCREEN, requirement = "Mirror and Shizuku")
+        action("backscreen.wallpaper.toggle", "Toggle back screen wallpaper", BACK_SCREEN, requirement = "Shizuku")
         action("apps.assistant", "Open device assistant", "Apps")
         action("apps.voice", "Open voice assistant", "Apps")
         action("apps.details", "Open app info", "Apps", ActionParameter.APP)
@@ -193,6 +198,16 @@ internal object DeviceActions {
         val values = context.getSharedPreferences("action_variables", Context.MODE_PRIVATE)
         fun expand(text: String) = Regex("\\{([A-Za-z][A-Za-z0-9_]*)}").replace(text) { values.getString(it.groupValues[1], "") ?: "" }.take(2048)
         return when (id) {
+            "backscreen.quick_switch" -> {
+                check(MirrorSettings.isEnabled(context)) { "Turn on Mirror in Back screen settings first" }
+                KeeperService.instance?.quickSwitch?.toggle()
+                    ?: KeeperService.start(context, KeeperService.ACTION_QUICK_SWITCH)
+                "Quick Switch requested"
+            }
+            "backscreen.wallpaper.toggle" -> {
+                KeeperService.start(context, KeeperService.ACTION_TOGGLE)
+                "Back screen wallpaper toggle requested"
+            }
             "shade.toggle_quick","shade.toggle_notifications" -> UiActions.toggleShade(id == "shade.toggle_quick")
             "device.secure_lock" -> DeviceAdminLock.apply(context)
             "intent.broadcast" -> { context.sendBroadcast(explicitIntent(value,id)); "Broadcast sent" }

@@ -3,11 +3,13 @@ package io.github.xiaomibutton.remapper.runtime
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.os.Process
 import io.github.xiaomibutton.remapper.launchableActivities
+import io.github.xiaomibutton.remapper.QuickSettingsTiles
 import io.github.xiaomibutton.remapper.systemPages
 import io.github.xiaomibutton.remapper.validatePackage
 import java.util.concurrent.ArrayBlockingQueue
@@ -146,6 +148,26 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
     override fun deviceAction(id: String, value: String): String {
         checkOwner()
         return ExpertDeviceActions.run(id, value, ::command)
+    }
+
+    override fun clickQuickTile(component: String): String {
+        checkOwner()
+        val tile = QuickSettingsTiles.parse(component)
+        @Suppress("DEPRECATION")
+        val service = try { packages.getServiceInfo(tile.component, 0) }
+        catch (_: PackageManager.NameNotFoundException) { return "Error: Control Centre tile is no longer installed" }
+        require(service.enabled && service.exported && service.permission == QuickSettingsTiles.BIND_PERMISSION) {
+            "Component is not an enabled Control Centre tile"
+        }
+        val configured = command(listOf("/system/bin/settings", "--user", androidUser,
+            "get", "secure", "sysui_qs_tiles"))
+        if (configured.startsWith("Error:")) return configured
+        if (configured.split(',').none { it.trim() == tile.systemSpec }) {
+            val label = runCatching { service.loadLabel(packages).toString()
+                .filterNot(Char::isISOControl).trim().take(120) }.getOrDefault("This tile").ifBlank { "This tile" }
+            return "Error: Add $label to Control Centre first"
+        }
+        return command(listOf("/system/bin/cmd", "statusbar", "click-tile", tile.encoded))
     }
 
     private fun command(argv: List<String>): String {

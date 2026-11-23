@@ -69,6 +69,7 @@ internal fun ChoiceList(kind: ActionKind, icons: PickerIconCache, onPick: (Choic
     val searchLabel = when (kind) {
         ActionKind.APP -> "Search installed apps"
         ActionKind.SHORTCUT -> "Search shortcuts"
+        ActionKind.QUICK_TILE -> "Search Control Centre tiles"
         ActionKind.SETTINGS -> "Search system settings"
         else -> "Search"
     }
@@ -106,6 +107,7 @@ internal fun ActionBrowser(slot: GestureSlot, icons: PickerIconCache, allowSeque
     val context = LocalContext.current
     val entries = remember(slot, allowSequence) {
         val groups = linkedMapOf("Apps" to listOf(ActionKind.APP, ActionKind.SHORTCUT, ActionKind.URL, ActionKind.SETTINGS),
+            "Control Centre" to listOf(ActionKind.QUICK_TILE),
             "Button actions" to listOf(ActionKind.CAMERA, ActionKind.FLASHLIGHT, ActionKind.SILENT, ActionKind.DND, ActionKind.NONE),
             "Advanced" to buildList {
                 if (allowSequence) add(ActionKind.SEQUENCE)
@@ -141,16 +143,18 @@ internal fun ActionBrowser(slot: GestureSlot, icons: PickerIconCache, allowSeque
         (filter == "All" || filter == it.group) && (search.isEmpty() || it.title.contains(search, true) ||
             it.group.contains(search, true) || it.catalog?.id?.contains(search, true) == true)
     }.groupBy { it.group } }
-    val includeInstalled = search.isNotEmpty() && filter in setOf("All", "Apps", "Settings")
+    val includeInstalled = search.isNotEmpty() && filter in setOf("All", "Apps", "Settings", "Control Centre")
     val installed = if (includeInstalled) {
         val choices by produceState<List<Pair<ActionKind, Choice>>>(emptyList(), context) {
             value = withContext(Dispatchers.IO) {
-                listOf(ActionKind.APP, ActionKind.SHORTCUT, ActionKind.SETTINGS).flatMap { kind ->
+                listOf(ActionKind.APP, ActionKind.SHORTCUT, ActionKind.SETTINGS, ActionKind.QUICK_TILE).flatMap { kind ->
                     try { loadChoices(context, kind).map { kind to it } } catch (_: Exception) { emptyList() }
                 }
             }
         }
-        choices.filter { (kind, choice) -> (filter != "Settings" || kind == ActionKind.SETTINGS) &&
+        choices.filter { (kind, choice) ->
+            (filter != "Settings" || kind == ActionKind.SETTINGS) &&
+            (filter != "Control Centre" || kind == ActionKind.QUICK_TILE) &&
             (choice.title.contains(search, true) || choice.detail.contains(search, true)) }
     } else emptyList()
     key(filter, search) {
@@ -165,7 +169,12 @@ internal fun ActionBrowser(slot: GestureSlot, icons: PickerIconCache, allowSeque
                 }
             }
             installed.groupBy { it.first }.forEach { (kind, list) ->
-                val heading = when (kind) { ActionKind.APP -> "Installed applications"; ActionKind.SHORTCUT -> "App shortcuts"; else -> "Settings destinations" }
+                val heading = when (kind) {
+                    ActionKind.APP -> "Installed applications"
+                    ActionKind.SHORTCUT -> "App shortcuts"
+                    ActionKind.QUICK_TILE -> "Installed Control Centre tiles"
+                    else -> "Settings destinations"
+                }
                 item(key = "devices/" + kind.name) { GroupLabel(heading) }
                 items(list, key = { "device/" + kind.name + "/" + it.second.key }) { (_, choice) ->
                     ChoiceRow(choice.title, choice.detail, { onChoice(choice) }) {

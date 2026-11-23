@@ -66,5 +66,17 @@ class ConfigJsonTest {
         val config = AppConfig(double = ActionSpec(ActionKind.SHORTCUT, "org.example", "open/inbox", "My inbox"))
         assertEquals(config, ConfigJson.decode(ConfigJson.encode(config, export = true), imported = true))
     }
+
+    @Test fun controlCentreTileKeepsItsComponentArtworkLabelAndValidation() {
+        val tile = ActionSpec(ActionKind.QUICK_TILE, "com.example/.QuickTile", label = "Example switch")
+        val config = AppConfig(longPress = tile)
+        assertEquals(config, ConfigJson.decode(ConfigJson.encode(config, export = true), imported = true))
+        for (invalid in listOf("com.example/.Tile;id", "com.example/com.example.Tile", "missing-slash")) {
+            assertThrows(IllegalArgumentException::class.java) {
+                validateAction(tile.copy(value = invalid))
+            }
+        }
+        assertThrows(IllegalArgumentException::class.java) { validateAction(tile.copy(extra = "unexpected")) }
+    }
 }
 

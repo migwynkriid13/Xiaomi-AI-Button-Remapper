@@ -15,7 +15,7 @@ import java.io.IOException
 
 enum class ActionKind(val title: String) {
     NONE("No action"), CAMERA("Open camera"), FLASHLIGHT("Toggle flashlight"), APP("Open application"),
-    SHORTCUT("Launch shortcut"), SILENT("Toggle silent mode"), DND("Toggle Do Not Disturb"),
+    SHORTCUT("Launch shortcut"), QUICK_TILE("Control Centre tile"), SILENT("Toggle silent mode"), DND("Toggle Do Not Disturb"),
     URL("Open website"), INTENT("Launch Android intent"), SHELL("Run shell command"),
     SETTINGS("Open system setting"), CATALOG("Button action"), SEQUENCE("Action sequence")
 }

@@ -71,7 +71,7 @@ internal fun validateAction(action: ActionSpec) {
     }
     require(action.kind in setOf(ActionKind.SHORTCUT, ActionKind.CATALOG) || action.extra.isEmpty()) { "Unexpected additional action data" }
     require(action.label.length <= 120 && action.label.none { it.isISOControl() } &&
-        (action.kind in setOf(ActionKind.SHORTCUT, ActionKind.CATALOG) || action.label.isEmpty())) { "Invalid shortcut label" }
+        (action.kind in setOf(ActionKind.SHORTCUT, ActionKind.CATALOG, ActionKind.QUICK_TILE) || action.label.isEmpty())) { "Invalid action label" }
     when (action.kind) {
         ActionKind.URL -> {
             val uri = URI(action.value)
@@ -86,6 +86,7 @@ internal fun validateAction(action: ActionSpec) {
             validatePackage(action.value)
             require(action.extra.isNotBlank()) { "Shortcut ID is empty" }
         }
+        ActionKind.QUICK_TILE -> QuickSettingsTiles.parse(action.value)
         ActionKind.SETTINGS -> require(action.value in systemPages) { "Unrecognized Settings destination" }
         ActionKind.SHELL -> require(PermittedCommands.accepts(action.value)) { "Command is outside the permitted list" }
         ActionKind.SEQUENCE -> SequenceConfig.fromAction(action)

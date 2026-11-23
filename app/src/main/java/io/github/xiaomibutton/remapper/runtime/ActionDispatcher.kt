@@ -135,6 +135,9 @@ internal class ActionDispatcher(
                     } else "Open the remapper to launch this shortcut on this Android version"
                 }
             }
+            ActionKind.QUICK_TILE -> shellAction(
+                (action.label.ifBlank { "Control Centre tile" }) + " requested"
+            ) { helper.clickQuickTile(action.value) }
             ActionKind.SHELL -> error("This older mapping runs a shell command. Choose a supported action instead.")
         }
     }

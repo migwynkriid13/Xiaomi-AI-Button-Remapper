@@ -8,7 +8,8 @@ class CatalogContractTest {
         val actions = ActionLibrary.actions
         assertEquals(actions.size, actions.map { it.id }.distinct().size)
         for (id in listOf("nav.home","nav.last","flash.on","flash.strength","display.brighter",
-                "display.night.toggle","device.screenshot","input.tap")) {
+                "display.night.toggle","device.screenshot","input.tap","backscreen.quick_switch",
+                "backscreen.wallpaper.toggle")) {
             assertNotNull(id, ActionLibrary.find(id))
         }
         assertTrue(actions.count { it.group == "Media" } >= 20)
