@@ -1,5 +1,6 @@
 package io.github.xiaomibutton.remapper.backscreen.dashboard
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -12,7 +13,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.min
 
 @Composable
-internal fun LensRings(s: DashboardStore, locked: Boolean) {
+internal fun LensRings(s: DashboardStore, locked: Boolean, ambient: Boolean = false) {
     if (!s.flag("lensRings")) return
     for (i in 1..2) {
         val window = s.value("ring$i", "Session")
@@ -38,6 +39,18 @@ internal fun LensRings(s: DashboardStore, locked: Boolean) {
                     else TimeUnit.DAYS.toMillis(7)
                 ((v.reset - System.currentTimeMillis()).toFloat() / period).coerceIn(0f, 1f)
             } else v.percent / 100f
+        val companion = s.flag("companion$i", true)
+        val style = s.value("mascot$i", if (i == 1) "Sprout" else "Firefly")
+        val swing =
+            if (companion && !ambient && s.flag("companionMotion", true))
+                rememberInfiniteTransition(label = "Companion")
+                    .animateFloat(
+                        -1f,
+                        1f,
+                        infiniteRepeatable(tween(1900), RepeatMode.Reverse),
+                        label = "Sway",
+                    )
+            else null
         Canvas(Modifier.fillMaxSize()) {
             val x =
                 size.width * (s.value("lensX", "16").toFloatOrNull() ?: 16f).coerceIn(4f, 32f) /
@@ -62,6 +75,15 @@ internal fun LensRings(s: DashboardStore, locked: Boolean) {
                 bounds,
                 style = Stroke(5f, cap = StrokeCap.Round),
             )
+            if (companion) {
+                val angle = -Math.PI * .34 + (swing?.value ?: 0f) * .06
+                val at =
+                    Offset(
+                        x + radius * kotlin.math.cos(angle).toFloat(),
+                        y + radius * kotlin.math.sin(angle).toFloat(),
+                    )
+                drawCompanion(style, at, (radius * .20f).coerceIn(5f, 22f), ink, v.percent >= 75f)
+            }
         }
     }
 }

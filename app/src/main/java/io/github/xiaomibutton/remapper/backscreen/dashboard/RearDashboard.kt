@@ -404,7 +404,12 @@ private fun ConnectionPage(s: DashboardStore) {
                         },
                         color = ink(s, "Ring $i", MaterialTheme.colorScheme.primary),
                     )
-                    if (s.flag("companion$i", true)) Text(if (value.percent < 75) "✿" else "☀")
+                    if (s.flag("companion$i", true))
+                        CompanionBadge(
+                            s.value("mascot$i", if (i == 1) "Sprout" else "Firefly"),
+                            ink(s, "Ring $i", MaterialTheme.colorScheme.primary),
+                            value.percent >= 75f,
+                        )
                     Text(
                         if (reset) "${remaining/60000} min to reset"
                         else "${value.percent.toInt()}%",

@@ -314,6 +314,12 @@ internal fun ConnectionSettings(s: DashboardStore, file: (String, String) -> Uni
             s.set("lensRings", it)
         }
         if (s.flag("lensRings")) {
+            DashToggle("Show rings on wallpaper", s.flag("wallpaperRings", true)) {
+                s.set("wallpaperRings", it)
+            }
+            DashToggle("Animate companions", s.flag("companionMotion", true)) {
+                s.set("companionMotion", it)
+            }
             Field(s, "lensX", "Lens center from left (%)", "16")
             Field(s, "lensY1", "Top lens center (%)", "25")
             Field(s, "lensY2", "Bottom lens center (%)", "75")
@@ -342,6 +348,14 @@ internal fun ConnectionSettings(s: DashboardStore, file: (String, String) -> Uni
             DashToggle("Show companion $i", s.flag("companion$i", true)) {
                 s.set("companion$i", it)
             }
+            if (s.flag("companion$i", true))
+                Options(
+                    "Companion $i",
+                    s.value("mascot$i", if (i == 1) "Sprout" else "Firefly"),
+                    companionStyles,
+                ) {
+                    s.set("mascot$i", it)
+                }
         }
     }
 }

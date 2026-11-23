@@ -63,8 +63,13 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
     init {
         rings.setContent {
             RemapperTheme {
-                if (running && store.flag("enabled") && !covered && (dim || page != null))
-                    LensRings(store, locked)
+                if (
+                    running &&
+                        store.flag("enabled") &&
+                        !covered &&
+                        (dim || page != null || store.flag("wallpaperRings", true))
+                )
+                    LensRings(store, locked, ambient = dim)
             }
         }
         addView(rings, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -281,7 +286,14 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
         }
         val inset = a.display?.let { BackScreen.cameraInsets(it) }
         if (full && !covered) {
-            val lensWidth = if (store.flag("lensRings")) (width * .30f).toInt() else 0
+            val lensWidth =
+                if (store.flag("lensRings")) {
+                    val center =
+                        (store.value("lensX", "16").toFloatOrNull() ?: 16f).coerceIn(4f, 32f)
+                    val radius =
+                        (store.value("lensRadius", "20").toFloatOrNull() ?: 20f).coerceIn(4f, 24f)
+                    ((width * center + minOf(width, height) * radius) / 100f).toInt()
+                } else 0
             compose.setPadding(
                 maxOf(inset?.left ?: 0, lensWidth),
                 inset?.top ?: 0,
