@@ -263,7 +263,7 @@ internal fun AmbientFace(s: DashboardStore, locked: Boolean, wake: () -> Unit) {
             }
         }
     val waiting =
-        remember(now) {
+        remember(now, locked) {
             if (
                 locked &&
                     !io.github.xiaomibutton.remapper.backscreen.notifications.NotificationAccess
