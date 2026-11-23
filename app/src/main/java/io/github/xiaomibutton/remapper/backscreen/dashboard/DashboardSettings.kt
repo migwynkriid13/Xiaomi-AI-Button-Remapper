@@ -18,9 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -57,27 +60,60 @@ private enum class LayerSettings(val title: String, val icon: Int, val page: Pag
 }
 
 @Composable
+private fun SettingsLine(
+    title: String,
+    modifier: Modifier = Modifier,
+    icon: Int? = null,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
+    Row(
+        modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 9.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (icon != null)
+            Icon(
+                painterResource(icon),
+                null,
+                Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary)
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+        trailing()
+    }
+}
+
+@Composable
 internal fun DashToggle(title: String, on: Boolean, change: (Boolean) -> Unit) {
-    SettingRow(
-        title,
-        onClick = { change(!on) },
-        checked = on,
-        trailing = {
-            Switch(checked = on, onCheckedChange = null)
-        })
+    SettingsLine(title, Modifier.toggleable(on, role = Role.Switch, onValueChange = change)) {
+        Switch(checked = on, onCheckedChange = null)
+    }
 }
 
 @Composable
 internal fun Options(
     title: String,
-    current: String,
+    current: String?,
     choices: List<String>,
     change: (String) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { open = true }) { Text("$title · $current") }
-        DropdownMenu(open, { open = false }) {
+    Box(Modifier.fillMaxWidth()) {
+        SettingsLine(title, Modifier.clickable(role = Role.Button) { open = true }) {
+            if (current != null)
+                Text(
+                    current,
+                    Modifier.weight(.8f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End,
+                )
+            Icon(
+                painterResource(R.drawable.action_keyboard_arrow_down),
+                null,
+                Modifier.size(19.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        DropdownMenu(open, { open = false }, Modifier.widthIn(min = 192.dp)) {
             choices.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(option) },
@@ -85,6 +121,15 @@ internal fun Options(
                         change(option)
                         open = false
                     },
+                    trailingIcon =
+                        if (option == current) {
+                            {
+                                Icon(
+                                    painterResource(R.drawable.rear_ic_check_circle),
+                                    null,
+                                    Modifier.size(17.dp))
+                            }
+                        } else null,
                 )
             }
         }
@@ -92,32 +137,66 @@ internal fun Options(
 }
 
 @Composable
-internal fun Field(s: DashboardStore, key: String, title: String, fallback: String = "") {
-    var value by remember(s, key) { mutableStateOf(s.value(key, fallback)) }
+internal fun SettingsDisclosure(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    SettingsLine(
+        title,
+        Modifier.clickable(role = Role.Button) { expanded = !expanded }
+            .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }) {
+            Icon(
+                painterResource(
+                    if (expanded) R.drawable.action_expand_less
+                    else R.drawable.action_keyboard_arrow_down),
+                contentDescription = null,
+                Modifier.size(20.dp),
+            )
+        }
+    if (expanded) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            content = content)
+    }
+}
+
+@Composable
+internal fun Field(
+    s: DashboardStore,
+    key: String,
+    title: String,
+    fallback: String = "",
+    modifier: Modifier = Modifier,
+) {
     OutlinedTextField(
-        value,
-        {
-            value = it
-            s.set(key, it)
-        },
-        Modifier.fillMaxWidth(),
+        s.value(key, fallback),
+        { s.set(key, it) },
+        modifier.fillMaxWidth(),
         label = { Text(title) },
         singleLine = true,
     )
 }
 
 @Composable
-internal fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun Section(title: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Surface(
         Modifier.fillMaxWidth(),
         shape = PanelShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            content()
-        }
+        Column(
+            Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (title != null)
+                    Text(
+                        title,
+                        Modifier.padding(start = 9.dp, top = 4.dp, bottom = 3.dp),
+                        style = MaterialTheme.typography.titleMedium)
+                content()
+            }
     }
 }
 
@@ -253,12 +332,9 @@ internal fun DashboardEditor(
                                 s.set("size", it)
                             }
                             for (card in s.cards()) {
-                                Text(card, style = MaterialTheme.typography.labelLarge)
-                                Row {
-                                    TextButton({ picking = "tap.$card" }) { Text("Tap action") }
-                                    TextButton({ picking = "hold.$card" }) {
-                                        Text("Hold action")
-                                    }
+                                Options(card, null, listOf("Tap action", "Hold action")) { choice ->
+                                    picking =
+                                        if (choice == "Tap action") "tap.$card" else "hold.$card"
                                 }
                             }
                             Button({ nearby.launch(Manifest.permission.BLUETOOTH_CONNECT) }) {
@@ -292,20 +368,23 @@ internal fun DashboardEditor(
                                 "Lyrics lookup shares the song title, artist and album with LRCLIB.",
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            for (key in
-                                listOf(
-                                    "Title",
-                                    "Artist",
-                                    "Transport",
-                                    "Progress",
-                                    "Volume",
-                                    "Lyrics",
-                                )) colorSetting(s, key)
+                        }
+                        Section {
+                            SettingsDisclosure("Player colors") {
+                                for (key in
+                                    listOf(
+                                        "Title",
+                                        "Artist",
+                                        "Transport",
+                                        "Progress",
+                                        "Volume",
+                                        "Lyrics")) colorSetting(s, key)
+                            }
                         }
                         Section("Access") { MediaAccess(s) }
                     }
                     LayerSettings.LIVE -> {
-                        Section("Live activities and inbox") {
+                        Section {
                             OverlayToggle(s, Page.LIVE)
                             OverlayToggle(s, Page.INBOX)
                             TextButton({ previewInbox = !previewInbox }) {
@@ -354,33 +433,50 @@ internal fun DashboardEditor(
                             OverlayToggle(s, Page.CONTROLS)
                             for (id in s.pins()) {
                                 val action = s.action(id) ?: continue
-                                Field(
-                                    s,
-                                    "label.$id",
-                                    "Tile label",
-                                    action.label.ifBlank { action.kind.title },
-                                )
-                                Options(
-                                    "Icon",
-                                    s.value("icon.$id", "Automatic"),
-                                    listOf("Automatic", "Music", "Light", "Home", "Settings"),
-                                ) {
-                                    s.set("icon.$id", it)
-                                }
-                                if (lockEligible(action))
-                                    DashToggle("Available while locked", s.flag("locked.$id")) {
-                                        s.set("locked.$id", it)
-                                    }
-                                Row {
-                                    TextButton({ picking = id }) { Text("Change") }
-                                    TextButton({ s.save("tiles", shift(s.pins(), id, -1)) }) {
-                                        Text("Earlier")
-                                    }
-                                    TextButton({ s.save("tiles", s.pins() - id) }) {
-                                        Text("Remove")
-                                    }
+                                key(id) {
+                                    SettingsDisclosure(
+                                        s.value(
+                                            "label.$id",
+                                            action.label.ifBlank { action.kind.title })) {
+                                            Field(
+                                                s,
+                                                "label.$id",
+                                                "Tile label",
+                                                action.label.ifBlank { action.kind.title },
+                                            )
+                                            Options(
+                                                "Icon",
+                                                s.value("icon.$id", "Automatic"),
+                                                listOf(
+                                                    "Automatic",
+                                                    "Music",
+                                                    "Light",
+                                                    "Home",
+                                                    "Settings"),
+                                            ) {
+                                                s.set("icon.$id", it)
+                                            }
+                                            if (lockEligible(action))
+                                                DashToggle(
+                                                    "Available while locked",
+                                                    s.flag("locked.$id")) {
+                                                        s.set("locked.$id", it)
+                                                    }
+                                            Row {
+                                                TextButton({ picking = id }) { Text("Change") }
+                                                TextButton({
+                                                    s.save("tiles", shift(s.pins(), id, -1))
+                                                }) {
+                                                    Text("Earlier")
+                                                }
+                                                TextButton({ s.save("tiles", s.pins() - id) }) {
+                                                    Text("Remove")
+                                                }
+                                            }
+                                        }
                                 }
                             }
+
                             if (s.pins().size < 24)
                                 Button({ picking = "tile." + java.util.UUID.randomUUID() }) {
                                     Text("Add action")
@@ -461,7 +557,7 @@ internal fun DashboardEditor(
         }
     }
     Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Headline("Back screen")
                 if (model != null) QuietText(model)
@@ -765,21 +861,29 @@ private fun FeatureRow(
     settings: () -> Unit,
     change: (Boolean) -> Unit
 ) {
-    SettingRow(
-        title,
-        onClick = settings,
-        icon = icon,
-        trailing = {
-            Box(
-                Modifier.minimumInteractiveComponentSize()
-                    .toggleable(value = on, role = Role.Switch, onValueChange = change)
-                    .semantics { contentDescription = title },
-                contentAlignment = Alignment.Center,
-            ) {
-                Switch(checked = on, onCheckedChange = null)
-            }
-        },
-    )
+    Row(
+        Modifier.fillMaxWidth().padding(start = 5.dp, end = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        SettingsLine(
+            title,
+            Modifier.weight(1f)
+                .clickable(
+                    role = Role.Button, onClickLabel = "Configure $title", onClick = settings),
+            icon,
+        ) {
+            LineIcon(Mark.NEXT, Modifier.size(14.dp), MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Box(
+            Modifier.minimumInteractiveComponentSize()
+                .toggleable(value = on, role = Role.Switch, onValueChange = change)
+                .semantics { contentDescription = title },
+            contentAlignment = Alignment.Center,
+        ) {
+            Switch(checked = on, onCheckedChange = null)
+        }
+    }
 }
 
 @Composable
@@ -789,7 +893,10 @@ private fun LayerRow(layer: LayerSettings, summary: String?, open: (LayerSetting
 
 @Composable
 internal fun OverlayToggle(s: DashboardStore, page: Page) {
-    DashToggle("Show ${page.title.lowercase()} in overlays", page in s.pages()) { on ->
+    val title =
+        if (page == Page.APPS) "Show pinned apps in overlays"
+        else "Show ${page.title.lowercase()} in overlays"
+    DashToggle(title, page in s.pages()) { on ->
         s.showPage(page, on)
         applyToWallpaper(s.context, on)
     }
@@ -823,7 +930,7 @@ private fun Ordered(
 ) {
     val current = s.strings(key, defaults).filter { it in choices }.distinct()
     (current + choices).distinct().forEach { item ->
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
             Checkbox(
                 item in current,
                 { checked ->
@@ -833,20 +940,22 @@ private fun Ordered(
             )
             Text(label(item), Modifier.weight(1f))
             if (item in current)
-                TextButton(
+                IconButton(
                     { s.save(key, shift(current, item, -1)) },
                     enabled = current.first() != item,
                 ) {
-                    Text("Earlier")
+                    Icon(
+                        painterResource(R.drawable.action_expand_less),
+                        "Move ${label(item)} earlier")
                 }
         }
     }
 }
 
 @Composable
-internal fun colorSetting(s: DashboardStore, key: String) {
+internal fun colorSetting(s: DashboardStore, key: String, title: String = key) {
     Options(
-        key,
+        title,
         s.value("color.$key", "Theme"),
         listOf("Theme", "Terracotta", "Apricot", "Sage", "Ivory", "Charcoal", "Custom"),
     ) {

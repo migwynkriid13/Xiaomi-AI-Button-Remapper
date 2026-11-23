@@ -26,49 +26,66 @@ internal fun LauncherSettings(s: DashboardStore) {
             }
         }
     }
-    Section("Layout and keyboard") {
-        Options("Layout", s.value("launcher", "Grid"), listOf("Grid", "Carousel")) {
-            s.set("launcher", it)
-        }
-        Options("Columns", s.value("columns", "3"), listOf("2", "3", "4")) { s.set("columns", it) }
-        DashToggle("Show application names", s.flag("appLabels", true)) { s.set("appLabels", it) }
-        DashToggle("Open keyboard on the back", s.flag("rearIme", true)) { s.set("rearIme", it) }
-        DashToggle("Compact rear keyboard", s.flag("compactKeyboard")) { on ->
-            s.set("compactKeyboard", on)
-            if (on &&
-                io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService.connected ==
-                    null)
-                s.context.startActivity(
-                    Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS),
-                )
-        }
-        Text(
-            "Use the compact layout if this phone sends its system keyboard to the front.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-    }
-    apps.forEach { pkg ->
-        Section(appLabel(s, pkg)) {
-            Options(
-                "Density",
-                s.value("dpi.$pkg", "System"),
-                listOf("System", "160", "200", "240", "280", "320", "360"),
-            ) {
-                s.set("dpi.$pkg", it)
+    Section {
+        SettingsDisclosure("Layout and keyboard") {
+            Options("Layout", s.value("launcher", "Grid"), listOf("Grid", "Carousel")) {
+                s.set("launcher", it)
             }
-            Options(
-                "Window width",
-                s.value("width.$pkg", "Full"),
-                listOf("Full", "Camera safe", "70%", "85%"),
-            ) {
-                s.set("width.$pkg", it)
+            Options("Columns", s.value("columns", "3"), listOf("2", "3", "4")) {
+                s.set("columns", it)
             }
-            Row {
-                TextButton({ s.save("apps", shift(apps, pkg, -1)) }) { Text("Earlier") }
-                TextButton({ s.save("apps", apps - pkg) }) { Text("Unpin") }
+            DashToggle("Show application names", s.flag("appLabels", true)) {
+                s.set("appLabels", it)
             }
+            DashToggle("Open keyboard on the back", s.flag("rearIme", true)) {
+                s.set("rearIme", it)
+            }
+            DashToggle("Compact rear keyboard", s.flag("compactKeyboard")) { on ->
+                s.set("compactKeyboard", on)
+                if (on &&
+                    io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService.connected ==
+                        null)
+                    s.context.startActivity(
+                        Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS),
+                    )
+            }
+            Text(
+                "Use the compact layout if this phone sends its system keyboard to the front.",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
+    if (apps.isNotEmpty())
+        Section("Per-app display") {
+            apps.forEach { pkg ->
+                key(pkg) {
+                    SettingsDisclosure(appLabel(s, pkg)) {
+                        Options(
+                            "Density",
+                            s.value("dpi.$pkg", "System"),
+                            listOf("System", "160", "200", "240", "280", "320", "360"),
+                        ) {
+                            s.set("dpi.$pkg", it)
+                        }
+                        Options(
+                            "Window width",
+                            s.value("width.$pkg", "Full"),
+                            listOf("Full", "Camera safe", "70%", "85%"),
+                        ) {
+                            s.set("width.$pkg", it)
+                        }
+                        Row {
+                            TextButton(
+                                { s.save("apps", shift(apps, pkg, -1)) },
+                                enabled = apps.first() != pkg) {
+                                    Text("Move earlier")
+                                }
+                            TextButton({ s.save("apps", apps - pkg) }) { Text("Unpin") }
+                        }
+                    }
+                }
+            }
+        }
     if (picker) {
         var query by remember { mutableStateOf("") }
         val choices by
@@ -123,7 +140,7 @@ internal fun appLabel(s: DashboardStore, pkg: String) = runCatching {
 
 @Composable
 internal fun GlanceSettings(s: DashboardStore, file: (String, String) -> Unit) {
-    Section("Clock on the wallpaper") {
+    Section {
         DashToggle("Show glance clock", s.glanceClock()) { on ->
             s.set("Glance clock", on)
             applyToWallpaper(s.context, on)
@@ -141,8 +158,8 @@ internal fun GlanceSettings(s: DashboardStore, file: (String, String) -> Unit) {
         }
         for (key in listOf("Seconds", "Show date", "Battery percentage")) DashToggle(
             key, s.flag(key, key == "Show date" || key == "Battery percentage")) {
-            s.set(key, it)
-        }
+                s.set(key, it)
+            }
         Button({ file("font", "*/*") }) { Text("Import a font") }
         if (s.value("font").isNotEmpty())
             TextButton({ s.set("font", "") }) { Text("Use system font") }
@@ -152,7 +169,7 @@ internal fun GlanceSettings(s: DashboardStore, file: (String, String) -> Unit) {
 
 @Composable
 internal fun BackgroundSettings(s: DashboardStore, file: (String, String) -> Unit) {
-    Section("Background source") {
+    Section {
         val scene = s.value("scene", DashboardStore.WALLPAPER)
         Options(
             "Wallpaper",
@@ -196,30 +213,34 @@ internal fun BackgroundSettings(s: DashboardStore, file: (String, String) -> Uni
                 listOf("Loop", "Once", "Ping-pong", "Reverse")) {
                     s.set("playback", it)
                 }
-            Field(s, "clipStart", "Clip start in seconds", "0")
-            Field(s, "clipEnd", "Clip end in seconds")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Field(s, "clipStart", "Start (s)", "0", Modifier.weight(1f))
+                Field(s, "clipEnd", "End (s)", modifier = Modifier.weight(1f))
+            }
         }
     }
-    Section("Effects") {
-        Options(
-            "Weather effect",
-            s.value("effect", "Off"),
-            listOf("Off", "Automatic", "Rain", "Snow", "Storm")) {
-                s.set("effect", it)
+    Section {
+        SettingsDisclosure("Wallpaper effects") {
+            Options(
+                "Weather effect",
+                s.value("effect", "Off"),
+                listOf("Off", "Automatic", "Rain", "Snow", "Storm")) {
+                    s.set("effect", it)
+                }
+            for (effect in listOf("Table lights", "Tilt parallax", "CRT lines")) DashToggle(
+                effect, s.flag(effect)) {
+                    s.set(effect, it)
+                }
+            Options("Card finish", s.value("finish", "Flat"), listOf("Flat", "Glass")) {
+                s.set("finish", it)
             }
-        for (effect in listOf("Table lights", "Tilt parallax", "CRT lines")) DashToggle(
-            effect, s.flag(effect)) {
-                s.set(effect, it)
-            }
-        Options("Card finish", s.value("finish", "Flat"), listOf("Flat", "Glass")) {
-            s.set("finish", it)
         }
     }
 }
 
 @Composable
 internal fun AmbientSettings(s: DashboardStore) {
-    Section("Display behavior") {
+    Section {
         DashToggle("Pocket mode", s.pocketMode()) { on ->
             s.set("Pocket mode", on)
             applyToWallpaper(s.context, on)
@@ -243,182 +264,211 @@ internal fun AmbientSettings(s: DashboardStore) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ConnectionSettings(s: DashboardStore, file: (String, String) -> Unit) {
     val location =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
             s.set("deviceWeather", ok)
         }
-    Section("Weather") {
-        DashToggle("Use approximate phone location", s.flag("deviceWeather")) { on ->
-            if (on) location.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
-            else s.set("deviceWeather", false)
-        }
-        Field(s, "city", "City or town")
-        Options("Temperature", s.value("units", "°C"), listOf("°C", "°F")) { s.set("units", it) }
-        Text(
-            "Open-Meteo uses your chosen place to retrieve current conditions.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-    }
-    Section("Home Assistant") {
-        Field(s, "haBase", "HTTPS server address")
-        Field(s, "entity", "Entity ID", "light.living_room")
-        var token by remember { mutableStateOf("") }
-        OutlinedTextField(
-            token,
-            { token = it },
-            singleLine = true,
-            label = { Text("Access token") },
-            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-        )
-        Row {
-            Button(
-                {
-                    Secrets.save(s.context, token)
-                    token = ""
-                },
-                enabled = token.isNotBlank(),
-            ) {
-                Text("Save token")
+    Section {
+        SettingsDisclosure("Weather") {
+            DashToggle("Use approximate phone location", s.flag("deviceWeather")) { on ->
+                if (on) location.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                else s.set("deviceWeather", false)
             }
-            TextButton(
-                {
-                    Secrets.clear(s.context)
-                    token = ""
-                },
-            ) {
-                Text("Forget token")
+            Field(s, "city", "City or town")
+            Options("Temperature", s.value("units", "°C"), listOf("°C", "°F")) {
+                s.set("units", it)
             }
+            Text(
+                "Open-Meteo uses your chosen place to retrieve current conditions.",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
-        var choose by remember { mutableStateOf(false) }
-        TextButton({ choose = true }) { Text("Browse entities") }
-        if (choose) {
-            val entities by reading(s.value("haBase") to s.value("credential")) { homeEntities(s) }
-            var search by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { choose = false },
-                title = { Text("Choose an entity") },
-                text = {
-                    Column {
-                        OutlinedTextField(
-                            search,
-                            { search = it },
-                            label = { Text("Search entities") },
-                            singleLine = true,
-                        )
-                        if (entities?.isSuccess != true)
-                            Text(entities?.exceptionOrNull()?.message ?: "Loading entities…")
-                        LazyColumn(Modifier.heightIn(max = 300.dp)) {
-                            items(
-                                entities?.getOrNull().orEmpty().filter {
-                                    it.contains(search, true)
-                                },
-                            ) { id ->
-                                TextButton(
-                                    {
-                                        s.set("entity", id)
-                                        choose = false
+        SettingsDisclosure("Home Assistant") {
+            Field(s, "haBase", "HTTPS server address")
+            Field(s, "entity", "Entity ID", "light.living_room")
+            var token by remember { mutableStateOf("") }
+            OutlinedTextField(
+                token,
+                { token = it },
+                singleLine = true,
+                label = { Text("Access token") },
+                visualTransformation =
+                    androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            )
+            var choose by remember { mutableStateOf(false) }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Button(
+                    {
+                        Secrets.save(s.context, token)
+                        token = ""
+                    },
+                    enabled = token.isNotBlank(),
+                ) {
+                    Text("Save token")
+                }
+                TextButton(
+                    {
+                        Secrets.clear(s.context)
+                        token = ""
+                    },
+                ) {
+                    Text("Forget token")
+                }
+                TextButton({ choose = true }) { Text("Browse entities") }
+            }
+            if (choose) {
+                val entities by
+                    reading(s.value("haBase") to s.value("credential")) { homeEntities(s) }
+                var search by remember { mutableStateOf("") }
+                AlertDialog(
+                    onDismissRequest = { choose = false },
+                    title = { Text("Choose an entity") },
+                    text = {
+                        Column {
+                            OutlinedTextField(
+                                search,
+                                { search = it },
+                                label = { Text("Search entities") },
+                                singleLine = true,
+                            )
+                            if (entities?.isSuccess != true)
+                                Text(entities?.exceptionOrNull()?.message ?: "Loading entities…")
+                            LazyColumn(Modifier.heightIn(max = 300.dp)) {
+                                items(
+                                    entities?.getOrNull().orEmpty().filter {
+                                        it.contains(search, true)
                                     },
-                                ) {
-                                    Text(id)
+                                ) { id ->
+                                    TextButton(
+                                        {
+                                            s.set("entity", id)
+                                            choose = false
+                                        },
+                                    ) {
+                                        Text(id)
+                                    }
                                 }
                             }
                         }
-                    }
-                },
-                confirmButton = { TextButton({ choose = false }) { Text("Close") } },
-            )
+                    },
+                    confirmButton = { TextButton({ choose = false }) { Text("Close") } },
+                )
+            }
+            Field(s, "service", "Tap action (domain.service)", "homeassistant.toggle")
         }
-        Field(s, "service", "Tap action (domain.service)", "homeassistant.toggle")
-    }
-    Section("Custom JSON") {
-        Field(s, "feed", "HTTPS feed URL")
-        Field(s, "path", "Value path", "status")
-        Field(s, "feedLabel", "Card label", "Status")
-    }
-    Section("Claude usage rings") {
-        DashToggle("Draw rings around the camera lenses", s.flag("lensRings")) {
-            s.set("lensRings", it)
+        SettingsDisclosure("Custom JSON") {
+            Field(s, "feed", "HTTPS feed URL")
+            Field(s, "path", "Value path", "status")
+            Field(s, "feedLabel", "Card label", "Status")
         }
-        if (s.flag("lensRings")) {
-            DashToggle("Show rings on wallpaper", s.flag("wallpaperRings", true)) {
-                s.set("wallpaperRings", it)
+        SettingsDisclosure("Claude usage rings") {
+            DashToggle("Draw rings around the camera lenses", s.flag("lensRings")) {
+                s.set("lensRings", it)
             }
-            DashToggle("Animate companions", s.flag("companionMotion", true)) {
-                s.set("companionMotion", it)
-            }
-            Field(s, "lensX", "Lens center from left (%)", "16")
-            Field(s, "lensY1", "Top lens center (%)", "25")
-            Field(s, "lensY2", "Bottom lens center (%)", "75")
-            Field(s, "lensRadius", "Radius (% of panel height)", "20")
-        }
-        Text(
-            "Choose a status-line JSON file or an HTTPS feed for each account. The rear reads its rate_limits fields.",
-        )
-        for (i in 1..2) {
-            Field(s, "account$i", "Account $i label", "Account $i")
-            Field(s, "usageUrl$i", "Account $i feed URL")
-            TextButton({ file("usageFile$i", "*/*") }) { Text("Choose account $i JSON file") }
-            if (s.value("usageFile$i").isNotEmpty())
-                TextButton({ s.set("usageFile$i", "") }) { Text("Remove file") }
-            Options(
-                "Ring $i",
-                s.value("ring$i", "Session"),
-                listOf("Session", "Weekly", "Scoped weekly", "Battery", "Hidden"),
-            ) {
-                s.set("ring$i", it)
-            }
-            Options("Metric $i", s.value("metric$i", "Usage"), listOf("Usage", "Until reset")) {
-                s.set("metric$i", it)
-            }
-            colorSetting(s, "Ring $i")
-            DashToggle("Show companion $i", s.flag("companion$i", true)) {
-                s.set("companion$i", it)
-            }
-            if (s.flag("companion$i", true))
-                Options(
-                    "Companion $i",
-                    s.value("mascot$i", if (i == 1) "Sprout" else "Firefly"),
-                    companionStyles,
-                ) {
-                    s.set("mascot$i", it)
+            if (s.flag("lensRings")) {
+                DashToggle("Show rings on wallpaper", s.flag("wallpaperRings", true)) {
+                    s.set("wallpaperRings", it)
                 }
+                DashToggle("Animate companions", s.flag("companionMotion", true)) {
+                    s.set("companionMotion", it)
+                }
+                Field(s, "lensX", "Lens center from left (%)", "16")
+                Field(s, "lensY1", "Top lens center (%)", "25")
+                Field(s, "lensY2", "Bottom lens center (%)", "75")
+                Field(s, "lensRadius", "Radius (% of panel height)", "20")
+            }
+            Text(
+                "Choose a status-line JSON file or an HTTPS feed for each account. The rear reads its rate_limits fields.",
+            )
+            for (i in 1..2) {
+                key(i) {
+                    SettingsDisclosure(s.value("account$i", "Account $i")) {
+                        Field(s, "account$i", "Account label", "Account $i")
+                        Field(s, "usageUrl$i", "HTTPS feed URL")
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TextButton({ file("usageFile$i", "*/*") }) { Text("Choose JSON file") }
+                            if (s.value("usageFile$i").isNotEmpty())
+                                TextButton({ s.set("usageFile$i", "") }) { Text("Remove file") }
+                        }
+                        Options(
+                            "Ring",
+                            s.value("ring$i", "Session"),
+                            listOf("Session", "Weekly", "Scoped weekly", "Battery", "Hidden"),
+                        ) {
+                            s.set("ring$i", it)
+                        }
+                        Options(
+                            "Metric",
+                            s.value("metric$i", "Usage"),
+                            listOf("Usage", "Until reset")) {
+                                s.set("metric$i", it)
+                            }
+                        colorSetting(s, "Ring $i", title = "Ring color")
+                        DashToggle("Show companion", s.flag("companion$i", true)) {
+                            s.set("companion$i", it)
+                        }
+                        if (s.flag("companion$i", true))
+                            Options(
+                                "Companion",
+                                s.value("mascot$i", if (i == 1) "Sprout" else "Firefly"),
+                                companionStyles,
+                            ) {
+                                s.set("mascot$i", it)
+                            }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
 internal fun ProfileSettings(s: DashboardStore) {
-    for (name in listOf("Desk", "Headphones", "Night")) Section(name) {
-        DashToggle("Enable $name", s.flag("profile.$name")) { s.set("profile.$name", it) }
-        val trigger =
-            when (name) {
-                "Desk" -> "Charging"
-                "Night" -> "Night hours"
-                else -> "Headphones"
+    Section {
+        for (name in listOf("Desk", "Headphones", "Night")) key(name) {
+            SettingsDisclosure(name) {
+                DashToggle("Enable profile", s.flag("profile.$name")) { s.set("profile.$name", it) }
+                val trigger =
+                    when (name) {
+                        "Desk" -> "Charging"
+                        "Night" -> "Night hours"
+                        else -> "Headphones"
+                    }
+                Options(
+                    "Activate on",
+                    s.value("trigger.$name", trigger),
+                    listOf("Charging", "Headphones", "Night hours", "Media playing", "Locked"),
+                ) {
+                    s.set("trigger.$name", it)
+                }
+                val available = s.pages().filter { it != Page.APPS }
+                val destination =
+                    available.find { it.name == s.value("page.$name") }?.title ?: "Wallpaper"
+                Options(
+                    "On activation",
+                    destination,
+                    listOf("Wallpaper") + available.map { it.title }) {
+                        s.set(
+                            "page.$name",
+                            available.find { page -> page.title == it }?.name.orEmpty())
+                    }
+                Options(
+                    "Brightness",
+                    s.value("brightness.$name", "System"),
+                    listOf("System", "10%", "30%", "60%", "100%"),
+                ) {
+                    s.set("brightness.$name", it)
+                }
+                Options(
+                    "Idle seconds",
+                    s.value("timeout.$name", "30"),
+                    listOf("10", "30", "60", "120")) {
+                        s.set("timeout.$name", it)
+                    }
             }
-        Options(
-            "Activate on",
-            s.value("trigger.$name", trigger),
-            listOf("Charging", "Headphones", "Night hours", "Media playing", "Locked"),
-        ) {
-            s.set("trigger.$name", it)
-        }
-        val available = s.pages().filter { it != Page.APPS }
-        val destination = available.find { it.name == s.value("page.$name") }?.title ?: "Wallpaper"
-        Options("On activation", destination, listOf("Wallpaper") + available.map { it.title }) {
-            s.set("page.$name", available.find { page -> page.title == it }?.name.orEmpty())
-        }
-        Options(
-            "Brightness",
-            s.value("brightness.$name", "System"),
-            listOf("System", "10%", "30%", "60%", "100%"),
-        ) {
-            s.set("brightness.$name", it)
-        }
-        Options("Idle seconds", s.value("timeout.$name", "30"), listOf("10", "30", "60", "120")) {
-            s.set("timeout.$name", it)
         }
     }
 }
