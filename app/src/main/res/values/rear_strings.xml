@@ -4,17 +4,17 @@
     <string name="rear_back">Back</string>
     <string name="rear_listener_name">Back screen notifications</string>
 
-    <!-- Sections: the bottom bar's tabs, and each one's main switch. -->
+    <!-- Back screen categories and each one's main switch. -->
     <string name="rear_tab_wallpaper">Wallpaper</string>
     <string name="rear_tab_notifications">Notifications</string>
     <string name="rear_tab_battery">Battery</string>
     <string name="rear_tab_mirror">Mirror</string>
     <string name="rear_tab_camera">Camera</string>
-    <string name="rear_show_on_back_screen">Show on back screen</string>
-    <string name="rear_notifications_switch">Show notifications on back screen</string>
-    <string name="rear_battery_switch">Charging animation</string>
-    <string name="rear_mirror_switch">Quick Switch</string>
-    <string name="rear_camera_switch">Swipe left for Xiaomi Camera</string>
+    <string name="rear_show_on_back_screen">Use custom wallpaper</string>
+    <string name="rear_notifications_switch">Show notification cards</string>
+    <string name="rear_battery_switch">Show a charging moment</string>
+    <string name="rear_mirror_switch">Enable Quick Switch</string>
+    <string name="rear_camera_switch">Enable swipe to camera</string>
 
     <!-- Top bar and its menu. -->
     <string name="rear_refresh">Refresh back screen</string>
@@ -24,14 +24,12 @@
     <string name="rear_setup_help">Setup help</string>
     <string name="rear_about_title">About</string>
     <string name="rear_about">Xiaomi AI Button Remapper %1$s</string>
-    <string name="rear_about_message">Shows your own images, GIFs, a clock, a charging animation and your notifications on your Xiaomi back screen, moves the app you\'re using there with Quick Switch, and opens Xiaomi Camera there with a swipe.\n\nRear-screen images and notification previews are processed on your phone.\n\nRear-screen functionality is adapted from Mi Back Screen by Andrew Worgan.</string>
-    <string name="rear_website">Website</string>
-    <string name="rear_website_url" translatable="false">https://totallynotkasai.github.io/mi-back-screen/</string>
+    <string name="rear_about_message">Personalize the Xiaomi back screen with your own images, GIFs, clock, charging effects and notification previews. Quick Switch can move the app you are using to the rear display, and a swipe can open Xiaomi Camera there.\n\nWallpaper files and notification previews stay on your phone.</string>
     <string name="rear_close">Close</string>
     <string name="rear_copy">Copy</string>
     <string name="rear_copied">Copied</string>
 
-    <!-- Each tab's help, behind the ? in the top bar. -->
+    <!-- Each category's help, behind the ? in the top bar. -->
     <string name="rear_help">Help</string>
     <string name="rear_help_with">Help with %1$s</string>
     <string name="rear_good_to_know">Good to know</string>
@@ -114,11 +112,11 @@
     <string name="rear_owner_lent">%1$s</string>
 
     <!-- Wallpaper tab. -->
-    <string name="rear_wallpaper_preview">Preview of the back screen. Opens the photo picker</string>
+    <string name="rear_wallpaper_preview">Your rear-display preview. Tap to choose images</string>
     <string name="rear_no_wallpaper">No wallpaper</string>
     <string name="rear_no_wallpaper_summary">The back screen shows black.</string>
     <string name="rear_no_wallpaper_caption">No wallpaper. The back screen shows black.</string>
-    <string name="rear_choose_images">Choose images</string>
+    <string name="rear_choose_images">Pick images</string>
     <string name="rear_add_images">Add images</string>
     <plurals name="rear_images_added">
         <item quantity="one">%d image added</item>
@@ -133,7 +131,7 @@
     <string name="rear_stop_folder_title">Stop using %1$s?</string>
     <string name="rear_stop_folder_title_unnamed">Stop using your folder?</string>
     <string name="rear_stop_folder_message">The images you choose take the folder\'s place. The folder and its photos aren\'t touched.</string>
-    <string name="rear_choose_folder">Folder</string>
+    <string name="rear_choose_folder">Use folder</string>
     <string name="rear_choose_folder_again">Choose folder again</string>
     <string name="rear_state_on">On</string>
     <string name="rear_state_on_black">On · black, no images</string>
@@ -145,7 +143,7 @@
     <string name="rear_copy_failed">Couldn\'t add those images</string>
     <string name="rear_folder_empty">No images in that folder</string>
     <string name="rear_folder_failed">Couldn\'t use that folder. Try choosing it again.</string>
-    <string name="rear_gallery_title">Gallery</string>
+    <string name="rear_gallery_title">Wallpaper collection</string>
     <plurals name="rear_gallery_count">
         <item quantity="one">%d image</item>
         <item quantity="other">%d images</item>
@@ -153,7 +151,7 @@
     <string name="rear_gallery_from_folder">%1$s from %2$s</string>
     <string name="rear_folder_lost">Can\'t open %1$s any more. Choose it again.</string>
     <string name="rear_folder_lost_unnamed">Can\'t open your folder any more. Choose it again.</string>
-    <string name="rear_change_every">Change every</string>
+    <string name="rear_change_every">Rotate after</string>
     <plurals name="rear_every_minutes">
         <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>
@@ -163,16 +161,16 @@
         <item quantity="other">%d hours</item>
     </plurals>
     <string name="rear_every_day_interval">1 day</string>
-    <string name="rear_shuffle">Shuffle</string>
-    <string name="rear_next_image">Next image</string>
-    <string name="rear_remove_images">Remove images</string>
+    <string name="rear_shuffle">Mix the order</string>
+    <string name="rear_next_image">Show next</string>
+    <string name="rear_remove_images">Clear collection</string>
     <string name="rear_remove_images_title">Remove images?</string>
     <string name="rear_remove_images_message">The back screen shows black instead, with the clock if it\'s on. Only the app\'s own copies are removed; your photos and folders aren\'t touched.</string>
     <string name="rear_images_removed">Images removed</string>
     <string name="rear_cancel">Cancel</string>
     <string name="rear_ok">OK</string>
-    <string name="rear_clock_title">Clock</string>
-    <string name="rear_clock_summary">Show the time and date over the image</string>
+    <string name="rear_clock_title">Clock layer</string>
+    <string name="rear_clock_summary">Place the time and date over your wallpaper</string>
     <string name="rear_clock_classic">Classic</string>
     <string name="rear_clock_light">Light</string>
     <string name="rear_clock_stacked">Stacked</string>
@@ -197,15 +195,15 @@
     <string name="rear_colour_brightness">Brightness</string>
     <string name="rear_colour_spectrum">Hue and saturation</string>
     <string name="rear_percent">%d%%</string>
-    <string name="rear_scaling_title">Scaling</string>
+    <string name="rear_scaling_title">Image framing</string>
     <string name="rear_scale_fill">Fill</string>
     <string name="rear_scale_fit">Fit</string>
     <string name="rear_scale_stretch">Stretch</string>
     <string name="rear_scale_none">None</string>
-    <string name="rear_scaling_summary">How images fit the back screen</string>
+    <string name="rear_scaling_summary">Choose how each image meets the display edges</string>
     <string name="rear_pan_fills">Panning always fills the screen</string>
-    <string name="rear_pan_title">Panning</string>
-    <string name="rear_pan_summary">Glide slowly across images that don\'t fit the screen\'s shape</string>
+    <string name="rear_pan_title">Slow image motion</string>
+    <string name="rear_pan_summary">Gently travel across images wider or taller than the display</string>
     <string name="rear_pan_speed">Speed</string>
     <string name="rear_pan_slow">Slow</string>
     <string name="rear_pan_medium">Medium</string>
@@ -220,9 +218,9 @@
     <!-- Non-breaking spaces, so a number never wraps away from its unit. -->
     <string name="rear_duration_seconds">%1$d s</string>
     <string name="rear_duration_minutes">%1$d min %2$d s</string>
-    <string name="rear_display_title">Back screen display</string>
-    <string name="rear_lit_title">Stays lit for</string>
-    <string name="rear_lit_summary">How long the back screen stays bright after a touch or a wake. It then fades for a few seconds and dims.</string>
+    <string name="rear_display_title">Wake and brightness</string>
+    <string name="rear_lit_title">Bright display time</string>
+    <string name="rear_lit_summary">How long the display stays bright after touch or wake before it eases into dim mode.</string>
     <string name="rear_lit_as_set">As set</string>
     <string name="rear_lit_as_set_value">As set (%1$s)</string>
     <string name="rear_lit_5s">5 s</string>
@@ -231,16 +229,16 @@
     <string name="rear_lit_2min">2 min</string>
     <string name="rear_lit_5min">5 min</string>
     <string name="rear_lit_needs_shizuku">Needs Shizuku, which isn\'t ready</string>
-    <string name="rear_stay_lit_title">Stay fully lit while unlocked</string>
-    <string name="rear_stay_lit_summary">The back screen doesn\'t dim while you\'re using the phone. Uses more battery.</string>
-    <string name="rear_pick_up_title">Light up when you pick it up</string>
-    <string name="rear_pick_up_summary">If it went dark lying on its back, it lights again when you pick the phone up while it\'s unlocked.</string>
+    <string name="rear_stay_lit_title">Keep bright while unlocked</string>
+    <string name="rear_stay_lit_summary">Hold the rear display at full brightness while you use the phone. This uses more battery.</string>
+    <string name="rear_pick_up_title">Wake when lifted</string>
+    <string name="rear_pick_up_summary">Wake a dark rear display when you pick up the unlocked phone.</string>
     <string name="rear_display_needs_wallpaper">These two work while Show on back screen is on.</string>
     <string name="rear_duration_whole_minutes">%1$d min</string>
-    <string name="rear_avoid_camera_title">Keep clear of the camera</string>
-    <string name="rear_avoid_camera_summary">Fit the image beside the camera instead of partly behind it</string>
-    <string name="rear_schedule_title">Schedule</string>
-    <string name="rear_schedule_none">Turn on and off by itself at set times, e.g. off overnight</string>
+    <string name="rear_avoid_camera_title">Respect the camera area</string>
+    <string name="rear_avoid_camera_summary">Frame the image beside the cameras instead of placing part of it underneath</string>
+    <string name="rear_schedule_title">Wallpaper routine</string>
+    <string name="rear_schedule_none">Choose when custom wallpaper starts and rests, such as overnight</string>
     <string name="rear_schedule_turns_on">Turns on at %s</string>
     <string name="rear_schedule_turns_off">Turns off at %s</string>
     <string name="rear_schedule_no_change">No change coming up</string>
@@ -270,13 +268,13 @@
     <string name="rear_open_app_settings">Open app settings</string>
 
     <!-- Battery tab, and the charging animation itself. -->
-    <string name="rear_battery_preview">Preview of the charging animation</string>
-    <string name="rear_battery_caption">Plays on the back screen for about 3.5 seconds when you plug in</string>
+    <string name="rear_battery_preview">Preview of your charging moment</string>
+    <string name="rear_battery_caption">A short 3.5-second response when wired or wireless charging begins</string>
     <string name="rear_play">Play</string>
-    <string name="rear_battery_light_up">Light up back screen when plugged in</string>
-    <string name="rear_battery_light_up_summary">Not while the back is covered, such as lying face up on a table</string>
-    <string name="rear_battery_over_xiaomi">Also when the wallpaper is off</string>
-    <string name="rear_battery_over_xiaomi_summary">Plays over Xiaomi\'s back screen, then hands it back</string>
+    <string name="rear_battery_light_up">Wake for charging</string>
+    <string name="rear_battery_light_up_summary">Light the rear display when charging starts, unless the back is covered</string>
+    <string name="rear_battery_over_xiaomi">Play without custom wallpaper</string>
+    <string name="rear_battery_over_xiaomi_summary">Temporarily appear over Xiaomi\'s screen, then return control to it</string>
     <string name="rear_battery_on_wallpaper">On · plays over the wallpaper</string>
     <string name="rear_battery_on_xiaomi">On · plays over Xiaomi\'s back screen</string>
     <string name="rear_battery_on_nowhere">On · nothing plays while the wallpaper is off</string>
@@ -292,39 +290,39 @@
     <string name="rear_style_glow_summary">A glow runs round the edge as far as the level, then stays faint while it charges</string>
     <string name="rear_style_minimal">Minimal</string>
     <string name="rear_style_minimal_summary">A small bolt and the level by the clock: below it, or beside it where there\'s no room</string>
-    <string name="rear_charging_colour">Colour</string>
+    <string name="rear_charging_colour">Accent color</string>
     <string name="rear_colour_auto_wallpaper">A colour from the image on the back screen</string>
 
     <!-- Notifications tab, and notifications on the back screen. -->
     <string name="rear_notifications_on_wallpaper">On · shows over the wallpaper</string>
     <string name="rear_notifications_on_xiaomi">On · Xiaomi\'s back screen shows them while the wallpaper is off</string>
     <string name="rear_notifications_on_no_access">On · needs notification access</string>
-    <string name="rear_access_title">Notification access</string>
-    <string name="rear_access_allowed">Allowed. Notifications are read on the phone to show them on the back screen, and never stored or sent anywhere.</string>
-    <string name="rear_access_needed">Needed to show your notifications. Shizuku can allow it in one tap.</string>
+    <string name="rear_access_title">Private notification access</string>
+    <string name="rear_access_allowed">Ready. Notification content is read only on this phone for the rear display; it is not stored or uploaded.</string>
+    <string name="rear_access_needed">Allow access so notification cards can be drawn on the rear display. Shizuku can grant it in one tap.</string>
     <string name="rear_access_needed_settings">Needed to show your notifications. In Settings, allow Back screen notifications. If it\'s greyed out, first open App info → ⋮ → Allow restricted settings.</string>
     <string name="rear_access_remove">Remove access</string>
     <string name="rear_open_settings">Open settings</string>
     <string name="rear_access_now_allowed">Notification access allowed</string>
     <string name="rear_access_now_removed">Notification access removed</string>
     <string name="rear_access_failed">Couldn\'t change notification access</string>
-    <string name="rear_notifications_preview">Preview of a notification on the back screen</string>
-    <string name="rear_notifications_caption">New notifications slide in at the top for about 5 seconds</string>
+    <string name="rear_notifications_preview">Preview your notification card</string>
+    <string name="rear_notifications_caption">New cards arrive from the top and remain visible for about 5 seconds</string>
     <string name="rear_try_on_back_screen">Try on back screen</string>
     <string name="rear_try_preview_only">Shown in the preview. Turn on Show notifications on back screen to try it there too</string>
     <string name="rear_try_wallpaper_off">The wallpaper is off, so Xiaomi\'s own back screen shows notifications. Turn the wallpaper on to see these</string>
-    <string name="rear_style_title">Style</string>
-    <string name="rear_style_summary">How much shows. The back screen faces away from you, so anyone nearby can read it.</string>
+    <string name="rear_style_title">Privacy level</string>
+    <string name="rear_style_summary">Choose how much a card reveals while the rear display faces outward.</string>
     <string name="rear_style_discreet">Discreet</string>
     <string name="rear_style_normal">Normal</string>
     <string name="rear_style_full">Full</string>
     <string name="rear_style_discreet_summary">Just the app: people nearby see that something came, not what</string>
     <string name="rear_style_normal_summary">The app and the title, usually who it\'s from</string>
     <string name="rear_style_full_summary">The app, the title and up to 3 lines of the message</string>
-    <string name="rear_swipe_down_title">Swipe down for recent notifications</string>
-    <string name="rear_swipe_down_summary">Pull down from the top of the back screen while it\'s lit, for the ones you haven\'t cleared</string>
-    <string name="rear_notifications_light_up">Light up back screen for new notifications</string>
-    <string name="rear_notifications_light_up_summary">Each app at most once a minute. Not while you\'re using the phone or the back is covered</string>
+    <string name="rear_swipe_down_title">Recent cards on swipe</string>
+    <string name="rear_swipe_down_summary">Pull down on the lit rear display to revisit notifications still in your shade</string>
+    <string name="rear_notifications_light_up">Wake for new notifications</string>
+    <string name="rear_notifications_light_up_summary">Wake at most once per app each minute, never while you use the phone or cover its back</string>
     <string name="rear_notification_header">%1$s · %2$s</string>
     <string name="rear_ago_now">now</string>
     <string name="rear_ago_minutes">%d min</string>
@@ -346,31 +344,31 @@
     <!-- Mirror tab, the Quick Switch tile, and an app on the back screen. -->
     <string name="rear_mirror_on_ready">On · use the Quick Switch tile</string>
     <string name="rear_mirror_on_lent">On · %1$s is on the back screen</string>
-    <string name="rear_mirror_how">Open an app, pull down Quick Settings and tap Quick Switch: the app moves to the back screen. Tap the tile again to bring it back.</string>
-    <string name="rear_add_tile">Add Quick Switch to Quick Settings</string>
+    <string name="rear_mirror_how">Open any app, then tap Quick Switch in Quick Settings to move it to the rear display. Tap again to bring it home.</string>
+    <string name="rear_add_tile">Place Quick Switch in Quick Settings</string>
     <string name="rear_tile_added">Quick Switch is in Quick Settings</string>
     <string name="rear_tile_added_now">Quick Switch added to Quick Settings</string>
     <string name="rear_tile_add_failed">Couldn\'t add the tile. Edit Quick Settings and drag Quick Switch in</string>
     <string name="rear_lent_now">%1$s is on the back screen</string>
     <string name="rear_lent_now_detail">Bring it back here, or use the tile or Xiaomi\'s back strip on the back screen</string>
     <string name="rear_bring_back">Bring back</string>
-    <string name="rear_keep_lit_title">Back screen stays lit</string>
-    <string name="rear_keep_lit_summary">After your last touch on it. Apps like YouTube keep it lit anyway while they play</string>
+    <string name="rear_keep_lit_title">Rear app timeout</string>
+    <string name="rear_keep_lit_summary">How long the display stays awake after your last touch. Playing video may keep it awake longer.</string>
     <string name="rear_keep_lit_as_set">As set</string>
     <string name="rear_keep_lit_30s">30 s</string>
     <string name="rear_keep_lit_2min">2 min</string>
     <string name="rear_keep_lit_10min">10 min</string>
-    <string name="rear_cover_return_title">Cover the back to bring it back</string>
-    <string name="rear_cover_return_summary">Cover the camera for a moment, or lay the phone on its back</string>
-    <string name="rear_lock_return_title">Bring back when the phone locks</string>
-    <string name="rear_lock_return_summary">Once the locked phone\'s back screen goes dark</string>
-    <string name="rear_size_title">App size</string>
-    <string name="rear_size_summary">Smaller fits more on the back screen</string>
+    <string name="rear_cover_return_title">Return when covered</string>
+    <string name="rear_cover_return_summary">Bring the app home after you cover the cameras briefly or lay the phone rear-side down</string>
+    <string name="rear_lock_return_title">Return after locking</string>
+    <string name="rear_lock_return_summary">Bring the app home once the locked phone\'s rear display turns dark</string>
+    <string name="rear_size_title">Content scale</string>
+    <string name="rear_size_summary">Reduce the interface to fit more on the compact rear display</string>
     <string name="rear_size_default">Default</string>
     <string name="rear_size_smaller">Smaller</string>
     <string name="rear_size_smallest">Smallest</string>
-    <string name="rear_orientation_title">Orientation</string>
-    <string name="rear_orientation_summary">Portrait turns the back screen upright: hold the phone sideways, camera at the top</string>
+    <string name="rear_orientation_title">App orientation</string>
+    <string name="rear_orientation_summary">Portrait turns the rear display upright while you hold the phone sideways with cameras above</string>
     <string name="rear_orientation_landscape">Landscape</string>
     <string name="rear_orientation_portrait">Portrait</string>
     <string name="rear_mirror_options_note">These apply only while an app is on the back screen, and Xiaomi\'s settings are put back when it leaves.</string>
@@ -405,13 +403,13 @@
     <string name="rear_camera_on_ready">On · swipe left on the back screen</string>
     <string name="rear_camera_on_no_wallpaper">On · needs the wallpaper on</string>
     <string name="rear_camera_on_open">On · Xiaomi Camera is on the back screen</string>
-    <string name="rear_camera_preview">Preview of the swipe left that opens Xiaomi Camera</string>
-    <string name="rear_camera_caption">Swipe left across the back screen while it\'s lit. If it\'s dim, double-tap it first</string>
-    <string name="rear_open_camera">Open camera on back screen</string>
+    <string name="rear_camera_preview">Preview the swipe that reveals Xiaomi Camera</string>
+    <string name="rear_camera_caption">Swipe left while the rear display is bright; double-tap first when it is dimmed</string>
+    <string name="rear_open_camera">Try camera on rear display</string>
     <string name="rear_close_camera">Close camera</string>
     <string name="rear_camera_opened_switch_off">Opened. Turn on the switch above to open it by swiping left too</string>
-    <string name="rear_camera_wallpaper_off_title">The wallpaper is off</string>
-    <string name="rear_camera_wallpaper_off">Swiping works on your back screen wallpaper. While it\'s off, Xiaomi\'s own back screen gets the touches. Open camera works either way.</string>
+    <string name="rear_camera_wallpaper_off_title">Swipe needs custom wallpaper</string>
+    <string name="rear_camera_wallpaper_off">The swipe gesture belongs to the custom wallpaper layer. Xiaomi handles touches while that layer is off, but the Try camera button still works.</string>
     <string name="rear_turn_on_wallpaper">Turn on wallpaper</string>
     <string name="rear_camera_close_title">Closing it</string>
     <string name="rear_camera_close">• Swipe in from the back screen\'s right edge, Xiaomi\'s back strip.\n• Cover the camera for a moment.\n• Close camera, here or in the notification.\n• It also closes when the back screen dims.</string>

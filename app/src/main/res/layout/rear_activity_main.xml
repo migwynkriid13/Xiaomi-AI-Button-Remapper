@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    The app's frame: the top bar, a banner while Shizuku isn't ready, the section showing, and
-    the bottom bar to switch sections. Each section is a fragment. In landscape it's
-    layout-land's: a rail down the side instead, which leaves the short screen to the section.
--->
+<!-- A focused editor for the category selected on the app's Back screen page. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/rear_root"
@@ -26,11 +22,4 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
-
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/rear_nav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/rear_bottom_nav" android:background="@color/remapper_surface_container" />
 </LinearLayout>

@@ -219,9 +219,17 @@ private fun RemapperApp() {
                 Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets),
                 contentAlignment = Alignment.TopCenter
             ) {
-                Column(
-                    Modifier.widthIn(max = ScreenWidth).fillMaxSize().verticalScroll(rememberScrollState())
-                        .padding(start = ScreenGutter, end = ScreenGutter, top = 15.dp, bottom = 24.dp),
+                val pageModifier = Modifier.widthIn(max = ScreenWidth).fillMaxSize()
+                    .padding(start = ScreenGutter, end = ScreenGutter, top = 15.dp, bottom = 24.dp)
+                if (page == Page.REAR_SCREEN) {
+                    Column(pageModifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (rearOnly) showUpdate()
+                        RearScreenOverview(Modifier.weight(1f)) { feature ->
+                            launchSystem(RearScreenActivity.intent(context, feature))
+                        }
+                    }
+                } else Column(
+                    pageModifier.verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     when (page) {

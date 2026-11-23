@@ -35,19 +35,16 @@ import io.github.xiaomibutton.remapper.backscreen.ui.SetupHelpDialog
 import io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperFragment
 import io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperSettings
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.navigation.NavigationBarView
 import com.google.android.material.snackbar.Snackbar
 import rikka.shizuku.Shizuku
 
 /**
- * The app: a top bar with the tab's help (?) and the menu, a banner while Shizuku isn't ready,
- * and a bottom bar with a tab per section (a rail down the side in landscape).
+ * A focused editor for the category selected on the app's Back screen page. Category navigation
+ * stays on that page, so this screen never repeats it in a bottom bar or landscape rail.
  */
 class RearScreenActivity : AppCompatActivity() {
 
-    private lateinit var nav: NavigationBarView
     private lateinit var banner: View
     private lateinit var bannerTitle: TextView
     private lateinit var bannerText: TextView
@@ -99,22 +96,19 @@ class RearScreenActivity : AppCompatActivity() {
         toolbar.setNavigationIcon(R.drawable.action_arrow_back)
         toolbar.navigationContentDescription = getString(R.string.rear_back)
         toolbar.setNavigationOnClickListener { finish() }
-        nav = findViewById(R.id.rear_nav)
         banner = findViewById(R.id.rear_shizukuBanner)
         bannerTitle = findViewById(R.id.rear_shizukuBannerTitle)
         bannerText = findViewById(R.id.rear_shizukuBannerText)
         bannerButton = findViewById(R.id.rear_shizukuBannerButton)
 
-        // Drawn edge to edge: the top bar keeps clear of the status bar, and the bottom bar of
-        // the navigation bar by itself, its colour running on behind the buttons with no scrim.
-        // In landscape the rail keeps clear of both by itself, and the section of the navigation bar.
+        // Drawn edge to edge: keep the focused editor clear of all system bars in either orientation.
         window.isNavigationBarContrastEnforced = false
         val content = findViewById<View>(R.id.rear_content)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.rear_root)) { root, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             toolbar.setPadding(0, bars.top, 0, 0)
             root.setPadding(bars.left, 0, bars.right, 0)
-            content.setPadding(0, 0, 0, if (nav is BottomNavigationView) 0 else bars.bottom)
+            content.setPadding(0, 0, 0, bars.bottom)
             insets
         }
 
@@ -133,12 +127,7 @@ class RearScreenActivity : AppCompatActivity() {
 
         current = (savedInstanceState?.getString(KEY_TAB) ?: intent.getStringExtra(KEY_TAB))
             ?.let { name -> Feature.entries.firstOrNull { it.name == name } } ?: Feature.WALLPAPER
-        nav.selectedItemId = current.navId
         showTab(current)
-        nav.setOnItemSelectedListener { item ->
-            Feature.forNavId(item.itemId)?.let(::showTab)
-            true
-        }
 
         Shizuku.addRequestPermissionResultListener(permissionListener)
         Shizuku.addBinderReceivedListenerSticky(binderListener)
@@ -180,7 +169,7 @@ class RearScreenActivity : AppCompatActivity() {
     }
 
     private fun selectTab(feature: Feature) {
-        nav.selectedItemId = feature.navId
+        showTab(feature)
     }
 
     private fun toggleWallpaper() {
@@ -210,22 +199,20 @@ class RearScreenActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    /** Shows [feature]'s tab. Each is made the first time it's shown, then kept, so it keeps its place. */
+    /** Shows the one category selected before this focused editor was opened. */
     private fun showTab(feature: Feature) {
         current = feature
         findViewById<MaterialToolbar>(R.id.rear_toolbar).setTitle(feature.label)
-        // TalkBack and the long-press tooltip name the section: "Help with Mirror".
+        // TalkBack and the long-press tooltip name the category: "Help with Mirror".
         val help = getString(R.string.rear_help_with, getString(feature.label))
         helpItem.contentDescription = help
         helpItem.tooltipText = help
         val fm = supportFragmentManager
-        val tx = fm.beginTransaction().setReorderingAllowed(true)
-        for (other in Feature.entries) {
-            if (other != feature) fm.findFragmentByTag(other.name)?.let { tx.hide(it) }
+        if (fm.findFragmentByTag(feature.name) == null) {
+            fm.beginTransaction().setReorderingAllowed(true)
+                .replace(R.id.rear_content, newTab(feature), feature.name)
+                .commitNow()
         }
-        val fragment = fm.findFragmentByTag(feature.name)
-        if (fragment == null) tx.add(R.id.rear_content, newTab(feature), feature.name) else tx.show(fragment)
-        tx.commitNow()
         refresh()
     }
 
@@ -334,13 +321,12 @@ class RearScreenActivity : AppCompatActivity() {
         }
     }
 
-    /** Shows [text] just above the bottom bar, or at the bottom in landscape, with [action] if given. */
+    /** Shows [text] at the bottom of the focused editor, with [action] if given. */
     fun snackbar(text: Int, length: Int = Snackbar.LENGTH_SHORT, action: Int? = null, onAction: () -> Unit = {}): Snackbar =
         snackbar(getText(text), length, action, onAction)
 
     fun snackbar(text: CharSequence, length: Int = Snackbar.LENGTH_SHORT, action: Int? = null, onAction: () -> Unit = {}): Snackbar =
         Snackbar.make(findViewById(R.id.rear_content), text, length)
-            .apply { if (nav is BottomNavigationView) anchorView = nav }
             .apply { if (action != null) setAction(action) { onAction() } }
             .also { it.show() }
 

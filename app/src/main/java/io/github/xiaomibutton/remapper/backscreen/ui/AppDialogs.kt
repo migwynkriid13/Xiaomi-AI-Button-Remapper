@@ -5,7 +5,6 @@ import android.app.Activity
 import android.app.AlarmManager
 import android.app.Dialog
 import android.app.NotificationManager
-import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -408,13 +407,6 @@ object AppDialogs {
         MaterialAlertDialogBuilder(activity)
             .setTitle(activity.getString(R.string.rear_about, version))
             .setMessage(R.string.rear_about_message)
-            .setNeutralButton(R.string.rear_website) { _, _ ->
-                try {
-                    activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(activity.getString(R.string.rear_website_url))))
-                } catch (e: ActivityNotFoundException) {
-                    BackScreen.log("No browser to open the website")
-                }
-            }
             .setPositiveButton(R.string.rear_close, null)
             .show()
     }

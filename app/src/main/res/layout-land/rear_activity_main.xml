@@ -1,46 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    The app's frame in landscape: the sections in a rail down the side, since a bottom bar
-    would take a fifth of the short screen. Otherwise as in portrait.
--->
+<!-- Landscape keeps the same focused editor; the selected category owns the full width. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/rear_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal">
+    android:orientation="vertical">
 
-    <!-- Wider than the usual 80 dp, so "Notifications" fits at larger font sizes. -->
-    <com.google.android.material.navigationrail.NavigationRailView
-        android:id="@+id/rear_nav"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:minWidth="112dp"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/rear_bottom_nav" android:background="@color/remapper_surface_container"
-        app:menuGravity="center"
-        app:paddingStartSystemWindowInsets="false" />
-
-    <!-- Takes the rest of the width; no weight here, so the content's weight isn't nested. -->
-    <LinearLayout
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/rear_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="wrap_content"
+        android:minHeight="?attr/actionBarSize"
+        app:menu="@menu/rear_main"
+        app:subtitle="@string/rear_screen_name" />
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/rear_toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="?attr/actionBarSize"
-            app:menu="@menu/rear_main"
-            app:subtitle="@string/rear_screen_name" />
+    <include layout="@layout/rear_view_shizuku_banner" />
 
-        <include layout="@layout/rear_view_shizuku_banner" />
-
-        <androidx.fragment.app.FragmentContainerView
-            android:id="@+id/rear_content"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-    </LinearLayout>
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/rear_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 </LinearLayout>
