@@ -1,5 +1,5 @@
 <resources>
     <string name="button_accessibility_name">Xiaomi AI Button Remapper · optional UI actions</string>
     <string name="button_accessibility_summary">Optional support for UI actions and foreground app profiles.</string>
-    <string name="button_accessibility_description">Optional access for app profiles, touch gestures, text editing and actions that interact with the screen. UI actions inspect the unlocked window only when used. App profiles check which app is open when you press the button. Shizuku handles button detection. The app does not record typing or store screen contents.</string>
+    <string name="button_accessibility_description">Optional access for app profiles, touch gestures, text editing and actions that interact with the screen. UI actions inspect the unlocked window only when used. App profiles check which app is open when you press the button. Shizuku handles button detection. The optional Pin screen action opens a screenshot in a crop editor. Pin saves the selected area locally. The app does not record typing.</string>
 </resources>

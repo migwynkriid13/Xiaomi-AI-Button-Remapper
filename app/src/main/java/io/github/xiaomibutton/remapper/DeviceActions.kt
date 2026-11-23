@@ -81,6 +81,7 @@ internal object DeviceActions {
         action("device.power_menu", "Show power menu", DEVICE, requirement = ACCESS)
         action("device.controls", "Open device controls", DEVICE, requirement = ACCESS)
         action("device.secure_lock", "Securely lock device", DEVICE, requirement = "Device admin (lock only)")
+        action("backscreen.pin_crop", "Crop front screen to back", BACK_SCREEN, requirement = "Optional Accessibility service")
         action("backscreen.quick_switch", "Quick Switch", BACK_SCREEN, requirement = "Mirror and Shizuku")
         action("backscreen.wallpaper.toggle", "Toggle back screen wallpaper", BACK_SCREEN, requirement = "Shizuku")
         action("apps.assistant", "Open device assistant", "Apps")
@@ -198,6 +199,7 @@ internal object DeviceActions {
         val values = context.getSharedPreferences("action_variables", Context.MODE_PRIVATE)
         fun expand(text: String) = Regex("\\{([A-Za-z][A-Za-z0-9_]*)}").replace(text) { values.getString(it.groupValues[1], "") ?: "" }.take(2048)
         return when (id) {
+            "backscreen.pin_crop" -> io.github.xiaomibutton.remapper.backscreen.dashboard.FrontCapture.request()
             "backscreen.quick_switch" -> {
                 check(MirrorSettings.isEnabled(context)) { "Turn on Mirror in Back screen settings first" }
                 KeeperService.instance?.quickSwitch?.toggle()
