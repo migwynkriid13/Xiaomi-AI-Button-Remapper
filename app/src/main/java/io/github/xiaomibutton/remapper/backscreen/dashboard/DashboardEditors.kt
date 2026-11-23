@@ -17,14 +17,20 @@ import kotlinx.coroutines.withContext
 internal fun LauncherSettings(s: DashboardStore) {
     var picker by remember { mutableStateOf(false) }
     val apps = s.strings("apps")
-    Section("Launcher layout") {
+    Section("Pinned apps") {
+        OverlayToggle(s, Page.APPS)
+        Button({ picker = true }) { Text("Choose pinned apps") }
+        if (apps.isNotEmpty()) {
+            DashToggle("Swipe up from the wallpaper to open apps", s.flag("edgeLauncher", true)) {
+                s.set("edgeLauncher", it)
+            }
+        }
+    }
+    Section("Layout and keyboard") {
         Options("Layout", s.value("launcher", "Grid"), listOf("Grid", "Carousel")) {
             s.set("launcher", it)
         }
         Options("Columns", s.value("columns", "3"), listOf("2", "3", "4")) { s.set("columns", it) }
-        DashToggle("Swipe up on the wallpaper to open apps", s.flag("edgeLauncher", true)) {
-            s.set("edgeLauncher", it)
-        }
         DashToggle("Show application names", s.flag("appLabels", true)) { s.set("appLabels", it) }
         DashToggle("Open keyboard on the back", s.flag("rearIme", true)) { s.set("rearIme", it) }
         DashToggle("Compact rear keyboard", s.flag("compactKeyboard")) { on ->
@@ -40,7 +46,6 @@ internal fun LauncherSettings(s: DashboardStore) {
             "Use the compact layout if this phone sends its system keyboard to the front.",
             style = MaterialTheme.typography.bodySmall,
         )
-        Button({ picker = true }) { Text("Choose pinned apps") }
     }
     apps.forEach { pkg ->
         Section(appLabel(s, pkg)) {
@@ -117,8 +122,13 @@ internal fun appLabel(s: DashboardStore, pkg: String) = runCatching {
     .getOrDefault(pkg)
 
 @Composable
-internal fun AppearanceSettings(s: DashboardStore, file: (String, String) -> Unit) {
-    Section("Clock face") {
+internal fun GlanceSettings(s: DashboardStore, file: (String, String) -> Unit) {
+    Section("Clock on the wallpaper") {
+        DashToggle("Show glance clock", s.glanceClock()) { on ->
+            s.set("Glance clock", on)
+            applyToWallpaper(s.context, on)
+        }
+        if (!s.glanceClock()) return@Section
         Options("Face", s.value("clockFace", "Digital"), listOf("Digital", "Analog")) {
             s.set("clockFace", it)
         }
@@ -129,15 +139,8 @@ internal fun AppearanceSettings(s: DashboardStore, file: (String, String) -> Uni
         ) {
             s.set("format", it)
         }
-        for (key in
-            listOf(
-                "Seconds",
-                "Show date",
-                "Battery percentage",
-                "Table lights",
-                "Tilt parallax",
-                "CRT lines",
-            )) DashToggle(key, s.flag(key, key == "Show date" || key == "Battery percentage")) {
+        for (key in listOf("Seconds", "Show date", "Battery percentage")) DashToggle(
+            key, s.flag(key, key == "Show date" || key == "Battery percentage")) {
             s.set(key, it)
         }
         Button({ file("font", "*/*") }) { Text("Import a font") }
@@ -145,15 +148,17 @@ internal fun AppearanceSettings(s: DashboardStore, file: (String, String) -> Uni
             TextButton({ s.set("font", "") }) { Text("Use system font") }
         colorSetting(s, "Clock")
     }
-    Section("Background") {
-        Options("Card finish", s.value("finish", "Flat"), listOf("Flat", "Glass")) {
-            s.set("finish", it)
-        }
-        if (s.value("scene") == "Solid color") colorSetting(s, "Background")
+}
+
+@Composable
+internal fun BackgroundSettings(s: DashboardStore, file: (String, String) -> Unit) {
+    Section("Background source") {
+        val scene = s.value("scene", DashboardStore.WALLPAPER)
         Options(
-            "Scene",
-            s.value("scene", "Warm"),
+            "Wallpaper",
+            scene,
             listOf(
+                DashboardStore.WALLPAPER,
                 "Warm",
                 "Dark",
                 "Solid color",
@@ -161,51 +166,76 @@ internal fun AppearanceSettings(s: DashboardStore, file: (String, String) -> Uni
                 "Clay waves",
                 "Soft metal",
                 "Photo",
-                "Video",
-            ),
+                "Video"),
         ) {
             s.set("scene", it)
+            if (it != "Photo" && it != "Video") applyToWallpaper(s.context, true)
         }
-        Button({ file("backdrop", if (s.value("scene") == "Video") "video/*" else "image/*") }) {
-            Text("Choose background")
+        if (scene == "Solid color") colorSetting(s, "Background")
+        if (scene in setOf("Silk", "Clay waves", "Soft metal")) {
+            Options(
+                "Animation speed",
+                s.value("sceneSpeed", "Medium"),
+                listOf("Slow", "Medium", "Fast")) {
+                    s.set("sceneSpeed", it)
+                }
+            colorSetting(s, "Live wallpaper color")
         }
-        Options(
-            "Video playback",
-            s.value("playback", "Loop"),
-            listOf("Loop", "Once", "Ping-pong", "Reverse"),
-        ) {
-            s.set("playback", it)
+        if (scene == "Photo" || scene == "Video") {
+            Button({ file("backdrop", if (scene == "Video") "video/*" else "image/*") }) {
+                Text(if (scene == "Video") "Choose video" else "Choose photo")
+            }
+            Options("Framing", s.value("framing", "Crop"), listOf("Crop", "Fit")) {
+                s.set("framing", it)
+            }
         }
-        Field(s, "clipStart", "Clip start in seconds", "0")
-        Field(s, "clipEnd", "Clip end in seconds")
-        Options("Framing", s.value("framing", "Crop"), listOf("Crop", "Fit")) {
-            s.set("framing", it)
+        if (scene == "Video") {
+            Options(
+                "Video playback",
+                s.value("playback", "Loop"),
+                listOf("Loop", "Once", "Ping-pong", "Reverse")) {
+                    s.set("playback", it)
+                }
+            Field(s, "clipStart", "Clip start in seconds", "0")
+            Field(s, "clipEnd", "Clip end in seconds")
         }
+    }
+    Section("Effects") {
         Options(
             "Weather effect",
             s.value("effect", "Off"),
-            listOf("Off", "Automatic", "Rain", "Snow", "Storm"),
-        ) {
-            s.set("effect", it)
+            listOf("Off", "Automatic", "Rain", "Snow", "Storm")) {
+                s.set("effect", it)
+            }
+        for (effect in listOf("Table lights", "Tilt parallax", "CRT lines")) DashToggle(
+            effect, s.flag(effect)) {
+                s.set(effect, it)
+            }
+        Options("Card finish", s.value("finish", "Flat"), listOf("Flat", "Glass")) {
+            s.set("finish", it)
         }
     }
-    Section("Always-on face") {
-        for (key in
-            listOf(
-                "Always-on",
-                "Pocket mode",
-                "AOD date",
-                "AOD battery",
-                "AOD weather",
-                "AOD badges",
-                "Edge glow",
-            )) {
-            DashToggle(key, s.flag(key, key == "Pocket mode" || key == "AOD date")) {
+}
+
+@Composable
+internal fun AmbientSettings(s: DashboardStore) {
+    Section("Display behavior") {
+        DashToggle("Pocket mode", s.pocketMode()) { on ->
+            s.set("Pocket mode", on)
+            applyToWallpaper(s.context, on)
+        }
+        DashToggle("Always-on", s.flag("Always-on")) { on ->
+            s.set("Always-on", on)
+            applyToWallpaper(s.context, on)
+        }
+        Options("Idle timeout (seconds)", s.value("idle", "30"), listOf("10", "30", "60", "120")) {
+            s.set("idle", it)
+        }
+        if (!s.flag("Always-on")) return@Section
+        for (key in listOf("AOD date", "AOD battery", "AOD weather", "AOD badges", "Edge glow")) {
+            DashToggle(key, s.flag(key, key == "AOD date")) {
                 s.set(key, it)
             }
-        }
-        Options("Idle after", s.value("idle", "30"), listOf("10", "30", "60", "120")) {
-            s.set("idle", it)
         }
         Options("Dim face", s.value("dimFace", "Digital"), listOf("Digital", "Analog")) {
             s.set("dimFace", it)
@@ -375,12 +405,10 @@ internal fun ProfileSettings(s: DashboardStore) {
         ) {
             s.set("trigger.$name", it)
         }
-        Options(
-            "Open page",
-            s.value("page.$name", if (name == "Headphones") "MUSIC" else "HOME"),
-            Page.entries.map { it.name },
-        ) {
-            s.set("page.$name", it)
+        val available = s.pages().filter { it != Page.APPS }
+        val destination = available.find { it.name == s.value("page.$name") }?.title ?: "Wallpaper"
+        Options("On activation", destination, listOf("Wallpaper") + available.map { it.title }) {
+            s.set("page.$name", available.find { page -> page.title == it }?.name.orEmpty())
         }
         Options(
             "Brightness",

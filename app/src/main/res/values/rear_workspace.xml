@@ -9,12 +9,6 @@
         <item name="android:padding">20dp</item>
         <item name="android:layout_marginTop">14dp</item>
     </style>
-    <style name="TextAppearance.Remapper.EditorHeadline" parent="TextAppearance.Material3.HeadlineLarge">
-        <item name="android:textSize">32sp</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
-        <item name="android:letterSpacing">-0.025</item>
-        <item name="android:textColor">@color/remapper_on_surface</item>
-    </style>
     <style name="TextAppearance.Remapper.EditorEyebrow" parent="TextAppearance.Material3.LabelMedium">
         <item name="android:letterSpacing">0.08</item>
         <item name="android:textColor">@color/window_accent</item>
@@ -37,16 +31,6 @@
     <string name="rear_edit_gesture">Gesture</string>
     <string name="rear_edit_try_camera">Try it</string>
     <string name="rear_editor_canvas">YOUR CANVAS</string>
-    <string name="rear_editor_wallpaper_title">Make it yours.</string>
-    <string name="rear_editor_wallpaper_detail">A favorite photo, a quiet clock, a rhythm that fits your day.</string>
-    <string name="rear_editor_notifications_title">A glance is enough.</string>
-    <string name="rear_editor_notifications_detail">Choose how alerts look, then decide when they can interrupt.</string>
-    <string name="rear_editor_battery_title">A little energy.</string>
-    <string name="rear_editor_battery_detail">Give plugging in its own moment. Shape it, color it, try it.</string>
-    <string name="rear_editor_mirror_title">Take it around.</string>
-    <string name="rear_editor_mirror_detail">Move your current app to the small display and bring it home when you’re done.</string>
-    <string name="rear_editor_camera_title">Ready for your close-up.</string>
-    <string name="rear_editor_camera_detail">Use the main cameras with a preview facing you.</string>
     <string name="rear_editor_live_preview">PREVIEW</string>
     <string name="rear_editor_photo_sources">Start with an image</string>
     <string name="rear_editor_photo_sources_detail">Pick individual favorites or let a folder keep the collection fresh.</string>

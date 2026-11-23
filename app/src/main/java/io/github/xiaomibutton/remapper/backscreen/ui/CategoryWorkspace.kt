@@ -1,14 +1,12 @@
 package io.github.xiaomibutton.remapper.backscreen.ui
 
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.Rect
 import android.os.Bundle
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
@@ -28,7 +26,6 @@ class CategoryWorkspace @JvmOverloads constructor(
     private lateinit var scroll: NestedScrollView
     private lateinit var column: LinearLayout
     private var preview: View? = null
-    private var introduction: List<View> = emptyList()
     private var selected = 0
     private var positions = IntArray(0)
 
@@ -47,8 +44,6 @@ class CategoryWorkspace @JvmOverloads constructor(
         sections = children.filter { it.tag != null }
         positions = IntArray(sections.size)
         preview = children.firstOrNull { it.id == R.id.rear_workspacePreview }
-        val header = children.first { it.id == R.id.rear_workspaceHeader } as ViewGroup
-        introduction = (0 until header.childCount - 1).map(header::getChildAt)
         removeAllViews()
 
         val choices = ChipGroup(context).apply {
@@ -104,13 +99,14 @@ class CategoryWorkspace @JvmOverloads constructor(
         selected = index.coerceIn(sections.indices)
         sections.forEachIndexed { i, section -> section.visibility = if (i == selected) VISIBLE else GONE }
         preview?.visibility = if (selected in previewSections) VISIBLE else GONE
-        // Keep the introduction on the landing panel; give editing and short windows the space.
-        val showIntro = selected == 0 && resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
-            && resources.configuration.fontScale < 1.7f
-        introduction.forEach { it.visibility = if (showIntro) VISIBLE else GONE }
         tabs.forEachIndexed { i, chip -> chip.isChecked = i == selected }
         scroll.post { scroll.scrollTo(0, positions[selected]) }
         navigation.post { navigation.smoothScrollTo((tabs[selected].left - dp(20)).coerceAtLeast(0), 0) }
+    }
+
+    fun openSection(label: String) {
+        val index = sections.indexOfFirst { it.tag == label }
+        if (index >= 0) select(index)
     }
 
     /** Open the panel containing a recovery control, then scroll to its actual nested bounds. */

@@ -11,17 +11,39 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.RemapperTheme
 import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
 import io.github.xiaomibutton.remapper.backscreen.core.PhoneLock
 import io.github.xiaomibutton.remapper.backscreen.rear.BackSensor
 
-internal class DashboardOverlay(private val a: ComponentActivity) :
-    FrameLayout(a), SensorEventListener, DisplayManager.DisplayListener {
+internal class DashboardOverlay(
+    private val a: ComponentActivity,
+    private val onSettingsChanged: () -> Unit,
+) : FrameLayout(a), SensorEventListener, DisplayManager.DisplayListener {
     private val store = DashboardStore(a)
-    private var page by mutableStateOf<Page?>(null)
+
+    private sealed interface Panel {
+        data object Shortcuts : Panel
+
+        data class Content(val page: Page) : Panel
+    }
+
+    private var panel by mutableStateOf<Panel?>(null)
+    private val page
+        get() = (panel as? Panel.Content)?.page
+
+    private var lit by mutableStateOf(false)
+    var interrupted by mutableFloatStateOf(0f)
+    val usesGlanceClock
+        get() = store.glanceClock()
+
+    val backdrop = ComposeView(a)
     private var dim by mutableStateOf(false)
     private var covered by mutableStateOf(false)
     private var locked by mutableStateOf(true)
@@ -42,14 +64,18 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
         object : BroadcastReceiver() {
             override fun onReceive(c: Context?, i: Intent?) {
                 refreshPrivacy()
+                onSettingsChanged()
             }
         }
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
         sync()
-        if (running) updateSensors()
+        if (running) {
+            updateSensors()
+            onSettingsChanged()
+        }
     }
     val consuming
-        get() = store.flag("enabled") && (page != null || dim || covered)
+        get() = (panel != null || dim || covered)
 
     private val tick =
         object : Runnable {
@@ -61,59 +87,74 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
         }
 
     init {
+        backdrop.setContent {
+            RemapperTheme {
+                if (running && !dim && !covered) Scene(store, faceDown, tilt, lit)
+            }
+        }
         rings.setContent {
             RemapperTheme {
                 if (running &&
-                    store.flag("enabled") &&
                     !covered &&
-                    (dim || page != null || store.flag("wallpaperRings", true)))
+                    (dim || panel != null || store.flag("wallpaperRings", true)))
                     LensRings(store, locked, ambient = dim)
             }
         }
         addView(rings, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        addView(compose)
+        addView(compose, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         compose.setContent {
             RemapperTheme {
-                if (running && store.flag("enabled"))
-                    when {
-                        covered ->
-                            Surface(
-                                Modifier.fillMaxSize(),
-                                color = androidx.compose.ui.graphics.Color.Black,
-                            ) {}
-                        dim ->
-                            AmbientFace(store, locked) {
-                                touch()
-                                open(Page.HOME)
+                if (running) {
+                    Box(Modifier.fillMaxSize()) {
+                        when {
+                            covered -> Unit
+                            dim -> AmbientFace(store, locked, ::touch)
+                            else -> {
+                                if (usesGlanceClock)
+                                    GlanceFace(
+                                        store,
+                                        Modifier.align(Alignment.Center).alpha(1f - interrupted))
+                                when (val shown = panel) {
+                                    Panel.Shortcuts -> OverlayTray(store, locked, ::open, ::close)
+                                    is Panel.Content ->
+                                        RearDashboard(
+                                            a,
+                                            store,
+                                            shown.page,
+                                            locked,
+                                            ::open,
+                                            ::close,
+                                        ) {
+                                            a.getSystemService(KeyguardManager::class.java)
+                                                .requestDismissKeyguard(a, null)
+                                        }
+                                    null ->
+                                        if (lit && interrupted == 0f) {
+                                            if (!locked)
+                                                NowPlayingGlance(
+                                                    store,
+                                                    { open(Page.MUSIC) },
+                                                    Modifier.align(Alignment.BottomStart)
+                                                        .fillMaxWidth(.63f)
+                                                        .padding(start = 8.dp, bottom = 6.dp))
+                                            if (hasShortcuts)
+                                                OverlayShortcut(
+                                                    ::openShortcuts,
+                                                    Modifier.align(Alignment.BottomEnd)
+                                                        .padding(end = 10.dp, bottom = 6.dp),
+                                                )
+                                        }
+                                }
                             }
-                        page != null ->
-                            RearDashboard(
-                                a,
-                                store,
-                                page!!,
-                                locked,
-                                faceDown,
-                                tilt,
-                                ::open,
-                                ::close,
-                            ) {
-                                a.getSystemService(KeyguardManager::class.java)
-                                    .requestDismissKeyguard(a, null)
-                            }
-                        else ->
-                            FilledTonalButton(
-                                onClick = {
-                                    touch()
-                                    open(Page.HOME)
-                                },
-                            ) {
-                                Text("Pages")
-                            }
+                        }
                     }
+                }
             }
         }
-        layoutPanel()
     }
+
+    private val hasShortcuts
+        get() = store.pages().any { !locked || it.availableWhenLocked(store) }
 
     fun resume() {
         if (running) return
@@ -135,7 +176,9 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
         )
         dm.registerDisplayListener(this, handler)
         updateSensors()
+        lit = a.display?.state == Display.STATE_ON
         sync()
+        onSettingsChanged()
         handler.post(tick)
     }
 
@@ -154,8 +197,7 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
     private fun updateSensors() {
         sensors.unregisterListener(this)
         covered = false
-        if (!store.flag("enabled")) return
-        if (store.flag("Pocket mode", true))
+        if (store.pocketMode())
             BackSensor.find(sensors)?.let {
                 sensors.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
             }
@@ -167,45 +209,31 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
 
     private fun refreshPrivacy() {
         locked = PhoneLock.isLocked(a)
+        if (locked && page?.availableWhenLocked(store) == false) dismiss()
     }
 
     private fun sync() {
         refreshPrivacy()
-        if (!store.flag("enabled")) {
-            page = null
-            dim = false
-            applyWindow(false, oldBrightness)
-            layoutPanel()
-            return
-        }
+        if (page?.let { it !in store.pages() } == true) dismiss()
         val active = activeProfile(store, locked)
         if (active != profile) {
             profile = active
-            active?.let {
-                open(
-                    runCatching { Page.valueOf(store.value("page.$it", "HOME")) }
-                        .getOrDefault(Page.HOME),
-                )
+            val target = active?.let { name ->
+                Page.entries.find { it.name == store.value("page.$name") }
             }
+            if (target != null && target != Page.APPS) open(target)
         }
         val pin = store.value("openPin")
         if (lastPin != pin) {
             lastPin = pin
-            if (!locked && "SHARED" in store.pages().map { it.name }) open(Page.SHARED)
+            if (!locked) open(Page.SHARED)
         }
         val idle = profile?.let { store.value("timeout.$it", "30") } ?: store.value("idle", "30")
         val liveAwake = page == Page.LIVE && store.flag("Keep live page awake")
-        dim =
-            store.flag("Always-on") &&
-                !liveAwake &&
-                SystemClock.elapsedRealtime() - lastTouch > (idle.toLongOrNull() ?: 30) * 1000
-        if (!dim &&
-            !liveAwake &&
-            active != null &&
-            !store.flag("Always-on") &&
-            SystemClock.elapsedRealtime() - lastTouch > (idle.toLongOrNull() ?: 30) * 1000 &&
-            page != null)
-            close()
+        val idleExpired =
+            SystemClock.elapsedRealtime() - lastTouch > (idle.toLongOrNull() ?: 30) * 1000
+        if (idleExpired && !liveAwake) dismiss()
+        dim = store.flag("Always-on") && !liveAwake && idleExpired
         val brightness =
             when {
                 covered -> 0f
@@ -243,22 +271,38 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
 
     val launcherSwipe
         get() =
-            store.flag("enabled") && store.flag("edgeLauncher", true) && Page.APPS in store.pages()
+            store.flag("edgeLauncher", true) &&
+                Page.APPS in store.pages() &&
+                store.strings("apps").isNotEmpty() &&
+                !locked
 
     fun openLauncher() {
         if (launcherSwipe && !covered) open(Page.APPS)
     }
 
-    private fun open(target: Page) {
+    private fun openShortcuts() {
         touch()
-        page = target
+        panel = Panel.Shortcuts
+        layoutPanel()
+    }
+
+    private fun open(target: Page) {
+        if (covered || target !in store.pages() || (locked && !target.availableWhenLocked(store)))
+            return
+        touch()
+        panel = Panel.Content(target)
+        layoutPanel()
+    }
+
+    private fun dismiss() {
+        if (panel == null) return
+        panel = null
         layoutPanel()
     }
 
     private fun close() {
         touch()
-        page = null
-        layoutPanel()
+        dismiss()
     }
 
     fun back(): Boolean {
@@ -268,38 +312,30 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
     }
 
     private fun layoutPanel() {
-        val full = consuming
-        val sz = if (full) LayoutParams.MATCH_PARENT else LayoutParams.WRAP_CONTENT
-        val params = compose.layoutParams as LayoutParams
-        val gravity = if (full) Gravity.FILL else Gravity.CENTER_VERTICAL or Gravity.END
-        if (params.width != sz || params.height != sz || params.gravity != gravity) {
-            compose.layoutParams =
-                LayoutParams(sz, sz, gravity).apply {
-                    if (!full) marginEnd = (16 * resources.displayMetrics.density).toInt()
-                }
-        }
         val inset = a.display?.let { BackScreen.cameraInsets(it) }
-        if (full && !covered) {
-            val lensWidth =
-                if (store.flag("lensRings")) {
-                    val center =
-                        (store.value("lensX", "16").toFloatOrNull() ?: 16f).coerceIn(4f, 32f)
-                    val radius =
-                        (store.value("lensRadius", "20").toFloatOrNull() ?: 20f).coerceIn(4f, 24f)
-                    ((width * center + minOf(width, height) * radius) / 100f).toInt()
-                } else 0
-            compose.setPadding(
-                maxOf(inset?.left ?: 0, lensWidth),
-                inset?.top ?: 0,
-                inset?.right ?: 0,
-                inset?.bottom ?: 0,
-            )
-        } else compose.setPadding(0, 0, 0, 0)
-        setBackgroundColor(
-            if (full) a.getColor(io.github.xiaomibutton.remapper.R.color.window_background)
-            else android.graphics.Color.TRANSPARENT,
+        val horizontalMargin = (6 * resources.displayMetrics.density).toInt()
+        val lensWidth =
+            if (store.flag("lensRings") &&
+                (dim || panel != null || store.flag("wallpaperRings", true))) {
+                val center = (store.value("lensX", "16").toFloatOrNull() ?: 16f).coerceIn(4f, 32f)
+                val radius =
+                    (store.value("lensRadius", "20").toFloatOrNull() ?: 20f).coerceIn(4f, 24f)
+                ((width * center + minOf(width, height) * radius) / 100f).toInt()
+            } else 0
+        compose.setPadding(
+            maxOf(inset?.left ?: 0, lensWidth) + horizontalMargin,
+            inset?.top ?: 0,
+            (inset?.right ?: 0) + horizontalMargin,
+            inset?.bottom ?: 0,
         )
-        if (dim || covered) setBackgroundColor(android.graphics.Color.BLACK)
+        setBackgroundColor(
+            if (dim || covered) android.graphics.Color.BLACK
+            else android.graphics.Color.TRANSPARENT)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        layoutPanel()
     }
 
     override fun onSensorChanged(e: SensorEvent) {
@@ -319,6 +355,9 @@ internal class DashboardOverlay(private val a: ComponentActivity) :
     override fun onAccuracyChanged(s: Sensor?, acc: Int) {}
 
     override fun onDisplayChanged(id: Int) {
+        if (id != a.display?.displayId) return
+        lit = a.display?.state == Display.STATE_ON
+        if (!lit) dismiss()
         refreshPrivacy()
     }
 

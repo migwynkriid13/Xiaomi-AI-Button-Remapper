@@ -1,6 +1,5 @@
 package io.github.xiaomibutton.remapper.backscreen
 
-import io.github.xiaomibutton.remapper.R
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -18,6 +17,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
+import io.github.xiaomibutton.remapper.R
 import io.github.xiaomibutton.remapper.backscreen.battery.BatteryFragment
 import io.github.xiaomibutton.remapper.backscreen.camera.CameraFragment
 import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
@@ -28,15 +31,13 @@ import io.github.xiaomibutton.remapper.backscreen.core.isRearScreenPlatform
 import io.github.xiaomibutton.remapper.backscreen.mirror.MirrorFragment
 import io.github.xiaomibutton.remapper.backscreen.notifications.NotificationsFragment
 import io.github.xiaomibutton.remapper.backscreen.ui.AppDialogs
+import io.github.xiaomibutton.remapper.backscreen.ui.CategoryWorkspace
 import io.github.xiaomibutton.remapper.backscreen.ui.DiagnosticsDialog
 import io.github.xiaomibutton.remapper.backscreen.ui.Feature
 import io.github.xiaomibutton.remapper.backscreen.ui.Refreshable
 import io.github.xiaomibutton.remapper.backscreen.ui.SetupHelpDialog
 import io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperFragment
 import io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperSettings
-import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import rikka.shizuku.Shizuku
 
 /**
@@ -138,6 +139,25 @@ class RearScreenActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
         outState.putString(KEY_TAB, current.name)
         outState.putLong(KEY_CREATED_AT, createdAt)
+    }
+
+    override fun onPostCreate(savedInstanceState: Bundle?) {
+        super.onPostCreate(savedInstanceState)
+        if (savedInstanceState != null || isFinishing) return
+        val section = intent.getIntExtra(KEY_SECTION, 0)
+        val supported =
+            when (current) {
+                Feature.WALLPAPER ->
+                    section in
+                        setOf(
+                            R.string.rear_edit_images,
+                            R.string.rear_edit_clock,
+                            R.string.rear_edit_routine)
+                Feature.NOTIFICATIONS -> section == R.string.rear_edit_delivery
+                else -> false
+            }
+        if (supported)
+            findViewById<CategoryWorkspace>(R.id.rear_workspace)?.openSection(getString(section))
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -335,9 +355,12 @@ class RearScreenActivity : AppCompatActivity() {
         private const val REFRESH_MS = 1000L
         private const val BANNER_GRACE_MS = 1500L
         private const val KEY_TAB = "tab"
+        private const val KEY_SECTION = "section"
         private const val KEY_CREATED_AT = "created_at"
 
-        internal fun intent(context: Context, feature: Feature) =
-            Intent(context, RearScreenActivity::class.java).putExtra(KEY_TAB, feature.name)
+        internal fun intent(context: Context, feature: Feature, section: Int = 0) =
+            Intent(context, RearScreenActivity::class.java)
+                .putExtra(KEY_TAB, feature.name)
+                .putExtra(KEY_SECTION, section)
     }
 }

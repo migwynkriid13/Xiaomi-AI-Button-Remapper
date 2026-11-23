@@ -1,132 +1,198 @@
 package io.github.xiaomibutton.remapper.backscreen.dashboard
 
+import android.graphics.Insets
+import android.util.Size
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import androidx.compose.foundation.Canvas
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import io.github.xiaomibutton.remapper.PanelShape
+import io.github.xiaomibutton.remapper.R
 import io.github.xiaomibutton.remapper.RemapperTheme
 import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
+import io.github.xiaomibutton.remapper.backscreen.wallpaper.ClockLayer
+import io.github.xiaomibutton.remapper.backscreen.wallpaper.PreviewBackdrop
+import io.github.xiaomibutton.remapper.backscreen.wallpaper.RearPreviewLayout
+import io.github.xiaomibutton.remapper.backscreen.wallpaper.WallpaperView
+import kotlinx.coroutines.delay
 
 @Composable
-internal fun DashboardPreview(s: DashboardStore) {
-    val activity = s.context as DashboardActivity
-    val connected = BackScreen.findRearDisplay(activity)?.mode
-    val models =
-        mapOf("17 Pro" to (904 to 572), "18 Pro" to (912 to 596), "Pro Max" to (976 to 596))
-    var model by rememberSaveable {
-        mutableStateOf(if (connected == null) "18 Pro" else "Connected panel")
+internal fun DashboardPreview(
+    s: DashboardStore,
+    page: Page?,
+    ambient: Boolean,
+    shortcuts: Boolean,
+    chooseWallpaper: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val activity = LocalActivity.current ?: return
+    val connected = remember(activity) { BackScreen.findRearDisplay(activity) }
+    val size = remember(connected) { connected?.let(BackScreen::naturalSize) ?: Size(976, 596) }
+    val insets =
+        remember(connected) { connected?.let(BackScreen::naturalCameraInsets) ?: Insets.NONE }
+    val rearDensity =
+        remember(connected) {
+            connected?.let { activity.createDisplayContext(it).resources.displayMetrics.density }
+                ?: 2.75f
     }
-    val (width, height) =
-        models[model]
-            ?: connected?.let {
-                maxOf(it.physicalWidth, it.physicalHeight) to
-                    minOf(it.physicalWidth, it.physicalHeight)
-            }
-            ?: (912 to 596)
-    val pages = s.pages()
-    var selected by rememberSaveable { mutableStateOf(pages.firstOrNull()?.title ?: "Always-on") }
-    val page by rememberUpdatedState(pages.find { it.title == selected })
-    Options(
-        "Panel",
-        model,
-        (if (connected == null) emptyList() else listOf("Connected panel")) + models.keys,
-    ) {
-        model = it
-    }
-    Options("Page", selected, pages.map { it.title } + "Always-on") { selected = it }
-    Surface(
-        Modifier.fillMaxWidth().aspectRatio(width.toFloat() / height),
-        shape = PanelShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val paneWidth = maxWidth
-            val previewDensity by
-                rememberUpdatedState(
-                    with(LocalDensity.current) { paneWidth.toPx() / (width / 1.65f) },
-                )
-            Canvas(Modifier.fillMaxSize()) {
-                for (y in listOf(.25f, .75f)) drawCircle(
-                    Color(0xff302a26),
-                    size.height * .15f,
-                    Offset(size.width * .15f, size.height * y),
-                )
-            }
-            LensRings(s, false)
-            Box(
-                Modifier.fillMaxSize().padding(start = paneWidth * .28f).semantics {
-                    contentDescription = "Read-only preview of " + selected
-                },
-            ) {
-                AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { context ->
-                        // Keep preview input, keyboard focus and accessibility actions out of the
-                        // live controls.
-                        object : FrameLayout(context) {
-                                override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean = true
-                            }
-                            .apply {
-                                descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
-                                importantForAccessibility =
-                                    View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
-                                addView(
-                                    ComposeView(context).apply {
-                                        setContent {
-                                            RemapperTheme {
-                                                CompositionLocalProvider(
-                                                    LocalDensity provides
-                                                        Density(previewDensity, 1f),
-                                                ) {
-                                                    Box(
-                                                        Modifier.fillMaxSize()
-                                                            .clearAndSetSemantics {},
-                                                    ) {
-                                                        val shown = page
-                                                        if (shown == null) AmbientFace(s, false) {}
-                                                        else
-                                                            RearDashboard(
-                                                                activity,
-                                                                s,
-                                                                shown,
-                                                                false,
-                                                                false,
-                                                                0f,
-                                                                {},
-                                                                {},
-                                                                {},
-                                                            )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
-                                    FrameLayout.LayoutParams(-1, -1),
-                                )
-                            }
-                    },
-                )
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var renderer by remember { mutableStateOf<PreviewBackdrop?>(null) }
+    var blank by remember { mutableStateOf(false) }
+    var visible by remember { mutableStateOf(false) }
+    val shownPage by rememberUpdatedState(page)
+    val shownAmbient by rememberUpdatedState(ambient)
+    val shownShortcuts by rememberUpdatedState(shortcuts)
+    LaunchedEffect(renderer, lifecycle) {
+        val backdrop = renderer ?: return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            visible = true
+            backdrop.reload()
+            backdrop.setMoving(true)
+            try {
+                while (true) {
+                    delay(1_000)
+                    backdrop.refresh()
+                }
+            } finally {
+                visible = false
+                backdrop.setMoving(false)
             }
         }
     }
-    Text(
-        "$width × $height pixels · Use the page selector to inspect your layout.",
-        style = MaterialTheme.typography.bodySmall,
-    )
+    Surface(
+        modifier.aspectRatio(size.width.toFloat() / size.height).semantics {
+            contentDescription = "Rear display preview"
+        },
+        shape = PanelShape,
+        color = Color.Black,
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val previewDensity by
+                rememberUpdatedState(
+                    with(LocalDensity.current) { maxWidth.toPx() * rearDensity / size.width },
+                )
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    val frame = RearPreviewLayout(context).apply { maxHeightShare = 1f }
+                    val image = WallpaperView(context).apply { id = R.id.rear_preview }
+                    val clock = ClockLayer(context).apply { id = R.id.rear_clock }
+                    fun layer(content: @Composable () -> Unit) =
+                        ComposeView(context).apply {
+                            setContent {
+                                RemapperTheme {
+                                    CompositionLocalProvider(
+                                        LocalDensity provides Density(previewDensity, 1f),
+                                        content = content)
+                            }
+                            }
+                        }
+                    val scene = layer { if (!shownAmbient) Scene(s, false, 0f, lit = visible) }
+                    val overlays = layer {
+                        val current = shownPage
+                        val withRings =
+                            shownAmbient ||
+                                current != null ||
+                                shownShortcuts ||
+                                s.flag("wallpaperRings", true)
+                        if (withRings) LensRings(s, false, ambient = shownAmbient)
+                        val lensWidth =
+                            if (withRings && s.flag("lensRings")) {
+                                val center =
+                                    (s.value("lensX", "16").toFloatOrNull() ?: 16f).coerceIn(
+                                        4f, 32f)
+                                val radius =
+                                    (s.value("lensRadius", "20").toFloatOrNull() ?: 20f).coerceIn(
+                                        4f, 24f)
+                                (size.width * center + size.height * radius) / 100f
+                            } else 0f
+                        Box(
+                            Modifier.fillMaxSize()
+                                .absolutePadding(
+                                    left =
+                                        (maxOf(insets.left.toFloat(), lensWidth) / rearDensity + 6)
+                                            .dp,
+                                    top = (insets.top / rearDensity).dp,
+                                    right = (insets.right / rearDensity + 6).dp,
+                                    bottom = (insets.bottom / rearDensity).dp,
+                                ),
+                        ) {
+                            if (shownAmbient) AmbientFace(s, false) {}
+                            else {
+                                if (s.glanceClock()) GlanceFace(s, Modifier.align(Alignment.Center))
+                                when {
+                                    current != null ->
+                                        RearDashboard(activity, s, current, false, {}, {}, {})
+                                    shownShortcuts -> OverlayTray(s, false, {}, {})
+                                    s.pages().isNotEmpty() ->
+                                        OverlayShortcut(
+                                            {},
+                                            Modifier.align(Alignment.BottomEnd)
+                                                .padding(end = 10.dp, bottom = 6.dp))
+                                }
+                            }
+                        }
+                    }
+                    fun FrameLayout.addLayer(view: View) {
+                        addView(view, FrameLayout.LayoutParams(-1, -1))
+                    }
+                    frame.addLayer(image)
+                    frame.addLayer(scene)
+                    frame.addLayer(clock)
+                    frame.addLayer(overlays)
+                    renderer =
+                        PreviewBackdrop(
+                            frame,
+                            image,
+                            clock,
+                            {
+                                blank = image.drawable == null && clock.visibility != View.VISIBLE
+                            },
+                            previewWhileOff = true,
+                            showLegacyClock = { !shownAmbient && !s.glanceClock() })
+                    object : FrameLayout(context) {
+                            override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean = true
+                        }
+                        .apply {
+                            descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+                            importantForAccessibility =
+                                View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                            addLayer(frame)
+                        }
+                },
+                update = { renderer?.refresh() },
+                onRelease = {
+                    renderer?.release()
+                    renderer = null
+                },
+            )
+            if (blank &&
+                page == null &&
+                !shortcuts &&
+                !ambient &&
+                !s.glanceClock() &&
+                s.value("scene", DashboardStore.WALLPAPER) == DashboardStore.WALLPAPER) {
+                FilledTonalButton(chooseWallpaper, Modifier.align(Alignment.Center)) {
+                    Text("Choose wallpaper")
+                }
+            }
+        }
+    }
 }

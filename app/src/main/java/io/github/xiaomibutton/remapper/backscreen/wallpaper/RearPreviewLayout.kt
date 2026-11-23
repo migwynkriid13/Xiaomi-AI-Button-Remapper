@@ -13,10 +13,10 @@ import android.util.AttributeSet
 import android.view.Display
 import android.view.View
 import android.widget.FrameLayout
+import com.google.android.material.card.MaterialCardView
 import io.github.xiaomibutton.remapper.R
 import io.github.xiaomibutton.remapper.backscreen.battery.ChargingLayer
 import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
-import com.google.android.material.card.MaterialCardView
 import kotlin.math.max
 
 /**
@@ -34,6 +34,7 @@ class RearPreviewLayout @JvmOverloads constructor(
     private var cameraInsets = Insets.NONE
     private var avoidCamera = false
     private var cornerShare = ChargingLayer.DEFAULT_CORNER_SHARE
+    internal var maxHeightShare = 0.45f
 
     private val lensPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -77,7 +78,10 @@ class RearPreviewLayout @JvmOverloads constructor(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         // As wide as there's room for, but no taller than part of the window, so in landscape
         // the whole preview fits with the tab's switch and buttons (its card wraps it, centred).
-        val maxHeight = resources.configuration.screenHeightDp * resources.displayMetrics.density * MAX_HEIGHT_SHARE
+        val maxHeight =
+            resources.configuration.screenHeightDp *
+                resources.displayMetrics.density *
+                maxHeightShare
         val width = minOf(MeasureSpec.getSize(widthMeasureSpec), (maxHeight * rearWidth / rearHeight).toInt())
         val scale = width.toFloat() / rearWidth
         // The padding each image gets on the back screen (WallpaperLayer.inset), scaled down, so the crop matches.
@@ -136,8 +140,6 @@ class RearPreviewLayout @JvmOverloads constructor(
     }
 
     private companion object {
-        /** Of the window's height: never reached in portrait, about 180 dp on the 17 Pro Max in landscape. */
-        const val MAX_HEIGHT_SHARE = 0.45f
         val LENS_COLORS = intArrayOf(
             0xFF0A0D15.toInt(), 0xFF151923.toInt(), 0xFF2A2E38.toInt(),
             0xFF0C0D11.toInt(), 0xFF3A3E48.toInt(), 0xFF111318.toInt(),
