@@ -80,6 +80,25 @@ class InputUserService(context: Context) : IInputHelper.Stub() {
         }
     }
 
+    override fun dashboardSession(owner: IBinder) {
+        checkOwner()
+        check(!stopping.get() && started.compareAndSet(false, true))
+        owner.linkToDeath(ownerDeath, 0)
+        actionsAllowed = true
+    }
+
+    override fun imePolicy(displayId: Int, policy: Int): Int {
+        checkOwner()
+        require(displayId > 0 && policy in -1..2 && actionsAllowed)
+        val binder = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java)
+            .invoke(null, "window") as IBinder
+        val api = Class.forName("android.view.IWindowManager")
+        val service = Class.forName("android.view.IWindowManager\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, binder)
+        val int = Int::class.javaPrimitiveType
+        if (policy >= 0) api.getMethod("setDisplayImePolicy", int, int).invoke(service, displayId, policy)
+        return api.getMethod("getDisplayImePolicy", int).invoke(service, displayId) as Int
+    }
+
     override fun heartbeat() {
         checkOwner()
         if (started.get() && !stopping.get()) {

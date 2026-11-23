@@ -85,7 +85,25 @@ object RearCommands {
     /** What `am stack list` prints (read it with [TaskList]), or null if it couldn't run. */
     fun taskList(): String? = read(AM, "stack", "list", timeoutMs = TASK_LIST_TIMEOUT_MS)
 
-    /** Closes the notification shade, once the Quick Switch tile has been tapped. */
+    fun launchPinned(component: android.content.ComponentName, rear: Int, windowed: Boolean): String {
+        require(rear > 0)
+        val mode = if (windowed) arrayOf("--windowingMode", "5") else emptyArray()
+        return run(AM, "start", "--display", rear.toString(), *mode, "-a", "android.intent.action.MAIN",
+            "-c", "android.intent.category.LAUNCHER", "-n", component.flattenToString())
+    }
+
+    fun resizePinned(task: Int, bounds: android.graphics.Rect): String {
+        require(task >= 0 && bounds.width() > 0 && bounds.height() > 0)
+        return run(AM, "task", "resize", task.toString(), bounds.left.toString(), bounds.top.toString(),
+            bounds.right.toString(), bounds.bottom.toString())
+    }
+
+    fun setRadio(name: String, on: Boolean): String {
+        require(name in setOf("wifi", "bluetooth", "data"))
+        return run("/system/bin/svc", name, if (on) "enable" else "disable")
+    }
+
+    /** Closes the notification shade once the Quick Switch tile has been tapped. */
     fun collapseShade() = run(CMD, "statusbar", "collapse")
 
     /**
