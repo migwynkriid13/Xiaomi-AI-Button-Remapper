@@ -61,7 +61,7 @@ internal object AppLog {
                 emptyList()
             }
             synchronized(lock) { mutable.value = (previous + mutable.value).takeLast(MAX_ENTRIES) }
-            for (signal in changes) {
+            for (ignored in changes) {
                 delay(180)
                 save(file, mutable.value.joinToString("\n"))
             }
