@@ -53,7 +53,7 @@ internal fun RearDashboard(
     val pages = s.pages()
     val effective = if (page in pages) page else pages.firstOrNull()
     val secure = effective !in setOf(Page.HOME, Page.CONTROLS, Page.GAME)
-    Box(Modifier.fillMaxSize()) {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Scene(s, faceDown, tilt)
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
