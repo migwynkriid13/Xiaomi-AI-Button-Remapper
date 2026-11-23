@@ -1,25 +1,33 @@
-# Rear dashboard
+# Rear display overlays
 
-Open **Back screen → Rear dashboard**, start Shizuku and grant access. Enable **Show dashboard on the wallpaper**, then tap **Pages** on the rear screen. The close button returns to the wallpaper. **Preview the rear display** on the front shows your configured pages at the proportions of the detected panel or a selected Xiaomi model.
+Open **Back screen**, start Shizuku and grant access. Choose a background and turn on the features you want. Each switch applies to its own overlay. The front preview shows the wallpaper and the selected overlay together. Use **Restore Xiaomi rear display** under **Display behavior** to return to the stock display.
 
-<img src="screenshots/rear-editor-light.png" width="300" alt="The front editor with the rear dashboard enabled and Shizuku connected">
+## Wallpaper and layers
 
-## Set up the rear display
-
-![Rear home page in dark mode on a 912 × 596 simulated display](screenshots/rear-home-dark.png)
-
-| In the front editor | On the rear screen |
+| Front settings | On the rear display |
 | --- | --- |
-| **Home and pages** | Select and order pages and home cards. Choose compact or expanded cards and assign separate tap and hold actions. Calendar titles require calendar permission. Accessory battery readings depend on the connected device. |
-| **Music and live activities** | Choose album art or a spinning record, player colors and timed lyrics. Enable the remapper’s media session notification listener in Android settings. Seek, transport and notification actions depend on what the source app exposes. |
-| **Control Centre** | Pin actions from the existing button action picker, including sequences. Set labels and icons. Eligible actions have an additional lock-screen toggle. The rear controls include brightness, radios, ringer, a dashboard screenshot and silent MP4 recording of the dashboard window for up to one minute. Captures appear in the system media library. |
-| **Launcher and keyboard** | Pin installed apps, set their order, choose a grid or carousel, and set density and window width per app. Swipe up on the wallpaper from just above the system gesture strip, or open the Launcher page. Tap an icon on the unlocked rear screen. The system keyboard uses Android’s per-display IME policy. The optional compact keyboard uses Accessibility and routes input to a focused text field in the rear app. Xiaomi firmware and guest apps determine which window sizes and keyboard routes they accept. |
-| **Always-on and appearance** | Set the idle delay, dim clock, date, battery, weather, badges and edge glow. Choose a clock style, font, photo, video or animated background. Video supports start and end times, reverse, loop, once and ping-pong playback. Pocket mode blanks the dashboard when the supported sensor reports cover. |
-| **Pinned notes and photos** | Write a note or share text or an image to **Pin to back screen**. Adjust the crop on the front, then save. Page through up to 24 pins and zoom images on the rear. Assign **Crop front screen to back** to a gesture for screen snippets. The optional three-finger shortcut uses Android touch exploration, which changes touch navigation while enabled. |
-| **Connections** | Choose the data and endpoints for weather, Home Assistant, a JSON card and two usage rings. Configure each lens position, metric, color and companion. |
-| **Profiles** | Desk, Headphones and Night can each select a landing page, brightness and timeout. Triggers include charging, connected headphones, playback, device lock and night hours (22:00–07:00). When several match, Night takes precedence, followed by Headphones and Desk. |
+| **Background** | Choose the wallpaper gallery, a solid color, a photo, a video clip, or an animated scene. The gallery supports GIFs, folders, rotation and panning. Video has crop or fit, trim points, and loop, once, reverse and ping-pong playback. Adjust the color and animation speed of shader backgrounds in the live preview. |
+| **Clock** | Show time on the wallpaper and choose the face, font, date and battery details. The gallery editor also offers the draggable gallery clock. |
+| **Notification banners** and **Charging animation** | A temporary overlay on arrival or plug-in. Notification appearance, privacy, pull-down access and charging animation styles can be adjusted from their rows. |
+| **Lens rings** | Draw battery or usage rings near the camera. Choose where the rings appear and adjust each companion. |
+| **Always-on** and **Pocket mode** | Set the idle timeout, choose which details appear on the dim black face and optionally blank the display when covered. |
 
-**Live activities** shows supported calls, alarms, navigation instructions, rides, timers and downloads. Slide an available call or alarm action to confirm. Ride details, turn icons, progress and actions depend on the notification supplied by the app. **Notifications** lets you dismiss individual cards or clear the list. Choose whether dismissals also reach the phone. The optional banner over a rear app displays its source app’s name. **Tap garden** keeps your best score on the device.
+## On-demand overlays
+
+Tap the small overlay button to pick an enabled overlay. Closing the sheet, tapping outside it, or leaving it idle returns to the wallpaper. Active playback can also show a track shortcut directly on the wallpaper.
+
+| Front settings | On the rear display |
+| --- | --- |
+| **Glance cards** | Select and order readings, choose compact or expanded cards, and assign tap and hold actions. Calendar titles and accessory readings use their respective permissions. |
+| **Now playing**, **Live activities**, and **Notifications** | Choose album art, lyrics, and the types of live activity to show. Android notification access is needed for the remapper’s media session listener. Available controls depend on the source app. |
+| **Control Centre** | Pin actions from the button action picker and assign labels and icons. Eligible actions can be available while locked. Rear controls also include dashboard screenshots and silent video recording. |
+| **Open an app** | Pin apps and set their rear sizing. Open a pinned app from the sheet, or swipe up from the wallpaper when the gesture is enabled. The optional compact keyboard uses Accessibility to type into the focused rear app. |
+| **Pinned notes and photos** | Write a note or share an image or text to **Pin to back screen**. The optional three-finger capture shortcut uses Android touch exploration. |
+| **Connected cards** | Configure weather, Home Assistant, a JSON card and usage data sources. |
+| **Overlay shortcuts** | Reorder the enabled overlays or enable Tap garden. |
+| **Automatic profiles** | Desk, Headphones and Night profiles can set brightness and the idle timeout, and optionally show an enabled overlay. Night takes precedence, followed by Headphones and Desk. |
+
+While locked, app handoff and private overlays are hidden. Supported call and alarm sliders are available while locked only if explicitly allowed. Notification privacy and source-app restrictions still apply.
 
 ### Typing in a rear app
 
@@ -48,4 +56,4 @@ Example usage data for the first two windows, with reset times expressed as Unix
 }
 ```
 
-Connected pages require an unlocked phone. The separate lock-screen option for calls and alarms exposes only supported actions that Android allows. Secret notifications and other users’ notifications are filtered. Pinned images and notes are stored privately on the device until removed or evicted by the pin limit.
+Connected cards require an unlocked phone. The separate lock-screen option for calls and alarms exposes only supported actions that Android allows. Secret notifications and other users’ notifications are filtered. Pinned images and notes are stored privately on the device until removed or evicted by the pin limit.
