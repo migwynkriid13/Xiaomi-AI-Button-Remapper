@@ -3,6 +3,7 @@ package io.github.xiaomibutton.remapper.backscreen
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import io.github.xiaomibutton.remapper.StartupSettings
 import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
 import io.github.xiaomibutton.remapper.backscreen.core.KeeperService
 import io.github.xiaomibutton.remapper.backscreen.core.RearState
@@ -33,7 +34,8 @@ class ScheduleReceiver : BroadcastReceiver() {
         }
         // Restarting the phone or updating the app stops it; carry on where it was. After a
         // restart Shizuku isn't running yet, and the wallpaper waits for it.
-        if (RearState.keeperNeeded(context)) {
+        val mayResume = intent.action != Intent.ACTION_BOOT_COMPLETED || StartupSettings.startOnBoot(context)
+        if (mayResume && RearState.keeperNeeded(context)) {
             try {
                 KeeperService.start(context, KeeperService.ACTION_RESUME)
             } catch (e: IllegalStateException) {

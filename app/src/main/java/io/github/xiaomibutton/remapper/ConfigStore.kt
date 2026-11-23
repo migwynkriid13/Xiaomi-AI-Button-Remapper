@@ -78,6 +78,13 @@ class ConfigStore(context: Context) {
         store.edit { preferences -> preferences[key] = ConfigJson.encode(transform(read(preferences[key]))) }
     }
 
+    suspend fun reset() {
+        store.edit { preferences ->
+            preferences.clear()
+            preferences[key] = ConfigJson.encode(AppConfig())
+        }
+    }
+
     private fun read(raw: String?): AppConfig =
         raw?.let { runCatching { ConfigJson.decode(it) }.getOrNull() } ?: AppConfig()
 }

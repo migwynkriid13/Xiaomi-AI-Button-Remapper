@@ -215,6 +215,19 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-enabled physical AI button remapping with an emergency stop and a leased Shizuku input helper" />
         </service>
+        <service
+            android:name=".runtime.StartupRecoveryService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Waits for the user-managed Shizuku service after an opted-in reboot, then restores the user's enabled button and rear-display features" />
+        </service>
+        <receiver android:name=".runtime.StartupReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
         <service android:name=".MediaSessionListener"
             android:label="@string/media_listener_name"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
