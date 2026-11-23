@@ -11,7 +11,11 @@ import io.github.xiaomibutton.remapper.backscreen.core.BackScreen
 import kotlin.math.abs
 
 /** A swipe on the back screen that means something. */
-enum class Swipe { LEFT, DOWN }
+enum class Swipe {
+    LEFT,
+    DOWN,
+    UP
+}
 
 /**
  * Which swipe a touch was, from where it started and ended. Plain Kotlin, so it's unit tested.
@@ -30,16 +34,31 @@ object Swipes {
     const val LEFT_START_MAX = 914f / 976
     const val HOME_STRIP = 90f / 596
 
-    /** The swipe from ([x0], [y0]) to ([x1], [y1]) in [durationMs] on a [width] x [height] screen, if any. */
-    fun classify(x0: Float, y0: Float, x1: Float, y1: Float, durationMs: Long, width: Int, height: Int): Swipe? {
+    /**
+     * The swipe from ([x0], [y0]) to ([x1], [y1]) in [durationMs] on a [width] x [height] screen,
+     * if any.
+     */
+    fun classify(
+        x0: Float,
+        y0: Float,
+        x1: Float,
+        y1: Float,
+        durationMs: Long,
+        width: Int,
+        height: Int,
+        launcher: Boolean = false
+    ): Swipe? {
         if (width <= 0 || height <= 0 || durationMs > MAX_DURATION_MS) return null
         if (y0 > height * (1 - HOME_STRIP)) return null
         val dx = x1 - x0
         val dy = y1 - y0
         // Mostly in one direction: at least twice as far that way as across.
         return when {
-            -dx >= width * LEFT_TRAVEL && -dx >= 2 * abs(dy) && x0 <= width * LEFT_START_MAX -> Swipe.LEFT
+            -dx >= width * LEFT_TRAVEL && -dx >= 2 * abs(dy) && x0 <= width * LEFT_START_MAX ->
+                Swipe.LEFT
             dy >= height * DOWN_TRAVEL && dy >= 2 * abs(dx) && y0 <= height / 2f -> Swipe.DOWN
+            launcher && y0 >= height * .64f && -dy >= height * DOWN_TRAVEL && -dy >= 2 * abs(dx) ->
+                Swipe.UP
             else -> null
         }
     }
@@ -139,6 +158,7 @@ class RearGestures(context: Context, private val listener: Listener) : SensorEve
         }
 
     /** A swipe down follows the finger, as a pull (see [Listener.onPull]). */
+    var launcher = false
     var pullDown = false
 
     private var lit = false
@@ -192,7 +212,8 @@ class RearGestures(context: Context, private val listener: Listener) : SensorEve
                     if (release == PullRelease.SWIPE_LEFT) listener.onSwipe(Swipe.LEFT)
                     return
                 }
-                val swipe = Swipes.classify(startX, startY, event.x, event.y, ms, width, height)
+                val swipe =
+                    Swipes.classify(startX, startY, event.x, event.y, ms, width, height, launcher)
                 // For tuning: where each touch that moved went, and whether it counted.
                 if (abs(event.x - startX) > slop || abs(event.y - startY) > slop) {
                     BackScreen.trace(

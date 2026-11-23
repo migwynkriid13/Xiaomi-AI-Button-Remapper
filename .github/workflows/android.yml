@@ -1,44 +1,99 @@
-name: Build and verify APK
+name: Verify changes and release APK
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  changes:
+  android:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
-    outputs:
-      ship: ${{ steps.paths.outputs.ship }}
-      verify: ${{ steps.paths.outputs.verify }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: JVM unit tests
+            task: testDebugUnitTest
+          - name: Android lint
+            task: lintDebug
+          - name: Android JNI compilation
+            task: externalNativeBuildDebug
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/android-toolchain
+      - name: Run verification task
+        env:
+          TASK: ${{ matrix.task }}
+        run: ./gradlew --no-daemon ":app:$TASK"
+      - name: Check that verification produced no APK
+        run: |
+          first_apk=$(find app/build -type f -iname '*.apk' -print -quit)
+          if [[ -n "$first_apk" ]]; then
+            echo "::error::Verification unexpectedly produced $first_apk"
+            exit 1
+          fi
+      - name: Upload unit test report
+        if: ${{ !cancelled() && matrix.task == 'testDebugUnitTest' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: app/build/test-results/testDebugUnitTest/TEST-*.xml
+      - name: Upload Android lint report
+        if: ${{ !cancelled() && matrix.task == 'lintDebug' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-lint
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+
+  native:
+    name: Linux native tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cmake -S app/src/main/cpp -B build/native-tests
+          cmake --build build/native-tests
+          ctest --test-dir build/native-tests --output-on-failure --no-tests=error
+
+  format:
+    name: Kotlin formatting and whitespace
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - id: paths
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check changed lines with ktfmt
         env:
-          BEFORE: ${{ github.event.before }}
-          AFTER: ${{ github.sha }}
-          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}
         run: |
-          ship=false
-          verify=true
-          if [[ "$EVENT" == push ]]; then
-            ship=$(bash .github/scripts/apk-changes.sh "$BEFORE" "$AFTER")
-            if [[ "$ship" == false ]] && git diff --quiet "$BEFORE" "$AFTER" -- app/src/test app/src/androidTest app/src/debug .github; then
-              verify=false
-            fi
+          if [[ "$BASE" =~ ^0+$ ]]; then
+            BASE=$(git hash-object -t tree -w /dev/null)
+          elif ! git cat-file -e "$BASE^{tree}"; then
+            git fetch --no-tags --depth=1 origin "$BASE"
           fi
-          echo "ship=$ship" >> "$GITHUB_OUTPUT"
-          echo "verify=$verify" >> "$GITHUB_OUTPUT"
-          printf 'APK inputs changed: %s. Build and tests requested: %s.\n' "$ship" "$verify" >> "$GITHUB_STEP_SUMMARY"
+          git diff --check "$BASE" HEAD
+          jar="$RUNNER_TEMP/ktfmt.jar"
+          curl --fail --silent --show-error --location --retry 3 -o "$jar" \
+            https://github.com/Kotlin/ktfmt/releases/download/v0.65/ktfmt-0.65-with-dependencies.jar
+          echo "aba9753b6ab387926179ab7318ba8e0c33dad483ebc72f633e79522265b15214  $jar" | sha256sum --check
+          python3 .github/scripts/kotlin-format.py "$BASE" "$jar"
 
-  verify:
-    needs: changes
-    if: needs.changes.outputs.verify == 'true'
+  dead-code:
+    name: Kotlin unused private code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,46 +101,69 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools'
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Verify release input filters
-        run: bash .github/scripts/test-apk-changes.sh
-      - name: Install Android toolchain
-        run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "cmake;3.22.1" "ndk;28.2.13676358"
-      - name: Verify native forwarding
+      - name: Check Kotlin sources with detekt
         run: |
-          cmake -S app/src/main/cpp -B build/native-tests
-          cmake --build build/native-tests
-          ctest --test-dir build/native-tests --output-on-failure --no-tests=error
-      - name: Build debug APK and run unit tests and lint
-        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
-      - uses: actions/upload-artifact@v4
+          jar="$RUNNER_TEMP/detekt.jar"
+          curl --fail --silent --show-error --location --retry 3 -o "$jar" \
+            https://repo.maven.apache.org/maven2/io/gitlab/arturbosch/detekt/detekt-cli/1.23.8/detekt-cli-1.23.8-all.jar
+          echo "3afe89a11120303c73c9bdda3d8fe558dd9070a6937d27819ddc04b275381245  $jar" | sha256sum --check
+          java -jar "$jar" --config .github/detekt.yml --input app/src
+
+  workflow:
+    name: Workflow and release scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate GitHub Actions
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      - name: Check shell scripts and exercise release path rules
+        run: |
+          shellcheck .github/scripts/*.sh
+          bash .github/scripts/test-apk-changes.sh
+
+  verify:
+    needs: [android, native, format, dead-code, workflow]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all parallel checks
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: jq -e 'all(.[]; . == "success")' <<< "$RESULTS"
+
+  package:
+    name: Package release APK
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      ship: ${{ steps.paths.outputs.ship }}
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: Xiaomi-AI-Button-Remapper-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          fetch-depth: 0
+      - uses: ./.github/actions/android-toolchain
+      - id: paths
+        name: Check release inputs for publication
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          ship=$(bash .github/scripts/apk-changes.sh "$BEFORE" "$AFTER")
+          echo "ship=$ship" >> "$GITHUB_OUTPUT"
       - name: Build versioned release APK
-        if: needs.changes.outputs.ship == 'true'
-        run: ./gradlew --no-daemon assembleRelease -PreleaseBuildNumber="$GITHUB_RUN_NUMBER"
+        run: ./gradlew --no-daemon :app:assembleRelease -PreleaseBuildNumber="$GITHUB_RUN_NUMBER"
       - uses: actions/upload-artifact@v4
-        if: needs.changes.outputs.ship == 'true'
         with:
           name: unsigned-release
           path: app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 1
           if-no-files-found: error
 
-  publish:
-    needs: [changes, verify]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.ship == 'true'
+  sign:
+    name: Sign and verify main APK
+    needs: package
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    concurrency:
-      group: publish-android-apk
-      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -97,12 +175,33 @@ jobs:
           if [[ ! -x "$ANDROID_HOME/build-tools/36.0.0/apksigner" ]]; then
             "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;36.0.0"
           fi
-      - name: Sign release APK and verify certificate
+      - name: Sign APK and verify certificate and alignment
         env:
           ANDROID_RELEASE_KEYSTORE: ${{ secrets.ANDROID_RELEASE_KEYSTORE }}
           ANDROID_RELEASE_PASSWORD: ${{ secrets.ANDROID_RELEASE_PASSWORD }}
         run: bash .github/scripts/sign-apk.sh "$RUNNER_TEMP/apk/app-release-unsigned.apk" "$RUNNER_TEMP/Xiaomi-AI-Button-Remapper.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Xiaomi-AI-Button-Remapper
+          path: ${{ runner.temp }}/Xiaomi-AI-Button-Remapper.apk
+          if-no-files-found: error
+
+  publish:
+    needs: [package, sign]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.package.outputs.ship == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-android-apk
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Xiaomi-AI-Button-Remapper
+          path: ${{ runner.temp }}/apk
       - name: Publish APK to GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/publish-apk.sh "$RUNNER_TEMP/Xiaomi-AI-Button-Remapper.apk"
+        run: bash .github/scripts/publish-apk.sh "$RUNNER_TEMP/apk/Xiaomi-AI-Button-Remapper.apk"

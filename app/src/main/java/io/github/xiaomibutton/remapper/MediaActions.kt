@@ -22,9 +22,28 @@ import kotlinx.coroutines.withContext
 
 /** Android binds this optional service only after the user grants notification access. */
 class MediaSessionListener : NotificationListenerService() {
-    override fun onListenerConnected() { super.onListenerConnected(); current = this }
-    override fun onListenerDisconnected() { if (current === this) current = null; super.onListenerDisconnected() }
-    override fun onDestroy() { if (current === this) current = null; super.onDestroy() }
+    override fun onNotificationPosted(sbn: android.service.notification.StatusBarNotification) {
+        io.github.xiaomibutton.remapper.backscreen.dashboard.DashboardAlerts.posted(this, sbn)
+    }
+
+    override fun onNotificationRemoved(sbn: android.service.notification.StatusBarNotification) {
+        io.github.xiaomibutton.remapper.backscreen.dashboard.forgetDismissal(sbn.key)
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        current = this
+    }
+
+    override fun onListenerDisconnected() {
+        if (current === this) current = null
+        super.onListenerDisconnected()
+    }
+
+    override fun onDestroy() {
+        if (current === this) current = null
+        super.onDestroy()
+    }
 
     companion object {
         @Volatile internal var current: MediaSessionListener? = null
@@ -117,11 +136,15 @@ internal object MediaActions {
             id == "media.notification_all" || id == "media.notification_latest" -> dismiss(context, id.endsWith("_all"))
             id == "media.sound" || id == "media.ringtone" -> withContext(Dispatchers.IO) {
                 playSound(context.applicationContext, Uri.parse(value), id == "media.ringtone")
+                }
+            id == "media.stop_sound" -> {
+                stopSound()
+                "Remapper sound stopped"
             }
-            id == "media.stop_sound" -> { stopSound(); "Remapper sound stopped" }
             id.startsWith("media.") -> transport(context, id, value)
             id.startsWith("volume.") -> volume(context, id.removePrefix("volume."), value)
-            id.startsWith("ringer.dnd_") -> doNotDisturb(context, id.removePrefix("ringer.dnd_"), value)
+            id.startsWith("ringer.dnd_") ->
+                doNotDisturb(context, id.removePrefix("ringer.dnd_"), value)
             id.startsWith("ringer.") -> ringer(context, id.removePrefix("ringer."), value)
             else -> error("Unknown audio action")
         }
@@ -197,12 +220,21 @@ internal object MediaActions {
     private fun volume(context: Context, op: String, value: String): String {
         val audio = checkNotNull(context.getSystemService(AudioManager::class.java))
         if (op.startsWith("mic_")) {
-            val muted = when (op) { "mic_mute" -> true; "mic_unmute" -> false; "mic_toggle" -> !audio.isMicrophoneMute; else -> error("Unknown microphone action") }
+            val muted =
+                when (op) {
+                    "mic_mute" -> true
+                    "mic_unmute" -> false
+                    "mic_toggle" -> !audio.isMicrophoneMute
+                    else -> error("Unknown microphone action")
+                }
             audio.isMicrophoneMute = muted
             check(audio.isMicrophoneMute == muted) { "Android or the microphone privacy switch kept its current setting" }
             return if (muted) "Microphone muted" else "Microphone unmuted"
         }
-        if (op == "panel") { audio.adjustVolume(AudioManager.ADJUST_SAME, AudioManager.FLAG_SHOW_UI); return "Volume panel requested" }
+        if (op == "panel") {
+            audio.adjustVolume(AudioManager.ADJUST_SAME, AudioManager.FLAG_SHOW_UI)
+            return "Volume panel requested"
+        }
         check(!audio.isVolumeFixed) { "Device uses fixed volume" }
         val direction = checkNotNull(adjustments[op])
         val stream = streams.first { it.id == value.substringBefore('.') }
@@ -240,7 +272,13 @@ internal object MediaActions {
         val on = if (Build.VERSION.SDK_INT >= 35) manager.automaticZenRules.keys.any {
             manager.getAutomaticZenRuleState(it) == Condition.STATE_TRUE
         } else manager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
-        val enable = when (op) { "enable" -> true; "disable" -> false; "toggle" -> !on; else -> error("Unknown Do Not Disturb action") }
+        val enable =
+            when (op) {
+                "enable" -> true
+                "disable" -> false
+                "toggle" -> !on
+                else -> error("Unknown Do Not Disturb action")
+            }
         manager.setInterruptionFilter(if (enable) checkNotNull(dnd[value]) else NotificationManager.INTERRUPTION_FILTER_ALL)
         return if (enable) "Remapper Do Not Disturb enabled" else "Remapper Do Not Disturb disabled"
     }
@@ -260,7 +298,10 @@ internal object MediaActions {
             next.setDataSource(context, uri)
             next.prepare()
             next.setOnCompletionListener { finished -> synchronized(this) { if (sound === finished) stopSound() } }
-            next.setOnErrorListener { failed, _, _ -> synchronized(this) { if (sound === failed) stopSound() }; true }
+            next.setOnErrorListener { failed, _, _ ->
+                synchronized(this) { if (sound === failed) stopSound() }
+                true
+            }
             stopSound()
             sound = next
             next.start()

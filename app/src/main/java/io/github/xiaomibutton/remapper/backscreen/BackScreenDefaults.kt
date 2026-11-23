@@ -18,18 +18,22 @@ fun resetBackScreenDefaults(context: Context) {
             "Could not reset $file"
         }
     }
+    io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService.connected?.refreshFlags()
+
     ToggleWidget.updateAll(app)
     ToggleTile.requestUpdate(app)
     runCatching { KeeperService.start(app, KeeperService.ACTION_UPDATE) }
         .onFailure { BackScreen.log("Couldn't apply reset back screen settings: ${it.message}") }
 }
 
-private val USER_SETTING_FILES = listOf(
-    "backscreen",
-    "notifications",
-    "battery",
-    "mirror",
-    "camera",
-    "display",
-    "schedules",
-)
+private val USER_SETTING_FILES =
+    listOf(
+        "backscreen",
+        "notifications",
+        "battery",
+        "mirror",
+        "camera",
+        "display",
+        "schedules",
+        "rear_dashboard",
+    )

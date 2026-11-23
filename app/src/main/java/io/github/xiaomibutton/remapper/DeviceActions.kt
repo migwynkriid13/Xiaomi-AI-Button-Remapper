@@ -15,17 +15,17 @@ import android.provider.Settings
 import android.telecom.TelecomManager
 import android.telephony.SmsManager
 import android.widget.Toast
+import io.github.xiaomibutton.remapper.backscreen.core.KeeperService
+import io.github.xiaomibutton.remapper.backscreen.mirror.MirrorSettings
 import io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService
 import io.github.xiaomibutton.remapper.runtime.ExpertDeviceActions
 import io.github.xiaomibutton.remapper.runtime.UiActions
-import io.github.xiaomibutton.remapper.backscreen.core.KeeperService
-import io.github.xiaomibutton.remapper.backscreen.mirror.MirrorSettings
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 internal object DeviceActions {
     private const val WRITE = "Modify system settings"
@@ -81,6 +81,11 @@ internal object DeviceActions {
         action("device.power_menu", "Show power menu", DEVICE, requirement = ACCESS)
         action("device.controls", "Open device controls", DEVICE, requirement = ACCESS)
         action("device.secure_lock", "Securely lock device", DEVICE, requirement = "Device admin (lock only)")
+        action(
+            "backscreen.pin_crop",
+            "Crop front screen to back",
+            BACK_SCREEN,
+            requirement = "Optional Accessibility service")
         action("backscreen.quick_switch", "Quick Switch", BACK_SCREEN, requirement = "Mirror and Shizuku")
         action("backscreen.wallpaper.toggle", "Toggle back screen wallpaper", BACK_SCREEN, requirement = "Shizuku")
         action("apps.assistant", "Open device assistant", "Apps")
@@ -198,6 +203,8 @@ internal object DeviceActions {
         val values = context.getSharedPreferences("action_variables", Context.MODE_PRIVATE)
         fun expand(text: String) = Regex("\\{([A-Za-z][A-Za-z0-9_]*)}").replace(text) { values.getString(it.groupValues[1], "") ?: "" }.take(2048)
         return when (id) {
+            "backscreen.pin_crop" ->
+                io.github.xiaomibutton.remapper.backscreen.dashboard.FrontCapture.request()
             "backscreen.quick_switch" -> {
                 check(MirrorSettings.isEnabled(context)) { "Turn on Mirror in Back screen settings first" }
                 KeeperService.instance?.quickSwitch?.toggle()
@@ -208,17 +215,31 @@ internal object DeviceActions {
                 KeeperService.start(context, KeeperService.ACTION_TOGGLE)
                 "Back screen wallpaper toggle requested"
             }
-            "shade.toggle_quick","shade.toggle_notifications" -> UiActions.toggleShade(id == "shade.toggle_quick")
+            "shade.toggle_quick",
+            "shade.toggle_notifications" -> UiActions.toggleShade(id == "shade.toggle_quick")
             "device.secure_lock" -> DeviceAdminLock.apply(context)
-            "intent.broadcast" -> { context.sendBroadcast(explicitIntent(value,id)); "Broadcast sent" }
+            "intent.broadcast" -> {
+                context.sendBroadcast(explicitIntent(value, id))
+                "Broadcast sent"
+            }
             "intent.service" -> {
                 checkNotNull(context.startService(explicitIntent(value,id))) { "Service unavailable" }
                 "Service start requested"
             }
             "apps.assistant" -> launch(Intent(Intent.ACTION_ASSIST), action.title)
-            "apps.voice" -> launch(Intent(android.speech.RecognizerIntent.ACTION_VOICE_SEARCH_HANDS_FREE), action.title)
-            "apps.details" -> launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$value")), action.title)
-            "utility.toast" -> { Toast.makeText(context, expand(value), Toast.LENGTH_SHORT).show(); "Message shown" }
+            "apps.voice" ->
+                launch(
+                    Intent(android.speech.RecognizerIntent.ACTION_VOICE_SEARCH_HANDS_FREE),
+                    action.title)
+            "apps.details" ->
+                launch(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$value")),
+                    action.title)
+            "utility.toast" -> {
+                Toast.makeText(context, expand(value), Toast.LENGTH_SHORT).show()
+                "Message shown"
+            }
             "utility.notify" -> {
                 val manager = context.getSystemService(NotificationManager::class.java)
                 check(manager.areNotificationsEnabled()) { "Allow app notifications" }
@@ -307,7 +328,10 @@ internal object DeviceActions {
             else -> error("Unknown navigation action")
         }
         check(service.performGlobalAction(key)) { "Android does not offer $label in the current state" }
-        if (id == "nav.last") { delay(120); check(service.performGlobalAction(key)) { "Could not switch from recents" } }
+        if (id == "nav.last") {
+            delay(120)
+            check(service.performGlobalAction(key)) { "Could not switch from recents" }
+        }
         return "$label requested"
     }
 
@@ -324,7 +348,14 @@ internal object DeviceActions {
         fun get(key: String) = Settings.System.getInt(resolver, key, 0)
         fun put(key: String, v: Int) = check(Settings.System.putInt(resolver, key, v)) { "Android rejected the setting" }
         val mode = id.substringAfterLast('.')
-        fun flag(key: String) = put(key, when (mode) { "on" -> 1; "off" -> 0; else -> if (get(key) == 0) 1 else 0 })
+        fun flag(key: String) =
+            put(
+                key,
+                when (mode) {
+                    "on" -> 1
+                    "off" -> 0
+                    else -> if (get(key) == 0) 1 else 0
+                })
         when {
             id == "apps.setting" -> check(Settings.System.putString(resolver,value.substringBefore('='),value.substringAfter('='))) { "Android rejected the setting" }
             id.startsWith("display.auto.") -> flag(Settings.System.SCREEN_BRIGHTNESS_MODE)

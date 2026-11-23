@@ -132,7 +132,17 @@ class QuickSwitch(private val keeper: KeeperService) {
             RearTweaks.set(keeper, TweakKind.TIMEOUT, rear) { _, _ -> keepLit.toString() }
         }
         val size = MirrorSettings.size(keeper)
-        if (size == AppSize.DEFAULT) {
+        val dashboard = keeper.getSharedPreferences("rear_dashboard", 0)
+        val appDpi =
+            lend
+                ?.packageName
+                ?.takeIf { dashboard.getBoolean("enabled", false) }
+                ?.let { pkg ->
+                    dashboard.getString("dpi.$pkg", null)?.toIntOrNull()?.takeIf { it in 120..480 }
+                }
+        if (appDpi != null) {
+            RearTweaks.set(keeper, TweakKind.DENSITY, rear) { _, _ -> appDpi.toString() }
+        } else if (size == AppSize.DEFAULT) {
             RearTweaks.putBack(keeper, TweakKind.DENSITY, rear)
         } else {
             RearTweaks.set(keeper, TweakKind.DENSITY, rear) { original, raw ->
@@ -348,7 +358,10 @@ object AppLabels {
      */
     fun warm(context: Context, packageName: String, then: () -> Unit) {
         if (packageName in nameless) return
-        warming[packageName]?.let { it += then; return }
+        warming[packageName]?.let {
+            it += then
+            return
+        }
         warming[packageName] = mutableListOf(then)
         val app = context.applicationContext
         thread(name = "BackScreen-labels") {

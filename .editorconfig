@@ -1,0 +1,6 @@
+root = true
+
+[*.{kt,kts}]
+indent_style = space
+indent_size = 4
+ktfmt_trailing_comma_management_strategy = none

@@ -1,0 +1,12 @@
+# Check private Kotlin declarations across all source sets, including tests.
+build:
+  maxIssues: 0
+
+style:
+  active: true
+  UnusedPrivateClass:
+    active: true
+  UnusedPrivateMember:
+    active: true
+  UnusedPrivateProperty:
+    active: true

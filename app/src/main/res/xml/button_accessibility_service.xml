@@ -2,6 +2,8 @@
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canPerformGestures="true"
+    android:canTakeScreenshot="true"
+    android:canRequestTouchExplorationMode="true"
     android:canRetrieveWindowContent="true"
     android:description="@string/button_accessibility_description"
     android:isAccessibilityTool="false"

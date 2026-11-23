@@ -13,5 +13,7 @@ interface IInputHelper {
     String openWeb(String url) = 7;
     String deviceAction(String id, String value) = 8;
     String clickQuickTile(String component) = 9;
+    void dashboardSession(IBinder owner) = 10;
+    int imePolicy(int displayId, int policy) = 11;
     void destroy() = 16777114;
 }

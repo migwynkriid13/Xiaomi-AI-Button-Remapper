@@ -1,5 +1,23 @@
 # Verification
 
+## Pull request checks
+
+GitHub Actions starts seven checks independently. The `verify` status passes after all seven succeed.
+
+| Check | Coverage |
+| --- | --- |
+| JVM unit tests | Runs `:app:testDebugUnitTest` and uploads the JUnit XML results. |
+| Android lint | Runs `:app:lintDebug` and uploads HTML and XML reports. Errors fail the check. Warnings include unused resources. |
+| Android JNI compilation | Builds the native libraries for `arm64-v8a` and `x86_64` with `:app:externalNativeBuildDebug`. |
+| Linux native tests | Runs both CTest cases covering input forwarding and the frozen-helper watchdog. |
+| Kotlin formatting and whitespace | Checks Git whitespace, whole new Kotlin files, and edited ranges in existing Kotlin files using ktfmt 0.65. |
+| Kotlin unused private code | Runs detekt on app and test Kotlin sources. Unused private classes, functions and properties fail the check. |
+| Workflow and release scripts | Runs actionlint, ShellCheck and the release path-filter regression tests. |
+
+To apply Kotlin formatting locally, use JDK 21, stage newly added files, and run `python .github/scripts/kotlin-format.py origin/main /path/to/ktfmt.jar --write` from the repository root. [ktfmt 0.65](https://github.com/Kotlin/ktfmt/releases/tag/v0.65)
+
+Pull requests and manual runs execute verification only. Every successful push to `main` builds a versioned release APK, verifies its signature and alignment, and uploads the signed APK to the workflow run. GitHub Releases publication continues to use the release input filter.
+
 ## v0.2.19 optional notifications, app launch and gesture timing
 
 On the Android 17 emulator, a synthetic button press launched two apps selected with **Open application** while Android Settings was in front and notifications were denied. The previous launch command could not resolve these activities. Revoking the permission while the service was running stopped the app process. **Resume remapping** restored the saved mapping with notifications still denied, and the eight-second hold stopped it again.

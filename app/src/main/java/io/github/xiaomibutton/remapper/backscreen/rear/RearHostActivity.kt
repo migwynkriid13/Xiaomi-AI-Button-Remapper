@@ -1,7 +1,6 @@
 package io.github.xiaomibutton.remapper.backscreen.rear
 
 import android.annotation.TargetApi
-import android.app.Activity
 import android.graphics.Color
 import android.hardware.display.DisplayManager
 import android.os.Bundle
@@ -46,28 +45,30 @@ import java.lang.ref.WeakReference
  * Our one window on the back screen. Each feature is a layer inside it, so whatever it shows
  * appears at once, and never has to get past HyperOS's rules for starting apps there:
  *
- * - the wallpaper: the gallery's images ([WallpaperLayer]), panning if that's on, or black with none;
+ * - the wallpaper: the gallery's images ([WallpaperLayer]), panning if that's on, or black with
+ *   none;
  * - the clock ([ClockLayer]);
  * - the charging animation ([ChargingLayer]), for a few seconds after you plug in;
  * - notifications ([NotificationLayer]): a banner when one arrives, and the list of the ones you
  *   haven't cleared, which you pull down from the top.
  *
- * [RearGestures] reads swipes on it: down for the notification list, left for Xiaomi Camera,
- * which opens over it as another app lent the back screen.
+ * [RearGestures] reads swipes on it: down for the notification list, left for Xiaomi Camera, which
+ * opens over it as another app lent the back screen.
  *
- * KeeperService launches it straight onto the rear; if HyperOS won't allow that, it's launched
- * on the main display (transparent, so it doesn't flash) and its task moved to the rear, where
- * it's recreated. Each launch carries a token from the keeper, and without the latest one it
- * closes at once: it's exported so the shell can launch it, which lets any app try. It shows
- * what [RearState] says: the wallpaper, or, with the wallpaper off, a
- * pop-over over Xiaomi's screen, which is black with just the charging animation, and closes
- * when that's done.
+ * KeeperService launches it straight onto the rear; if HyperOS won't allow that, it's launched on
+ * the main display (transparent, so it doesn't flash) and its task moved to the rear, where it's
+ * recreated. Each launch carries a token from the keeper, and without the latest one it closes at
+ * once: it's exported so the shell can launch it, which lets any app try. It shows what [RearState]
+ * says: the wallpaper, or, with the wallpaper off, a pop-over over Xiaomi's screen, which is black
+ * with just the charging animation, and closes when that's done.
  *
- * The rear lights and dims on Xiaomi's own timeout, as with Xiaomi's screen. If something
- * closes the wallpaper (Xiaomi taking the rear back), KeeperService puts it back.
+ * The rear lights and dims on Xiaomi's own timeout, as with Xiaomi's screen. If something closes
+ * the wallpaper (Xiaomi taking the rear back), KeeperService puts it back.
  */
 @TargetApi(35)
-class RearHostActivity : Activity() {
+class RearHostActivity : androidx.activity.ComponentActivity() {
+    private var dashboard: io.github.xiaomibutton.remapper.backscreen.dashboard.DashboardOverlay? =
+        null
 
     private lateinit var gestures: RearGestures
     private var wallpaper: WallpaperLayer? = null
@@ -115,28 +116,30 @@ class RearHostActivity : Activity() {
         finishQuietly()
     }
 
-    private val swipes = object : RearGestures.Listener {
-        override fun onSwipe(swipe: Swipe) {
-            BackScreen.log(if (swipe == Swipe.LEFT) "Swiped left on the back screen" else "Swiped down on the back screen")
-            when (swipe) {
-                Swipe.LEFT -> openCamera("swipe left")
-                Swipe.DOWN -> if (gestures.pullDown && startShade()) notifications?.openShade()
+    private val swipes =
+        object : RearGestures.Listener {
+            override fun onSwipe(swipe: Swipe) {
+                BackScreen.log("Swiped ${swipe.name.lowercase()} on the back screen")
+                when (swipe) {
+                    Swipe.UP -> dashboard?.openLauncher()
+                    Swipe.LEFT -> openCamera("swipe left")
+                    Swipe.DOWN -> if (gestures.pullDown && startShade()) notifications?.openShade()
+                }
+            }
+
+            override fun onPull(dy: Float) {
+                if (!pulling && !startShade()) return
+                pulling = true
+                notifications?.pull(dy)
+            }
+
+            override fun onPullEnd(open: Boolean) {
+                if (!pulling) return
+                pulling = false
+                notifications?.endPull(open)
+                if (open) BackScreen.log("Notification list pulled down")
             }
         }
-
-        override fun onPull(dy: Float) {
-            if (!pulling && !startShade()) return
-            pulling = true
-            notifications?.pull(dy)
-        }
-
-        override fun onPullEnd(open: Boolean) {
-            if (!pulling) return
-            pulling = false
-            notifications?.endPull(open)
-            if (open) BackScreen.log("Notification list pulled down")
-        }
-    }
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) {}
@@ -176,8 +179,9 @@ class RearHostActivity : Activity() {
         }
         onRear = true
         popover = RearState.owner(this) == RearOwner.Popover
-        // Rebuilt for a change of dark mode, font size or density: what was due or showing carries on.
-        val carried = lastNonConfigurationInstance as? Carried
+        // Rebuilt for a change of dark mode, font size or density: what was due or showing carries
+        // on.
+        val carried = lastCustomNonConfigurationInstance as? Carried
         if (carried != null) BackScreen.log("Back screen window rebuilt")
 
         // Opaque on the rear, so the system doesn't need to draw Xiaomi's launcher behind us.
@@ -193,6 +197,11 @@ class RearHostActivity : Activity() {
         if (!popover) holdFirstDraw()
         addCharging(root, display)
         if (!popover) addNotifications(root, display)
+        if (!popover)
+            dashboard =
+                io.github.xiaomibutton.remapper.backscreen.dashboard.DashboardOverlay(this).also {
+                    root.addView(it)
+                }
         gestures = RearGestures(this, swipes)
         onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback)
 
@@ -224,7 +233,7 @@ class RearHostActivity : Activity() {
      */
     private class Carried(val charging: ChargingStatus?, val notification: RearNotification?)
 
-    override fun onRetainNonConfigurationInstance(): Any? {
+    override fun onRetainCustomNonConfigurationInstance(): Any? {
         if (!onRear) return null
         val showing = bannerNote?.takeIf { it.key == notifications?.bannerShowing?.key }
         return Carried(chargingDue ?: chargingPlaying, notificationDue ?: showing)
@@ -328,6 +337,7 @@ class RearHostActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        dashboard?.resume()
         started = true
         startedAt = SystemClock.uptimeMillis()
         if (onRear) {
@@ -359,6 +369,7 @@ class RearHostActivity : Activity() {
     }
 
     override fun onStop() {
+        dashboard?.pause()
         started = false
         // A host being replaced stops after its replacement has started; leave that one be.
         if (isCurrent()) visibleOnRear = false
@@ -416,6 +427,7 @@ class RearHostActivity : Activity() {
     // there. On its way there on the main screen, the window has neither: BACK closes it, as it
     // always did.
     private fun onBack() {
+        if (dashboard?.back() == true) return
         when {
             notifications?.isShadeOpen == true -> notifications?.closeShade(animate = true)
             !started || !isLit() -> {}
@@ -445,6 +457,12 @@ class RearHostActivity : Activity() {
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (!onRear) return super.dispatchTouchEvent(event)
+        val inDashboard = dashboard?.consuming == true
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && !inDashboard) dashboard?.touch()
+        if (inDashboard) {
+            if (event.actionMasked == MotionEvent.ACTION_UP) dashboard?.touch()
+            return super.dispatchTouchEvent(event)
+        }
         // While the notification list is down, it takes every touch: to go back up, or stay.
         val layer = notifications
         if (layer != null && layer.isShadeOpen && !pulling) return layer.onShadeTouch(event)
@@ -461,7 +479,9 @@ class RearHostActivity : Activity() {
         val shade = !popover && NotificationSettings.isEnabled(this) && NotificationSettings.swipeDown(this) &&
             RearNotificationListener.isListening &&
             NotificationFormatter.showsAny(PhoneLock.hidesContent(this), NotificationAccess.lockScreen(this))
-        gestures.enabled = !popover && (CameraSettings.isEnabled(this) || shade)
+        gestures.launcher = dashboard?.launcherSwipe == true
+        gestures.enabled =
+            !popover && (CameraSettings.isEnabled(this) || shade || gestures.launcher)
         gestures.pullDown = shade
         gestures.setLit(started && isLit())
         if (!shade) notifications?.closeShade(animate = false)
