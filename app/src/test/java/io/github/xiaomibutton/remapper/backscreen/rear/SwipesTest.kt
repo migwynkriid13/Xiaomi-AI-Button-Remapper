@@ -12,8 +12,15 @@ class SwipesTest {
     private val w = 976
     private val h = 596
 
-    private fun swipe(x0: Number, y0: Number, x1: Number, y1: Number, ms: Long = 150) =
-        Swipes.classify(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), ms, w, h)
+    private fun swipe(x0: Number, y0: Number, x1: Number, y1: Number, ms: Long = 150, launcher: Boolean = false) =
+        Swipes.classify(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), ms, w, h, launcher)
+
+    @Test
+    fun launcherSwipeStartsAboveTheSystemHomeStrip() {
+        assertEquals(Swipe.UP, swipe(500, 450, 490, 170, launcher = true))
+        assertNull(swipe(500, 560, 490, 170, launcher = true))
+        assertNull(swipe(500, 220, 490, 20, launcher = true))
+    }
 
     @Test
     fun swipesMeasuredOnThePhoneCount() {
