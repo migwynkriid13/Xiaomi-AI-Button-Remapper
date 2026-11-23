@@ -22,6 +22,12 @@ import kotlinx.coroutines.withContext
 
 /** Android binds this optional service only after the user grants notification access. */
 class MediaSessionListener : NotificationListenerService() {
+    override fun onNotificationPosted(sbn: android.service.notification.StatusBarNotification) {
+        io.github.xiaomibutton.remapper.backscreen.dashboard.DashboardAlerts.posted(this,sbn)
+    }
+    override fun onNotificationRemoved(sbn:android.service.notification.StatusBarNotification) {
+        io.github.xiaomibutton.remapper.backscreen.dashboard.forgetDismissal(sbn.key)
+    }
     override fun onListenerConnected() { super.onListenerConnected(); current = this }
     override fun onListenerDisconnected() { if (current === this) current = null; super.onListenerDisconnected() }
     override fun onDestroy() { if (current === this) current = null; super.onDestroy() }
