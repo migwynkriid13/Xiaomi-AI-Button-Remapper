@@ -33,15 +33,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.LayoutDirection
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
 import io.github.xiaomibutton.remapper.runtime.RuntimeStatus
+import io.github.xiaomibutton.remapper.backscreen.RearScreenActivity
+import io.github.xiaomibutton.remapper.backscreen.core.isRearScreenPlatform
+import io.github.xiaomibutton.remapper.backscreen.ui.AppDialogs
+import io.github.xiaomibutton.remapper.backscreen.ui.Feature
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun Dashboard(
     config: AppConfig, status: RuntimeStatus, edit: (GestureSlot) -> Unit, toggle: (Boolean) -> Unit,
-    resume: () -> Unit, launchSystem: (Intent) -> Unit, updateNotice: @Composable () -> Unit
+    resume: () -> Unit, runAlongsideXiaomi: () -> Unit, launchSystem: (Intent) -> Unit, updateNotice: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -82,16 +87,26 @@ internal fun Dashboard(
                     style = MaterialTheme.typography.headlineLarge)
             }
         }
+        val checked = config.enabled || status.startingRemap
+        val toggleEnabled = ready && !status.startingRemap
         SettingRow(
             "Remap button", when {
+                status.running && config.keepOriginalAction -> "Custom actions and the original Xiaomi action are active"
                 status.running -> "Custom actions are active"
-                status.starting && config.enabled -> "Starting remapping…"
+                status.startingRemap -> "Starting remapping…"
                 config.enabled -> "Remapping is paused"
                 else -> "Xiaomi default behavior"
-            }, onClick = { toggle(!config.enabled) }, checked = config.enabled, enabled = ready && !status.starting,
-            trailing = { Switch(checked = config.enabled, onCheckedChange = null, enabled = ready && !status.starting) }
+            }, onClick = { toggle(!checked) }, checked = checked, enabled = toggleEnabled,
+            trailing = { Switch(checked = checked, onCheckedChange = null, enabled = toggleEnabled) }
         )
-        if (ready && config.enabled && !status.running && !status.starting) {
+        val issue = status.remapIssue
+        if (!status.running && !status.startingRemap && issue != null) {
+            SelectionContainer { QuietText(issue, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) }
+            if (ready && issue.startsWith("Android could not verify safe button forwarding")) {
+                SecondaryButton("Run alongside Xiaomi", runAlongsideXiaomi, Modifier.padding(start = 16.dp, bottom = 14.dp))
+            }
+        }
+        if (ready && config.enabled && !status.running && !status.startingRemap) {
             PrimaryButton("Resume remapping", resume, Modifier.padding(start = 16.dp, bottom = 14.dp))
         }
     }
@@ -185,12 +200,23 @@ private fun ShizukuSetup(status: RuntimeStatus, launchSystem: (Intent) -> Unit) 
 }
 
 @Composable
-internal fun Diagnostics(status: RuntimeStatus, launchSystem: (Intent) -> Unit) {
+internal fun Diagnostics(status: RuntimeStatus, launchSystem: (Intent) -> Unit, showsButton: Boolean) {
     val context = LocalContext.current
     val colors = MaterialTheme.colorScheme
     val date = remember { SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()) }
     Headline("Diagnostics")
-    if (!status.shizukuAuthorized) ShizukuSetup(status, launchSystem)
+    if (showsButton) {
+        GroupTitle("Button remapping")
+    }
+    if (!showsButton) {
+        Panel {
+            SettingRow("Shizuku", when {
+                status.shizukuAuthorized -> "Authorized"
+                status.shizukuRunning -> "Running · grant access under Back screen"
+                else -> "Disconnected"
+            }, mark = Mark.LINK)
+        }
+    } else if (!status.shizukuAuthorized) ShizukuSetup(status, launchSystem)
     else {
         Panel(color = colors.surfaceContainerLow) {
             SettingRow("Input connection", "Shizuku authorized", mark = Mark.LINK)
@@ -203,11 +229,11 @@ internal fun Diagnostics(status: RuntimeStatus, launchSystem: (Intent) -> Unit) 
             }, mark = Mark.PULSE)
         }
     }
-    if (status.shizukuAuthorized && status.diagnostics.isNotBlank()) SelectionContainer {
+    if (showsButton && status.shizukuAuthorized && status.diagnostics.isNotBlank()) SelectionContainer {
         QuietText(status.diagnostics, Modifier.padding(horizontal = 4.dp))
     }
-    GroupTitle("Live button tester")
-    Panel {
+    if (showsButton) GroupTitle("Live button tester")
+    if (showsButton) Panel {
         SettingRow("Target button", "gpio-keys · Linux scan code 689 (0x2B1)", mark = Mark.BUTTON)
         if (status.observing) {
             SecondaryButton("Stop listening", RemapperRuntime::endTest, Modifier.padding(start = 16.dp, bottom = 14.dp))
@@ -241,11 +267,31 @@ internal fun Diagnostics(status: RuntimeStatus, launchSystem: (Intent) -> Unit) 
             SettingRow("Last action", status.lastAction)
         }
     }
-    if (status.running || status.observing || status.starting) {
+    if (showsButton && (status.running || status.observing || status.starting)) {
         PrimaryButton("Emergency disable", { RemapperRuntime.stop(context) }, Modifier.fillMaxWidth(), destructive = true)
     }
-    GroupTitle("Troubleshooting")
-    Panel {
+    if (isRearScreenPlatform()) {
+        var rearText by remember { mutableStateOf(AppDialogs.diagnosticsText(context)) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                rearText = AppDialogs.diagnosticsText(context)
+                delay(1000)
+            }
+        }
+        GroupTitle("Back screen")
+        Panel {
+            SelectionContainer {
+                Text(rearText, Modifier.fillMaxWidth().padding(16.dp), style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant, fontFamily = FontFamily.Monospace)
+            }
+            SecondaryButton("Open Back Screen controls", {
+                launchSystem(RearScreenActivity.intent(context, Feature.WALLPAPER))
+            }, Modifier.padding(start = 16.dp, bottom = 14.dp))
+        }
+    }
+    DiagnosticsLogSection()
+    if (showsButton) GroupTitle("Troubleshooting")
+    if (showsButton) Panel {
         SettingRow("No AI-button event appears",
             "Stop Key Mapper’s Expert System Bridge if it’s running, then start a fresh test.", icon = R.drawable.action_info)
         RowDivider(start = 68)
@@ -278,16 +324,13 @@ private fun TimingControl(title: String, description: String, value: Int, limits
 @Composable
 internal fun Preferences(
     config: AppConfig, status: RuntimeStatus, change: ((AppConfig) -> AppConfig) -> Unit, launchSystem: (Intent) -> Unit,
-    export: () -> Unit, import: () -> Unit, restore: () -> Unit
+    export: () -> Unit, import: () -> Unit, restore: () -> Unit,
+    startOnBoot: Boolean, setStartOnBoot: (Boolean) -> Unit, reset: () -> Unit,
 ) {
     val context = LocalContext.current
     Headline("Settings")
-    GroupTitle("Interface")
-    Panel {
-        SettingRow("Enable diagnostics", "Show the live button tester and troubleshooting tab",
-            { change { it.copy(showDiagnostics = !it.showDiagnostics) } }, mark = Mark.PULSE, checked = config.showDiagnostics,
-            trailing = { Switch(config.showDiagnostics, onCheckedChange = null) })
-    }
+    DiagnosticsPreference(config.showDiagnostics) { change { it.copy(showDiagnostics = !it.showDiagnostics) } }
+    StartupPreference(startOnBoot, setStartOnBoot)
     GroupTitle("Gesture timing")
     Panel {
         TimingControl("Multi-press interval", "Maximum gap between taps. At 0 ms, each tap is a single press.",
@@ -334,5 +377,35 @@ internal fun Preferences(
         RowDivider(start = 68)
         SettingRow("Restore Xiaomi default", "Release the button and keep your saved mappings", restore,
             icon = R.drawable.action_replay)
+        RowDivider(start = 68)
+        SettingRow("Reset to defaults", "Restore button, app and Back Screen settings to their original values", reset,
+            icon = R.drawable.action_clear_all)
+    }
+}
+
+@Composable
+internal fun StartupPreference(enabled: Boolean, toggle: (Boolean) -> Unit) {
+    GroupTitle("Automatic recovery")
+    Panel {
+        SettingRow(
+            "Start on boot",
+            "After a restart, wait for Shizuku and restore the features you left enabled. HyperOS Background autostart must also be allowed.",
+            { toggle(!enabled) },
+            checked = enabled,
+            icon = R.drawable.action_replay,
+            trailing = { Switch(enabled, onCheckedChange = null) },
+        )
+        RowDivider(start = 68)
+        SettingRow("When you open the app", "Enabled features resume automatically as soon as Shizuku is ready",
+            icon = R.drawable.rear_ic_check_circle)
+    }
+}
+
+@Composable
+internal fun DiagnosticsPreference(enabled: Boolean, toggle: () -> Unit) {
+    GroupTitle("Interface")
+    Panel {
+        SettingRow("Enable diagnostics", "Show the Diagnostics tab and app log", toggle, mark = Mark.PULSE,
+            checked = enabled, trailing = { Switch(enabled, onCheckedChange = null) })
     }
 }

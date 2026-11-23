@@ -7,7 +7,9 @@ import android.os.SystemClock
 import io.github.xiaomibutton.remapper.ActionKind
 import io.github.xiaomibutton.remapper.ActionSpec
 import io.github.xiaomibutton.remapper.AppConfig
+import io.github.xiaomibutton.remapper.AppLog
 import io.github.xiaomibutton.remapper.GestureSlot
+import io.github.xiaomibutton.remapper.LogArea
 import io.github.xiaomibutton.remapper.SequenceConfig
 import io.github.xiaomibutton.remapper.TriggerCondition
 import kotlinx.coroutines.CancellationException
@@ -43,6 +45,8 @@ internal class RemapSession(
 
     private val actionJob: Job = scope.launch {
         for (action in actions) {
+            val actionType = action.kind.name.lowercase().replace('_', ' ')
+            AppLog.add(LogArea.BUTTON, "Executing $actionType action")
             val message = try {
                 if (configuration?.haptics == true) dispatcher.haptic()
                 if (action.kind == ActionKind.SEQUENCE) supervisorScope {
@@ -60,6 +64,12 @@ internal class RemapSession(
             } catch (e: Exception) {
                 "Action unavailable: ${e.message ?: e.javaClass.simpleName}"
             }
+            val outcome = when {
+                message.startsWith("Action unavailable:") -> "failed"
+                message.startsWith("Sequence stopped") -> "cancelled"
+                else -> "completed"
+            }
+            AppLog.add(LogArea.BUTTON, "$actionType action $outcome")
             RemapperRuntime.change { it.copy(lastAction = message) }
         }
     }

@@ -145,9 +145,18 @@ private fun BackScreenHero(model: String?, supported: Boolean) {
 }
 
 @Composable
-internal fun RearOnlyPreferences(launch: (Intent) -> Unit) {
+internal fun RearOnlyPreferences(
+    config: AppConfig,
+    change: ((AppConfig) -> AppConfig) -> Unit,
+    launch: (Intent) -> Unit,
+    startOnBoot: Boolean,
+    setStartOnBoot: (Boolean) -> Unit,
+    reset: () -> Unit,
+) {
     val context = LocalContext.current
     Headline("Settings")
+    DiagnosticsPreference(config.showDiagnostics) { change { it.copy(showDiagnostics = !it.showDiagnostics) } }
+    StartupPreference(startOnBoot, setStartOnBoot)
     GroupTitle("Permissions and background")
     Panel {
         SettingRow("Notifications", "Manage alerts and background status notifications for the back screen.", {
@@ -157,5 +166,10 @@ internal fun RearOnlyPreferences(launch: (Intent) -> Unit) {
         SettingRow("App info", "Enable autostart and choose No restrictions for battery use when HyperOS offers them.", {
             launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
         }, icon = R.drawable.action_info)
+    }
+    GroupTitle("Configuration")
+    Panel {
+        SettingRow("Reset to defaults", "Restore every app and Back Screen setting to its original value", reset,
+            icon = R.drawable.action_replay)
     }
 }

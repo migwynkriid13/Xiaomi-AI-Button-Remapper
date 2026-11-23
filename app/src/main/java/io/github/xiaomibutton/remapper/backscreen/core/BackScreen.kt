@@ -18,6 +18,8 @@ import android.view.Display
 import android.view.RoundedCorner
 import android.view.Surface
 import androidx.annotation.ChecksSdkIntAtLeast
+import io.github.xiaomibutton.remapper.AppLog
+import io.github.xiaomibutton.remapper.LogArea
 import io.github.xiaomibutton.remapper.backscreen.wallpaper.DecodeSize
 import io.github.xiaomibutton.remapper.backscreen.wallpaper.Scaling
 import java.text.SimpleDateFormat
@@ -160,7 +162,7 @@ object BackScreen {
     }
 
     fun log(msg: String) {
-        Log.i(TAG, msg)
+        AppLog.add(LogArea.REAR, msg)
         synchronized(log) {
             log.addLast("${time.format(Date())}  $msg")
             while (log.size > MAX_LOG_LINES) log.removeFirst()

@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.xiaomibutton.remapper.backscreen.RearScreenActivity
+import io.github.xiaomibutton.remapper.backscreen.resetBackScreenDefaults
 import io.github.xiaomibutton.remapper.backscreen.resumeRearScreen
 import io.github.xiaomibutton.remapper.runtime.RemapperRuntime
 import java.io.ByteArrayOutputStream
@@ -140,7 +141,7 @@ private fun RemapperApp() {
     val pages = Page.entries.filter { item ->
         when (item) {
             Page.MAPPINGS -> !rearOnly
-            Page.DIAGNOSTICS -> !rearOnly && config?.showDiagnostics == true
+            Page.DIAGNOSTICS -> config?.showDiagnostics == true
             else -> true
         }
     }
@@ -154,9 +155,18 @@ private fun RemapperApp() {
     }
     var slot by rememberSaveable { mutableStateOf<GestureSlot?>(null) }
     var pendingImport by remember { mutableStateOf<AppConfig?>(null) }
+    var confirmReset by rememberSaveable { mutableStateOf(false) }
+    var startOnBoot by rememberSaveable { mutableStateOf(StartupSettings.startOnBoot(context)) }
     fun message(text: String) { scope.launch { messages.showSnackbar(text) } }
     fun change(transform: (AppConfig) -> AppConfig) {
-        scope.launch { runCatching { store.update(transform) }.onFailure { message("Could not save: " + it.localizedMessage) } }
+        scope.launch {
+            runCatching { store.update(transform) }
+                .onSuccess { AppLog.add(LogArea.APP, "Settings saved") }
+                .onFailure {
+                    AppLog.add(LogArea.APP, "Settings could not be saved (${it.javaClass.simpleName})")
+                    message("Could not save: " + it.localizedMessage)
+                }
+        }
     }
     fun launchSystem(intent: Intent) {
         runCatching { context.startActivity(intent) }.onFailure { message("This screen is unavailable on your device") }
@@ -178,18 +188,7 @@ private fun RemapperApp() {
             )
         }
     }
-    fun startRemapping() {
-        if (!status.shizukuAuthorized) return
-        scope.launch {
-            runCatching {
-                store.update { it.copy(enabled = true) }
-                RemapperRuntime.start(context)
-            }.onFailure {
-                RemapperRuntime.stop(context)
-                message("Could not start: " + it.localizedMessage)
-            }
-        }
-    }
+    fun startRemapping() = RemapperRuntime.start(context)
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val snapshot = config
         if (uri != null && snapshot != null) scope.launch {
@@ -235,17 +234,22 @@ private fun RemapperApp() {
                     when (page) {
                         Page.MAPPINGS -> Dashboard(current, status, { slot = it }, { on ->
                             if (on) startRemapping() else RemapperRuntime.stop(context)
-                        }, ::startRemapping, ::launchSystem, showUpdate)
-                        Page.REAR_SCREEN -> {
-                            if (rearOnly) showUpdate()
-                            RearScreenOverview { feature -> launchSystem(RearScreenActivity.intent(context, feature)) }
-                        }
-                        Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem)
-                        Page.SETTINGS -> if (rearOnly) RearOnlyPreferences(::launchSystem)
+                        }, ::startRemapping, { RemapperRuntime.start(context, runAlongsideXiaomi = true) }, ::launchSystem, showUpdate)
+                        Page.REAR_SCREEN -> Unit
+                        Page.DIAGNOSTICS -> Diagnostics(status, ::launchSystem, showsButton = !rearOnly)
+                        Page.SETTINGS -> if (rearOnly) RearOnlyPreferences(
+                            current, ::change, ::launchSystem, startOnBoot,
+                            { startOnBoot = it; StartupSettings.setStartOnBoot(context, it) },
+                            { confirmReset = true },
+                        )
                         else Preferences(current, status, ::change, ::launchSystem,
                             { openDocumentPicker { export.launch("xiaomi-button-config.json") } },
                             { openDocumentPicker { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
-                            { RemapperRuntime.stop(context); message("Xiaomi default behavior restored") })
+                            { RemapperRuntime.stop(context); message("Xiaomi default behavior restored") },
+                            startOnBoot,
+                            { startOnBoot = it; StartupSettings.setStartOnBoot(context, it) },
+                            { confirmReset = true },
+                        )
                     }
                 }
             }
@@ -278,6 +282,32 @@ private fun RemapperApp() {
                     .onFailure { message("Import failed: " + it.localizedMessage) }
             }
         }) }, dismissButton = { TextButton(onClick = { pendingImport = null }) { Text("Cancel") } }
+    )
+    if (confirmReset) RemapperDialog(
+        onDismissRequest = { confirmReset = false },
+        title = { Text("Reset to defaults?") },
+        text = {
+            Text("This resets button mappings, timing, startup behavior, enabled Back Screen features and schedules. Your chosen wallpaper files stay available.")
+        },
+        confirmButton = { PrimaryButton("Reset settings", onClick = {
+            confirmReset = false
+            scope.launch {
+                RemapperRuntime.stop(context)
+                runCatching {
+                    resetBackScreenDefaults(context)
+                    StartupSettings.reset(context)
+                    store.reset()
+                }.onSuccess {
+                    startOnBoot = false
+                    AppLog.add(LogArea.APP, "All settings reset to defaults")
+                    message("Settings reset to defaults")
+                }.onFailure { error ->
+                    AppLog.add(LogArea.APP, "Settings reset failed (${error.javaClass.simpleName})")
+                    message("Could not reset everything: " + error.localizedMessage)
+                }
+            }
+        }, destructive = true) },
+        dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
     )
 }
 
