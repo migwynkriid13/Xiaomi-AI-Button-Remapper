@@ -84,7 +84,7 @@ Keep Shizuku running while remapping. After restarting your phone, start Shizuku
 
 The back screen waits for Shizuku after reboot. Before uninstalling, return any app that is on the back screen and set **Stays lit for** to **As set** to restore Xiaomi's display settings.
 
-On a fresh launch, the app checks GitHub Releases. When a newer version is available, tap **Download APK** to open the signed update or **Later** to keep using your current version.
+On a fresh launch, the app checks GitHub Releases. Tap **Update** to download and install the new version inside the remapper. If Android asks, turn on **Allow from this source** and return to the app. The remapper verifies the download and starts the update. Some devices ask you to confirm **Update** once more. Your mappings and settings carry over. Tap **Later** to skip an update for this launch.
 
 ## How it works
 

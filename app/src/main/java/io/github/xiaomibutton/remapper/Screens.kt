@@ -141,15 +141,28 @@ internal fun Dashboard(
 }
 
 @Composable
-internal fun UpdateNotice(installed: String, available: String, download: () -> Unit, dismiss: () -> Unit) {
+internal fun UpdateNotice(
+    installed: String, available: String, state: UpdateState, requestingAccess: Boolean,
+    update: () -> Unit, dismiss: () -> Unit,
+) {
     Panel(color = MaterialTheme.colorScheme.surfaceContainerLow) {
-        SettingRow("Update available", "Installed $installed · Available $available", icon = R.drawable.action_open_in_new)
-        FlowRow(
-            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            PrimaryButton("Download APK", download)
-            TextButton(onClick = dismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Later") }
+        val title = when (state) {
+            is UpdateState.Downloading -> "Downloading update · ${state.percent}%"
+            is UpdateState.Confirm, UpdateState.Installing -> "Installing update"
+            else -> "Update available"
+        }
+        SettingRow(title, "Installed $installed · Available $available")
+        val inset = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
+        when (state) {
+            is UpdateState.Downloading -> LinearProgressIndicator(progress = { state.percent / 100f }, modifier = inset)
+            is UpdateState.Confirm, UpdateState.Installing -> LinearProgressIndicator(modifier = inset)
+            else -> {
+                if (state is UpdateState.Failed) QuietText(state.message, inset)
+                FlowRow(inset, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PrimaryButton("Update", update, enabled = !requestingAccess)
+                    TextButton(onClick = dismiss, enabled = !requestingAccess, modifier = Modifier.heightIn(min = 48.dp)) { Text("Later") }
+                }
+            }
         }
     }
 }

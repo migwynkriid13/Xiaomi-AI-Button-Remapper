@@ -1,6 +1,7 @@
 package io.github.xiaomibutton.remapper
 
 import java.io.IOException
+import java.io.Serializable
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,9 @@ private const val LATEST_RELEASE = "https://api.github.com/repos/$REPOSITORY/rel
 private const val APK_NAME = "Xiaomi-AI-Button-Remapper.apk"
 
 private val stableVersion = Regex("""(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)""")
+private val assetDigest = Regex("sha256:([a-f0-9]{64})")
+
+internal data class ApkRelease(val version: String, val size: Long, val sha256: String) : Serializable
 
 private fun versionParts(version: String): List<Int>? {
     val match = stableVersion.matchEntire(version) ?: return null
@@ -22,7 +26,7 @@ private fun versionParts(version: String): List<Int>? {
 internal fun releaseApkUrl(version: String): String =
     "https://github.com/$REPOSITORY/releases/download/v$version/$APK_NAME"
 
-internal fun newerGitHubRelease(release: JSONObject, installedVersion: String): String? {
+internal fun newerGitHubRelease(release: JSONObject, installedVersion: String): ApkRelease? {
     if (release.optBoolean("draft", true) || release.optBoolean("prerelease", true)) return null
     val tag = release.optString("tag_name")
     if (!tag.startsWith("v")) return null
@@ -38,12 +42,16 @@ internal fun newerGitHubRelease(release: JSONObject, installedVersion: String): 
         val asset = assets.optJSONObject(index) ?: continue
         if (asset.optString("name") == APK_NAME && asset.optString("state") == "uploaded" &&
             asset.optString("browser_download_url") == expectedUrl
-        ) return version
+        ) {
+            val size = asset.optLong("size")
+            val digest = assetDigest.matchEntire(asset.optString("digest")) ?: continue
+            if (size > 0) return ApkRelease(version, size, digest.groupValues[1])
+        }
     }
     return null
 }
 
-internal suspend fun checkForGitHubUpdate(installedVersion: String): String? = withContext(Dispatchers.IO) {
+internal suspend fun checkForGitHubUpdate(installedVersion: String): ApkRelease? = withContext(Dispatchers.IO) {
     val connection = (URL(LATEST_RELEASE).openConnection() as HttpsURLConnection).apply {
         connectTimeout = 5000
         readTimeout = 5000

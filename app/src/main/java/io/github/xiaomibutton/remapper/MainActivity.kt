@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -28,6 +29,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.withResumed
 import io.github.xiaomibutton.remapper.backscreen.RearScreenActivity
 import io.github.xiaomibutton.remapper.backscreen.resetBackScreenDefaults
 import io.github.xiaomibutton.remapper.backscreen.resumeRearScreen
@@ -129,10 +132,23 @@ private fun RemapperApp() {
     val pageState = rememberSaveableStateHolder()
     val installedVersion = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
     var updateChecked by rememberSaveable { mutableStateOf(false) }
-    var updateVersion by rememberSaveable { mutableStateOf<String?>(null) }
+    var updateRelease by rememberSaveable { mutableStateOf<ApkRelease?>(null) }
+    var requestingInstallAccess by rememberSaveable { mutableStateOf(false) }
+    val updateState by UpdateInstaller.state.collectAsState()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(updateState, lifecycle) {
+        val confirmation = updateState as? UpdateState.Confirm ?: return@LaunchedEffect
+        lifecycle.withResumed { UpdateInstaller.showConfirmation(context, confirmation) }
+    }
+    val installAccess = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        requestingInstallAccess = false
+        val release = updateRelease ?: return@rememberLauncherForActivityResult
+        if (context.packageManager.canRequestPackageInstalls()) UpdateInstaller.start(context, release)
+        else UpdateInstaller.fail("To update, allow this app to install from this source, then return here.")
+    }
     LaunchedEffect(installedVersion) {
         if (!updateChecked && installedVersion != null) {
-            updateVersion = checkForGitHubUpdate(installedVersion)
+            updateRelease = checkForGitHubUpdate(installedVersion)
             updateChecked = true
         }
     }
@@ -179,13 +195,21 @@ private fun RemapperApp() {
         }
     }
     val showUpdate: @Composable () -> Unit = {
-        val available = updateVersion
-        if (available != null && installedVersion != null) {
-            UpdateNotice(
-                installedVersion, available,
-                download = { launchSystem(Intent(Intent.ACTION_VIEW, Uri.parse(releaseApkUrl(available)))) },
-                dismiss = { updateVersion = null }
-            )
+        val release = updateRelease
+        if (release != null && installedVersion != null && installedVersion != release.version) {
+            UpdateNotice(installedVersion, release.version, updateState, requestingInstallAccess, update = {
+                if (context.packageManager.canRequestPackageInstalls()) {
+                    UpdateInstaller.start(context, release)
+                } else if (!requestingInstallAccess) {
+                    try {
+                        requestingInstallAccess = true
+                        installAccess.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
+                    } catch (_: RuntimeException) {
+                        requestingInstallAccess = false
+                        UpdateInstaller.fail("Open Android Settings and allow this app to install unknown apps, then try again.")
+                    }
+                }
+            }, dismiss = { updateRelease = null })
         }
     }
     fun startRemapping() = RemapperRuntime.start(context)
