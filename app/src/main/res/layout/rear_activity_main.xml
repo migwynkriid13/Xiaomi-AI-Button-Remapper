@@ -12,8 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="?attr/actionBarSize"
-        app:menu="@menu/rear_main"
-        app:subtitle="@string/rear_screen_name" />
+        app:menu="@menu/rear_main" />
 
     <include layout="@layout/rear_view_shizuku_banner" />
 
