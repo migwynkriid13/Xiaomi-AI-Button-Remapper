@@ -5,6 +5,7 @@
 #include <charconv>
 #include <cstdlib>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <vector>
 
@@ -21,12 +22,13 @@ std::string trim(const std::string& str) {
     return str.substr(from, str.find_last_not_of(" \t\r") - from + 1);
 }
 
-int deviceId(const std::string& line) {
+std::optional<int> deviceId(const std::string& line) {
     auto end = line.find(':');
-    if (end == std::string::npos) return -1;
+    if (end == std::string::npos) return std::nullopt;
     int id = -1;
     const auto parsed = std::from_chars(line.data(), line.data() + end, id);
-    return parsed.ec == std::errc{} && parsed.ptr == line.data() + end ? id : -1;
+    if (parsed.ec != std::errc{} || parsed.ptr != line.data() + end) return std::nullopt;
+    return id;
 }
 
 bool equalFields(const Fields& a, const Fields& b, std::initializer_list<const char*> names) {
@@ -64,7 +66,9 @@ Route compareRoutes(const std::string& dump, const std::string& sourcePath,
         const std::string field = body.substr(0, colon);
         const std::string value = trim(body.substr(colon + 1));
         if (section == Section::EventHub) {
-            if (indent == 4 && deviceId(body) >= 0) hubs.push_back({deviceId(body), {}});
+            // -1 is Android's built-in virtual keyboard, not a parse failure.
+            // Give it its own record so its fields cannot replace gpio-keys.
+            if (const auto id = deviceId(body); indent == 4 && id) hubs.push_back({*id, {}});
             if (indent == 6 && !hubs.empty()) hubs.back().fields[field] = value;
         } else if (section == Section::Reader) {
             if (indent == 2 && body.rfind("Device ", 0) == 0) readers.emplace_back();

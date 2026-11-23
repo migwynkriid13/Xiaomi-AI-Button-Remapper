@@ -123,11 +123,35 @@ void testRoutes() {
     check(describeMapping("# key 689 NO\nkey usage 689 A\nkey 0x2b1 AI WAKE\n") == "AI", "layout label lookup failed");
     check(describeMapping("key 688 B\n").empty(), "invented Android mapping");
 }
+
+void testReservedHubIds() {
+    const std::string physical = "/dev/input/event5";
+    const std::string virtualNode = "/dev/input/event30";
+    const std::string layout = "/vendor/usr/keylayout/gpio-keys.kl";
+    const std::string source = hub(10, physical, "gpio-keys/input0", layout);
+    const std::string mirror = hub(30, virtualNode, "remap", layout);
+    // EventHub includes Android's built-in virtual keyboard with reserved ID -1.
+    // Its path and layout must never overwrite the previous hardware record.
+    const std::string builtin = hub(-1, "<virtual>", "", "/system/usr/keylayout/Generic.kl");
+    const std::string readers = "Input Reader State:\n" + reader(10, "false", "true") +
+        reader(-1, "false", "false") + reader(30, "false", "true");
+    for (const auto& devices : {builtin + source + mirror, source + builtin + mirror,
+                                source + mirror + builtin}) {
+        const auto route = compareRoutes("Event Hub State:\n  Devices:\n" + devices + readers, physical, "remap");
+        check(route.mirrorPath == virtualNode && route.layout == layout && route.problem.empty(),
+              "reserved virtual keyboard ID overwrote an adjacent input route");
+    }
+    const auto missing = compareRoutes("Event Hub State:\n  Devices:\n" + builtin + mirror + readers,
+                                      physical, "remap");
+    check(missing.mirrorPath.empty() && missing.problem.find("physical button") != std::string::npos,
+          "virtual keyboard substituted for a missing physical device");
+}
 } // namespace
 
 int main() {
     try {
         testMixedFrame(); testObservationAndRawValues(); testFailures(); testEmergencyAndCleanup(); testRoutes();
+        testReservedHubIds();
         std::cout << "Input frame, state, failures and Android routing passed.\n";
         return 0;
     } catch (const std::exception& e) {
