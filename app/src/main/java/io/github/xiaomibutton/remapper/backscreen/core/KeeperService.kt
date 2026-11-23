@@ -424,6 +424,7 @@ class KeeperService : Service() {
      * settings are put back if anything is owed.
      */
     private fun onShizukuReady() {
+        io.github.xiaomibutton.remapper.backscreen.dashboard.restoreRearIme(this)
         applyIfWaiting()
         putBackTweaksIfIdle()
         checkLitTime()
@@ -651,6 +652,7 @@ class KeeperService : Service() {
      */
     fun onLendEnded(lend: Lend) {
         if (!RearState.endLend(this, lend)) return
+        io.github.xiaomibutton.remapper.backscreen.dashboard.restoreRearIme(this)
         BackScreen.log("Back screen returned")
         watchdog.stop()
         backCover.stop()
@@ -840,6 +842,10 @@ class KeeperService : Service() {
     fun showChanges() {
         BackScreen.mainHandler.removeCallbacks(wakeForChanges)
         BackScreen.mainHandler.postDelayed(wakeForChanges, SHOW_CHANGES_DELAY_MS)
+    }
+
+    internal fun wakeDashboardAlert() {
+        if (RearState.snapshot(this).guardsWallpaper) lightRear("Call or alarm")
     }
 
     private fun wakeRear() {

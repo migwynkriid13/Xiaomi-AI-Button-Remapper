@@ -47,29 +47,18 @@ import io.github.xiaomibutton.remapper.backscreen.ui.Feature
 internal fun RearScreenOverview(modifier: Modifier = Modifier, open: (Feature) -> Unit) {
     val model = xiaomi18ModelLabel(Build.MODEL, Build.DEVICE) ?: xiaomi17ModelLabel(Build.MODEL, Build.DEVICE)
     val supported = isRearScreenPlatform()
-    val compact = LocalConfiguration.current.screenHeightDp < 720
-    if (compact) {
-        Column(
-            modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
-        ) {
-            BackScreenHero(model, supported)
-            if (!supported) return@Column
-            if (model == null) SupportedModelsNote()
-            Feature.entries.forEach { feature ->
-                RearFeatureCard(feature, open, Modifier.heightIn(min = 72.dp))
-            }
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        BackScreenHero(model, supported)
+        if (!supported) return@Column
+        if (model == null) SupportedModelsNote()
+        val context = LocalContext.current
+        Panel {
+            SettingRow("Rear dashboard", "Music, live cards, controls and pinned apps", {
+                context.startActivity(Intent(context, io.github.xiaomibutton.remapper.backscreen.dashboard.DashboardActivity::class.java))
+            }, icon = R.drawable.action_view_carousel)
         }
-    } else {
-        Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            BackScreenHero(model, supported)
-            if (!supported) return@Column
-            if (model == null) SupportedModelsNote()
-            Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Feature.entries.forEach { feature ->
-                    RearFeatureCard(feature, open, Modifier.weight(1f).heightIn(min = 64.dp))
-                }
-            }
+        Feature.entries.forEach { feature ->
+            RearFeatureCard(feature, open, Modifier.heightIn(min = 72.dp))
         }
     }
 }

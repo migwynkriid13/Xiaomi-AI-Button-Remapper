@@ -18,6 +18,8 @@ fun resetBackScreenDefaults(context: Context) {
             "Could not reset $file"
         }
     }
+    io.github.xiaomibutton.remapper.runtime.ButtonAccessibilityService.connected?.refreshFlags()
+
     ToggleWidget.updateAll(app)
     ToggleTile.requestUpdate(app)
     runCatching { KeeperService.start(app, KeeperService.ACTION_UPDATE) }
@@ -32,4 +34,5 @@ private val USER_SETTING_FILES = listOf(
     "camera",
     "display",
     "schedules",
+    "rear_dashboard",
 )

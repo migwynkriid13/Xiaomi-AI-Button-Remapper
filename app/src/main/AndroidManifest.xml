@@ -45,6 +45,11 @@
         <intent><action android:name="android.settings.INTERNAL_STORAGE_SETTINGS" /></intent>
         <intent><action android:name="android.settings.WIRELESS_SETTINGS" /></intent>
     </queries>
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <application
         android:name=".RemapperApplication"
         android:allowBackup="false"
@@ -55,6 +60,19 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.Remapper"
         android:supportsRtl="true">
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.rear-pins"
+            android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/rear_pin_paths" />
+        </provider>
+        <activity android:name=".backscreen.dashboard.DashboardActivity" android:exported="false" />
+        <activity android:name=".backscreen.dashboard.PinActivity" android:exported="true" android:label="Pin to back screen">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
