@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **This project is archived and no longer maintained.** Development has moved to [Magic Rear](https://rear.896.ro/en/).
+>
+> [Download the Magic Rear APK](https://store.896.ro/dl/dev.kb896.aiusage?from=rear.896.ro) · [View source on GitLab](https://gitlab.com/896kb/ai-usage-companion)
+
 <p align="center">
   <img src="app/src/main/res/drawable-nodpi/button_hero.webp" width="100%" alt="Close-up of a phone's physical side button">
 </p>
